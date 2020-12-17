@@ -24,8 +24,10 @@ const (
 // Client Represents an available 1Password Connect API to connect to
 type Client interface {
 	GetVaults() ([]onepassword.Vault, error)
+	GetVaultsByTitle(uuid string) ([]onepassword.Vault, error)
 	GetItem(uuid string, vaultUUID string) (*onepassword.Item, error)
 	GetItems(vaultUUID string) ([]onepassword.Item, error)
+	GetItemsByTitle(title string, vaultUUID string) ([]onepassword.Item, error)
 	GetItemByTitle(title string, vaultUUID string) (*onepassword.Item, error)
 	CreateItem(item *onepassword.Item, vaultUUID string) (*onepassword.Item, error)
 	UpdateItem(item *onepassword.Item, vaultUUID string) (*onepassword.Item, error)
@@ -127,6 +129,39 @@ func (rs *restClient) GetVaults() ([]onepassword.Vault, error) {
 	return vaults, nil
 }
 
+func (rs *restClient) GetVaultsByTitle(title string) ([]onepassword.Vault, error) {
+	span := rs.tracer.StartSpan("GetVaultsByTitle")
+	defer span.Finish()
+
+	filter := url.QueryEscape(fmt.Sprintf("title eq \"%s\"", title))
+	itemURL := fmt.Sprintf("/v1/vaults?filter=%s", filter)
+	request, err := rs.buildRequest(http.MethodGet, itemURL, http.NoBody, span)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := rs.client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("Unable to retrieve vaults. Receieved %q for %q", response.Status, itemURL)
+	}
+
+	body, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	vaults := []onepassword.Vault{}
+	if err := json.Unmarshal(body, &vaults); err != nil {
+		return nil, err
+	}
+
+	return vaults, nil
+}
+
 // GetItem Get a specific Item from the 1Password Connect API
 func (rs *restClient) GetItem(uuid string, vaultUUID string) (*onepassword.Item, error) {
 	span := rs.tracer.StartSpan("GetItem")
@@ -163,6 +198,21 @@ func (rs *restClient) GetItem(uuid string, vaultUUID string) (*onepassword.Item,
 func (rs *restClient) GetItemByTitle(title string, vaultUUID string) (*onepassword.Item, error) {
 	span := rs.tracer.StartSpan("GetItemByTitle")
 	defer span.Finish()
+	items, err := rs.GetItemsByTitle(title, vaultUUID)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(items) != 1 {
+		return nil, fmt.Errorf("Found %d item(s) in vault %q with title %q", len(items), vaultUUID, title)
+	}
+
+	return rs.GetItem(items[0].ID, items[0].Vault.ID)
+}
+
+func (rs *restClient) GetItemsByTitle(title string, vaultUUID string) ([]onepassword.Item, error) {
+	span := rs.tracer.StartSpan("GetItemsByTitle")
+	defer span.Finish()
 
 	filter := url.QueryEscape(fmt.Sprintf("title eq \"%s\"", title))
 	itemURL := fmt.Sprintf("/v1/vaults/%s/items?filter=%s", vaultUUID, filter)
@@ -190,11 +240,7 @@ func (rs *restClient) GetItemByTitle(title string, vaultUUID string) (*onepasswo
 		return nil, err
 	}
 
-	if len(items) != 1 {
-		return nil, fmt.Errorf("Found %d item(s) in vault %q with title %q", len(items), vaultUUID, title)
-	}
-
-	return rs.GetItem(items[0].ID, items[0].Vault.ID)
+	return items, nil
 }
 
 func (rs *restClient) GetItems(vaultUUID string) ([]onepassword.Item, error) {

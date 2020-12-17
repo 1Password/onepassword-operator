@@ -77,9 +77,7 @@ kind: OnePasswordItem # {insert_new_name}
 metadata:
   name: {item_name} #this name will also be used for naming the generated kubernetes secret
 spec:
-  item-path: "vaults/{vaultId}/items/{itemId}" 
-# where vaultId is the id of the vault in which to find the item
-# where itemId is the id of the item that you want to store as a Kubernetes Secret
+  item-path: "vaults/{vault_id_or_title}/items/{item_id_or_title}" 
 ```
 
 Deploy the OnePasswordItem to Kubernetes:
@@ -104,7 +102,7 @@ kind: Deployment
 metadata:
   name: deployment-example
   annotations:
-    onepasswordoperator/item-path: "vaults/{vaultId}/items/{itemId}"
+    onepasswordoperator/item-path: "vaults/{vault_id_or_title}/items/{item_id_or_title}"
     onepasswordoperator/item-name: "{secret_name}"
 ```
 
@@ -114,6 +112,13 @@ Note: Deleting the Deployment that you've created will automatically delete the 
 
 If a 1Password Item that is linked to a Kubernetes Secret is updated within the `POLLING_INTERVAL` the associated Kubernetes Secret will be updated. Furthermore, any deployments using that secret will be given a rolling restart.
 
+
+---
+**NOTE**
+
+If multiple 1Password vaults/items have the same `title` when using a title in the access path, the desired action will be performed on the oldest vault/item. Furthermore, titles that include white space characters cannot be used.
+
+---
 ## Development
 
 ### Running Tests

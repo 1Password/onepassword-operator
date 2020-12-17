@@ -3,7 +3,7 @@ module github.com/1Password/onepassword-operator
 go 1.13
 
 require (
-	github.com/1Password/connect-sdk-go v0.0.1
+	github.com/1Password/connect-sdk-go v0.0.2
 	github.com/go-logr/logr v0.1.0 // indirect
 	github.com/operator-framework/operator-sdk v0.19.0
 	github.com/pkg/errors v0.9.1 // indirect

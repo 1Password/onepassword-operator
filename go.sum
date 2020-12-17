@@ -21,6 +21,8 @@ contrib.go.opencensus.io/exporter/ocagent v0.6.0/go.mod h1:zmKjrJcdo0aYcVS7bmEeS
 dmitri.shuralyov.com/gpu/mtl v0.0.0-20190408044501-666a987793e9/go.mod h1:H6x//7gZCb22OMCxBHrMx7a5I7Hp++hsVxbQ4BYO7hU=
 github.com/1Password/connect-sdk-go v0.0.1 h1:qsFZQDQ+JirZRwSom/p6zzNqkkcYAYx4EXivUyPhvBo=
 github.com/1Password/connect-sdk-go v0.0.1/go.mod h1:br2BWk2sqgJFnOFK5WSDfBBmwQ6E7hV9LoPqrtHGRNY=
+github.com/1Password/connect-sdk-go v0.0.2 h1:IBamxGS17zItC9TRwp/0G0Fh1GRV3mqOkcWvpK05Mx8=
+github.com/1Password/connect-sdk-go v0.0.2/go.mod h1:br2BWk2sqgJFnOFK5WSDfBBmwQ6E7hV9LoPqrtHGRNY=
 github.com/Azure/azure-pipeline-go v0.2.1/go.mod h1:UGSo8XybXnIGZ3epmeBw7Jdz+HiUVpqIlpz/HKHylF4=
 github.com/Azure/azure-pipeline-go v0.2.2/go.mod h1:4rQ/NZncSvGqNkkOsNpOU1tgoNuIlp9AfUH5G1tvCHc=
 github.com/Azure/azure-sdk-for-go v16.2.1+incompatible/go.mod h1:9XXNKU+eRnpl9moKnB4QOLf1HestfXbmab5FXxiDBjc=
