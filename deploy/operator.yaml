@@ -28,7 +28,7 @@ spec:
             - name: OPERATOR_NAME
               value: "onepassword-connect-operator"
             - name: OP_CONNECT_HOST
-              value: "http://secret-service:8080"
+              value: "http://onepassword-connect:8080"
             - name: POLLING_INTERVAL
               value: "10"
             - name: OP_CONNECT_TOKEN
