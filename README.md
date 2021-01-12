@@ -13,9 +13,33 @@ Prerequisites:
 - [1Password Command Line Tool Installed](https://1password.com/downloads/command-line/)
 - [kubectl installed](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 - [docker installed](https://docs.docker.com/get-docker/)
-- [1Password Connect has been setup with an API token issued to be used with the operator.](https://support.1password.com/cs/connect)
-- [1Password Connect deployed to Kubernetes](https://support.1password.com/cs/connect)
+- [Generated a 1password-credentials.json file and issued a 1Password Connect API Token for the K8s Operator integration](https://support.b5dev.com/cs/connect)
+- [1Password Connect deployed to Kubernetes](https://support.b5dev.com/cs/connect-deploy-kubernetes/#step-2-deploy-a-connect-server). **NOTE**: If customization of the 1Password Connect deployment is not required you can skip this prerequisite.
 
+### Quickstart for Deploying 1Password Connect to Kubernetes
+
+If 1Password Connect is already running, you can skip this step. This guide will provide a quickstart option for deploying a default configuration of 1Password Connect via starting the deploying the 1Password Connect Operator, however it is recommended that you instead deploy your own manifest file if customization of the 1Password Connect deployment is desired.
+
+Encode the 1password-credentials.json file you generated in the prerequisite steps and save it to a file named op-session:
+
+```bash
+$ cat 1password-credentials.json | base64 | \
+  tr '/+' '_-' | tr -d '=' | tr -d '\n' > op-session
+```
+
+Create a Kubernetes secret from the op-session file:
+```bash
+
+$ kubectl create secret generic op-credentials --from-file=op-session \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+Add the following environment variable to the onepassword-connect-operator container in `deploy/operator.yaml`:
+```yaml
+- name: MANAGE_CONNECT
+  value: "true"
+```
+Adding this environment variable will have the operator automatically deploy a default configuration of 1Password Connect to the `default` namespace.
 ### Kubernetes Operator Deployment
 
 **Create Kubernetes Secret for OP_CONNECT_TOKEN**
@@ -55,11 +79,12 @@ and update the image pull policy to `Always`
 imagePullPolicy: Always
 ```
 
-To further configure the 1Password Kubernetes Operator the Following Environment variables can be set in the deployment yaml:
+To further configure the 1Password Kubernetes Operator the Following Environment variables can be set in the operator yaml:
 
 - **WATCH_NAMESPACE:** comma separated list of what Namespaces to watch for changes.
 - **OP_CONNECT_HOST** (required): Specifies the host name within Kubernetes in which to access the 1Password Connect.
-- **POLLING_INTERVAL** (default: 600)**:** The number of seconds ****the 1Password Kubernetes Operator will wait before checking for updates from 1Password Connect.
+- **POLLING_INTERVAL** (default: 600)**:** The number of seconds the 1Password Kubernetes Operator will wait before checking for updates from 1Password Connect.
+- **MANAGE_CONNECT** (default: false): If set to true, on deployment of the operator, a default configuration of the OnePassword Connect Service will be deployed to the `default` namespace.
 
 Apply the deployment file:
 

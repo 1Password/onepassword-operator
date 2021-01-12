@@ -17,7 +17,6 @@ spec:
         - name: onepassword-connect-operator
           image: 1password/onepassword-operator
           command: ["/manager"]
-          imagePullPolicy: Never
           env:
             - name: WATCH_NAMESPACE
               value: "default"
