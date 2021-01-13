@@ -34,14 +34,16 @@ const (
 )
 
 type testUpdateSecretTask struct {
-	testName             string
-	existingDeployment   *appsv1.Deployment
-	existingSecret       *corev1.Secret
-	expectedError        error
-	expectedResultSecret *corev1.Secret
-	expectedEvents       []string
-	opItem               map[string]string
-	expectedRestart      bool
+	testName                 string
+	existingDeployment       *appsv1.Deployment
+	existingNamespace        *corev1.Namespace
+	existingSecret           *corev1.Secret
+	expectedError            error
+	expectedResultSecret     *corev1.Secret
+	expectedEvents           []string
+	opItem                   map[string]string
+	expectedRestart          bool
+	globalAutoRestartEnabled bool
 }
 
 var (
@@ -52,9 +54,16 @@ var (
 	itemPath = fmt.Sprintf("vaults/%v/items/%v", vaultId, itemId)
 )
 
+var defaultNamespace = &corev1.Namespace{
+	ObjectMeta: metav1.ObjectMeta{
+		Name: namespace,
+	},
+}
+
 var tests = []testUpdateSecretTask{
 	{
-		testName: "Test unrelated deployment is not restarted with an updated secret",
+		testName:          "Test unrelated deployment is not restarted with an updated secret",
+		existingNamespace: defaultNamespace,
 		existingDeployment: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
@@ -96,10 +105,12 @@ var tests = []testUpdateSecretTask{
 			userKey: username,
 			passKey: password,
 		},
-		expectedRestart: false,
+		expectedRestart:          false,
+		globalAutoRestartEnabled: true,
 	},
 	{
-		testName: "OP item has new version. Secret needs update. Deployment is restarted based on containers",
+		testName:          "OP item has new version. Secret needs update. Deployment is restarted based on containers",
+		existingNamespace: defaultNamespace,
 		existingDeployment: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
@@ -160,10 +171,12 @@ var tests = []testUpdateSecretTask{
 			userKey: username,
 			passKey: password,
 		},
-		expectedRestart: true,
+		expectedRestart:          true,
+		globalAutoRestartEnabled: true,
 	},
 	{
-		testName: "OP item has new version. Secret needs update. Deployment is restarted based on annotation",
+		testName:          "OP item has new version. Secret needs update. Deployment is restarted based on annotation",
+		existingNamespace: defaultNamespace,
 		existingDeployment: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
@@ -205,10 +218,12 @@ var tests = []testUpdateSecretTask{
 			userKey: username,
 			passKey: password,
 		},
-		expectedRestart: true,
+		expectedRestart:          true,
+		globalAutoRestartEnabled: true,
 	},
 	{
-		testName: "OP item has new version. Secret needs update. Deployment is restarted based on volume",
+		testName:          "OP item has new version. Secret needs update. Deployment is restarted based on volume",
+		existingNamespace: defaultNamespace,
 		existingDeployment: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
@@ -262,10 +277,12 @@ var tests = []testUpdateSecretTask{
 			userKey: username,
 			passKey: password,
 		},
-		expectedRestart: true,
+		expectedRestart:          true,
+		globalAutoRestartEnabled: true,
 	},
 	{
-		testName: "No secrets need update. No deployment is restarted",
+		testName:          "No secrets need update. No deployment is restarted",
+		existingNamespace: defaultNamespace,
 		existingDeployment: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
@@ -307,11 +324,298 @@ var tests = []testUpdateSecretTask{
 			userKey: username,
 			passKey: password,
 		},
-		expectedRestart: false,
+		expectedRestart:          false,
+		globalAutoRestartEnabled: true,
+	},
+	{
+		testName: `Deployment is not restarted when no auto restart is set to true for all
+		deployments and is not overwritten by by a namespace or deployment annotation`,
+		existingNamespace: defaultNamespace,
+		existingDeployment: &appsv1.Deployment{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       deploymentKind,
+				APIVersion: deploymentAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Env: []corev1.EnvVar{
+									{
+										Name: name,
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: name,
+												},
+												Key: passKey,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          false,
+		globalAutoRestartEnabled: false,
+	},
+	{
+		testName:          `Deployment autostart true value takes precedence over false global auto restart value`,
+		existingNamespace: defaultNamespace,
+		existingDeployment: &appsv1.Deployment{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       deploymentKind,
+				APIVersion: deploymentAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					RestartDeploymentsAnnotation: "true",
+				},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Env: []corev1.EnvVar{
+									{
+										Name: name,
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: name,
+												},
+												Key: passKey,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          true,
+		globalAutoRestartEnabled: true,
+	},
+	{
+		testName: `Deployment autostart false value takes precedence over false global auto restart value,
+		 and true namespace value.`,
+		existingNamespace: &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: namespace,
+				Annotations: map[string]string{
+					RestartDeploymentsAnnotation: "true",
+				},
+			},
+		},
+		existingDeployment: &appsv1.Deployment{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       deploymentKind,
+				APIVersion: deploymentAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					RestartDeploymentsAnnotation: "false",
+				},
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Env: []corev1.EnvVar{
+									{
+										Name: name,
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: name,
+												},
+												Key: passKey,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          false,
+		globalAutoRestartEnabled: false,
+	},
+	{
+		testName: `Namespace autostart true value takes precedence over false global auto restart value`,
+		existingNamespace: &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: namespace,
+				Annotations: map[string]string{
+					RestartDeploymentsAnnotation: "true",
+				},
+			},
+		},
+		existingDeployment: &appsv1.Deployment{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       deploymentKind,
+				APIVersion: deploymentAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Env: []corev1.EnvVar{
+									{
+										Name: name,
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: name,
+												},
+												Key: passKey,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          true,
+		globalAutoRestartEnabled: false,
 	},
 }
 
-func TestReconcileDepoyment(t *testing.T) {
+func TestUpdateSecretHandler(t *testing.T) {
 	for _, testData := range tests {
 		t.Run(testData.testName, func(t *testing.T) {
 
@@ -322,6 +626,7 @@ func TestReconcileDepoyment(t *testing.T) {
 			// Objects to track in the fake client.
 			objs := []runtime.Object{
 				testData.existingDeployment,
+				testData.existingNamespace,
 			}
 
 			if testData.existingSecret != nil {
@@ -342,8 +647,9 @@ func TestReconcileDepoyment(t *testing.T) {
 				return &item, nil
 			}
 			h := &SecretUpdateHandler{
-				client:          cl,
-				opConnectClient: opConnectClient,
+				client:                             cl,
+				opConnectClient:                    opConnectClient,
+				shouldAutoRestartDeploymentsGlobal: testData.globalAutoRestartEnabled,
 			}
 
 			err := h.UpdateKubernetesSecretsTask()
@@ -377,7 +683,7 @@ func TestReconcileDepoyment(t *testing.T) {
 
 			_, ok := deployment.Spec.Template.Annotations[RestartAnnotation]
 			if ok {
-				assert.True(t, testData.expectedRestart)
+				assert.True(t, testData.expectedRestart, "Expected deployment to restart but it did not")
 			} else {
 				assert.False(t, testData.expectedRestart)
 			}

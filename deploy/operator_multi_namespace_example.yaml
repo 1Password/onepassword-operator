@@ -16,9 +16,7 @@ spec:
       containers:
         - name: onepassword-connect-operator
           image: 1password/onepassword-operator
-          command:
-          - onepassword-connect-operator
-          imagePullPolicy: Never
+          command: ["/manager"]
           env:
             - name: WATCH_NAMESPACE
               value: "default,development"
@@ -29,7 +27,7 @@ spec:
             - name: OPERATOR_NAME
               value: "onepassword-connect-operator"
             - name: OP_CONNECT_HOST
-              value: "http://secret-service:8080"
+              value: "http://onepassword-connect:8080"
             - name: POLLING_INTERVAL
               value: "10"
             - name: OP_CONNECT_TOKEN
@@ -37,3 +35,5 @@ spec:
                 secretKeyRef:
                   name: onepassword-token
                   key: token
+            - name: AUTO_RESTART
+              value: "false"

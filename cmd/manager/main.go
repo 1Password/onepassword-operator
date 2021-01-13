@@ -42,6 +42,7 @@ import (
 
 const envPollingIntervalVariable = "POLLING_INTERVAL"
 const manageConnect = "MANAGE_CONNECT"
+const restartDeploymentsEnvVariable = "AUTO_RESTART"
 const defaultPollingInterval = 600
 
 // Change below variables to serve metrics on different host or port.
@@ -165,7 +166,7 @@ func main() {
 	addMetrics(ctx, cfg)
 
 	// Setup update secrets task
-	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opConnectClient)
+	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opConnectClient, shouldAutoRestartDeployments())
 	done := make(chan bool)
 	ticker := time.NewTicker(getPollingIntervalForUpdatingSecrets())
 	go func() {
@@ -281,6 +282,19 @@ func shouldManageConnect() bool {
 			os.Exit(1)
 		}
 		return shouldManageConnectBool
+	}
+	return false
+}
+
+func shouldAutoRestartDeployments() bool {
+	shouldAutoRestartDeployments, found := os.LookupEnv(restartDeploymentsEnvVariable)
+	if found {
+		shouldAutoRestartDeploymentsBool, err := strconv.ParseBool(strings.ToLower(shouldAutoRestartDeployments))
+		if err != nil {
+			log.Error(err, "")
+			os.Exit(1)
+		}
+		return shouldAutoRestartDeploymentsBool
 	}
 	return false
 }

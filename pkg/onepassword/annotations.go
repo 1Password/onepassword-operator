@@ -7,11 +7,12 @@ import (
 )
 
 const (
-	OnepasswordPrefix  = "onepasswordoperator"
-	ItemPathAnnotation = OnepasswordPrefix + "/item-path"
-	NameAnnotation     = OnepasswordPrefix + "/item-name"
-	VersionAnnotation  = OnepasswordPrefix + "/item-version"
-	RestartAnnotation  = OnepasswordPrefix + "/lastRestarted"
+	OnepasswordPrefix            = "onepasswordoperator"
+	ItemPathAnnotation           = OnepasswordPrefix + "/item-path"
+	NameAnnotation               = OnepasswordPrefix + "/item-name"
+	VersionAnnotation            = OnepasswordPrefix + "/item-version"
+	RestartAnnotation            = OnepasswordPrefix + "/lastRestarted"
+	RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto_restart"
 )
 
 func GetAnnotationsForDeployment(deployment *appsv1.Deployment, regex *regexp.Regexp) (map[string]string, bool) {
@@ -34,7 +35,7 @@ func GetAnnotationsForDeployment(deployment *appsv1.Deployment, regex *regexp.Re
 func FilterAnnotations(annotations map[string]string, regex *regexp.Regexp) map[string]string {
 	filteredAnnotations := make(map[string]string)
 	for key, value := range annotations {
-		if regex.MatchString(key) && key != RestartAnnotation {
+		if regex.MatchString(key) && key != RestartAnnotation && key != RestartDeploymentsAnnotation {
 			filteredAnnotations[key] = value
 		}
 	}
