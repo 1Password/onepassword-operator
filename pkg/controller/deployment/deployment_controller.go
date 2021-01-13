@@ -99,7 +99,7 @@ func (r *ReconcileDeployment) Reconcile(request reconcile.Request) (reconcile.Re
 
 	annotations, annotationsFound := op.GetAnnotationsForDeployment(deployment, r.opAnnotationRegExp)
 	if !annotationsFound {
-		reqLogger.Info("No One Password Annotations found")
+		reqLogger.Info("No 1Password Annotations found")
 		return reconcile.Result{}, nil
 	}
 
