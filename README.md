@@ -13,8 +13,8 @@ Prerequisites:
 - [1Password Command Line Tool Installed](https://1password.com/downloads/command-line/)
 - [kubectl installed](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 - [docker installed](https://docs.docker.com/get-docker/)
-- [1Password Connect has been setup with an API token issued to be used with the operator.](https://support.b5dev.com/cs/connect)
-- [1Password Connect deployed to Kubernetes](https://support.b5dev.com/cs/connect)
+- [1Password Connect has been setup with an API token issued to be used with the operator.](https://support.1password.com/cs/connect)
+- [1Password Connect deployed to Kubernetes](https://support.1password.com/cs/connect)
 
 ### Kubernetes Operator Deployment
 
