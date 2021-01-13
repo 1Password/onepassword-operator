@@ -34,7 +34,7 @@ func GetAnnotationsForDeployment(deployment *appsv1.Deployment, regex *regexp.Re
 func FilterAnnotations(annotations map[string]string, regex *regexp.Regexp) map[string]string {
 	filteredAnnotations := make(map[string]string)
 	for key, value := range annotations {
-		if regex.MatchString(key) {
+		if regex.MatchString(key) && key != RestartAnnotation {
 			filteredAnnotations[key] = value
 		}
 	}
