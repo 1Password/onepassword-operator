@@ -41,6 +41,7 @@ import (
 )
 
 const envPollingIntervalVariable = "POLLING_INTERVAL"
+const manageConnect = "MANAGE_CONNECT"
 const defaultPollingInterval = 600
 
 // Change below variables to serve metrics on different host or port.
@@ -129,6 +130,27 @@ func main() {
 	if err := apis.AddToScheme(mgr.GetScheme()); err != nil {
 		log.Error(err, "")
 		os.Exit(1)
+	}
+
+	//Setup 1PasswordConnect
+	if shouldManageConnect() {
+		log.Info("Automated Connect Management Enabled")
+		go func() {
+			connectStarted := false
+			for connectStarted == false {
+				err := op.SetupConnect(mgr.GetClient())
+				// Cache Not Started is an acceptable error. Retry until cache is started.
+				if err != nil && !errors.Is(err, &cache.ErrCacheNotStarted{}) {
+					log.Error(err, "")
+					os.Exit(1)
+				}
+				if err == nil {
+					connectStarted = true
+				}
+			}
+		}()
+	} else {
+		log.Info("Automated Connect Management Disabled")
 	}
 
 	// Setup One Password Client
@@ -248,4 +270,17 @@ func getPollingIntervalForUpdatingSecrets() time.Duration {
 
 	log.Info(fmt.Sprintf("Using default polling interval of %v seconds", defaultPollingInterval))
 	return time.Duration(defaultPollingInterval) * time.Second
+}
+
+func shouldManageConnect() bool {
+	shouldManageConnect, found := os.LookupEnv(manageConnect)
+	if found {
+		shouldManageConnectBool, err := strconv.ParseBool(strings.ToLower(shouldManageConnect))
+		if err != nil {
+			log.Error(err, "")
+			os.Exit(1)
+		}
+		return shouldManageConnectBool
+	}
+	return false
 }
