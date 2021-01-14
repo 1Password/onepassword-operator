@@ -121,10 +121,29 @@ If multiple 1Password vaults/items have the same `title` when using a title in t
 ---
 ## Development
 
+### Creating a Docker image
+
+To create a local version of the Docker image for testing, use the following `Makefile` target:
+```shell
+make build/local
+```
+
+### Building the Operator binary
+```shell
+make build/binary
+```
+
+The binary will be placed inside a `dist` folder within this repository.
+
 ### Running Tests
 
-```bash
-$ go test -v ./... -cover
+```shell
+make test
+```
+
+With coverage:
+```shell
+make test/coverage
 ```
 
 ## Security
