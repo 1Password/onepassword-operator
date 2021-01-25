@@ -4,7 +4,7 @@ The 1Password Connect Kubernetes Operator provides the ability to integrate Kube
 
 The 1Password Connect Kubernetes Operator also allows for Kubernetes Secrets to be composed from a 1Password Item through annotation of an Item Path on a deployment.
 
-The 1Password Connect Kubernetes Operator will continually check for updates from 1Password for any Kubernetes Secret that it has generated. If a Kubernetes Secret is updated, any Deployment using that secret will be automatically restarted.
+The 1Password Connect Kubernetes Operator will continually check for updates from 1Password for any Kubernetes Secret that it has generated. If a Kubernetes Secret is updated, any Deployment using that secret can be automatically restarted.
 
 ## Setup
 
@@ -85,6 +85,7 @@ To further configure the 1Password Kubernetes Operator the Following Environment
 - **OP_CONNECT_HOST** (required): Specifies the host name within Kubernetes in which to access the 1Password Connect.
 - **POLLING_INTERVAL** (default: 600)**:** The number of seconds the 1Password Kubernetes Operator will wait before checking for updates from 1Password Connect.
 - **MANAGE_CONNECT** (default: false): If set to true, on deployment of the operator, a default configuration of the OnePassword Connect Service will be deployed to the `default` namespace.
+- **AUTO_RESTART** (default: false): If set to true, the operator will restart any deployment using a secret from 1Password Connect. This can be overwritten by namespace, deployment, or individual secret. More details on AUTO_RESTART can be found in the ["Configuring Automatic Rolling Restarts of Deployments"](#configuring-automatic-rolling-restarts-of-deployments) section.
 
 Apply the deployment file:
 
@@ -135,8 +136,7 @@ Applying this yaml file will create a Kubernetes Secret with the name `{secret_n
 
 Note: Deleting the Deployment that you've created will automatically delete the created Kubernetes Secret only if the deployment is still annotated with `onepasswordoperator./item-path` and `onepasswordoperator/item-name` and no other deployment is using the secret.
 
-If a 1Password Item that is linked to a Kubernetes Secret is updated within the `POLLING_INTERVAL` the associated Kubernetes Secret will be updated. Furthermore, any deployments using that secret will be given a rolling restart.
-
+If a 1Password Item that is linked to a Kubernetes Secret is updated within the POLLING_INTERVAL the associated Kubernetes Secret will be updated. However, if you do not want a specific secret to be updated you can add the tag `onepasswordconnectoperator:ignore_secret` to the item stored in 1Password. While this tag is in place, any updates made to an item will not trigger an update to the associated secret in Kubernetes.
 
 ---
 **NOTE**
@@ -144,6 +144,38 @@ If a 1Password Item that is linked to a Kubernetes Secret is updated within the 
 If multiple 1Password vaults/items have the same `title` when using a title in the access path, the desired action will be performed on the oldest vault/item. Furthermore, titles that include white space characters cannot be used.
 
 ---
+
+### Configuring Automatic Rolling Restarts of Deployments
+
+If a 1Password Item that is linked to a Kubernetes Secret is updated, any deployments configured to `auto_restart` AND are using that secret will be given a rolling restart the next time 1Password Connect is polled for updates.
+
+There are many levels of granularity on which to configure auto restarts on deployments: at the operator level, per-namespace, or per-deployment.
+
+**On the operator**: This method allows for managing auto restarts on all deployments within the namespaces watched by operator. Auto restarts can be enabled by setting the environemnt variable  `AUTO_RESTART` to true. If the value is not set, the operator will default this value to false.
+
+**Per Namespace**: This method allows for managing auto restarts on all deployments within a namespace. Auto restarts can by managed by setting the annotation `onepasswordoperator/auto_restart` to either `true` or `false` on the desired namespace. An example of this is shown below:
+```yaml
+# enabled auto restarts for all deployments within a namespace unless overwritten within a deployment
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: "example-namespace"
+  onepasswordoperator/auto_restart: "true"
+```
+If the value is not set, the auto reset settings on the operator will be used. This value can be overwritten by deployment.
+
+**Per Deployment**
+This method allows for managing auto restarts on a given deployment. Auto restarts can by managed by setting the annotation `onepasswordoperator/auto_restart` to either `true` or `false` on the desired deployment. An example of this is shown below:
+```yaml
+# enabled auto restarts for the deployment
+apiVersion: v1
+kind: Deployment
+metadata:
+  name: "example-deployment"
+  onepasswordoperator/auto_restart: "true"
+```
+If the value is not set, the auto reset settings on the namespace will be used.
+
 ## Development
 
 ### Creating a Docker image

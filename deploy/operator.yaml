@@ -35,3 +35,5 @@ spec:
                 secretKeyRef:
                   name: onepassword-token
                   key: token
+            - name: AUTO_RESTART
+              value: "false"
