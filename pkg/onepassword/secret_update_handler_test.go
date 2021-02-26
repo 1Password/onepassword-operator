@@ -694,12 +694,12 @@ func TestUpdateSecretHandler(t *testing.T) {
 func TestIsUpdatedSecret(t *testing.T) {
 
 	secretName := "test-secret"
-	updatedSecrets := map[string]bool{
-		"some_secret": true,
+	updatedSecrets := map[string]*corev1.Secret{
+		"some_secret": &corev1.Secret{},
 	}
 	assert.False(t, isUpdatedSecret(secretName, updatedSecrets))
 
-	updatedSecrets[secretName] = true
+	updatedSecrets[secretName] = &corev1.Secret{}
 	assert.True(t, isUpdatedSecret(secretName, updatedSecrets))
 }
 

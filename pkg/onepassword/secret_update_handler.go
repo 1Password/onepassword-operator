@@ -45,7 +45,7 @@ func (h *SecretUpdateHandler) UpdateKubernetesSecretsTask() error {
 	return h.restartDeploymentsWithUpdatedSecrets(updatedKubernetesSecrets)
 }
 
-func (h *SecretUpdateHandler) restartDeploymentsWithUpdatedSecrets(updatedSecretsByNamespace map[string]map[string]bool) error {
+func (h *SecretUpdateHandler) restartDeploymentsWithUpdatedSecrets(updatedSecretsByNamespace map[string]map[string]*corev1.Secret) error {
 	// No secrets to update. Exit
 	if len(updatedSecretsByNamespace) == 0 || updatedSecretsByNamespace == nil {
 		return nil
@@ -94,7 +94,7 @@ func (h *SecretUpdateHandler) restartDeployment(deployment *appsv1.Deployment) {
 	}
 }
 
-func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]bool, error) {
+func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*corev1.Secret, error) {
 	secrets := &corev1.SecretList{}
 	err := h.client.List(context.Background(), secrets)
 	if err != nil {
@@ -102,7 +102,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]b
 		return nil, err
 	}
 
-	updatedSecrets := map[string]map[string]bool{}
+	updatedSecrets := map[string]map[string]*corev1.Secret{}
 	for i := 0; i < len(secrets.Items); i++ {
 		secret := secrets.Items[i]
 
@@ -130,9 +130,9 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]b
 			updatedSecret := kubeSecrets.BuildKubernetesSecretFromOnePasswordItem(secret.Name, secret.Namespace, secret.Annotations, *item)
 			h.client.Update(context.Background(), updatedSecret)
 			if updatedSecrets[secret.Namespace] == nil {
-				updatedSecrets[secret.Namespace] = make(map[string]bool)
+				updatedSecrets[secret.Namespace] = make(map[string]*corev1.Secret)
 			}
-			updatedSecrets[secret.Namespace][secret.Name] = true
+			updatedSecrets[secret.Namespace][secret.Name] = &secret
 		}
 	}
 	return updatedSecrets, nil
@@ -148,7 +148,7 @@ func isItemLockedForForcedRestarts(item *onepassword.Item) bool {
 	return false
 }
 
-func isUpdatedSecret(secretName string, updatedSecrets map[string]bool) bool {
+func isUpdatedSecret(secretName string, updatedSecrets map[string]*corev1.Secret) bool {
 	_, ok := updatedSecrets[secretName]
 	if ok {
 		return true

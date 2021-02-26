@@ -2,7 +2,7 @@ package onepassword
 
 import corev1 "k8s.io/api/core/v1"
 
-func AreContainersUsingSecrets(containers []corev1.Container, secrets map[string]bool) bool {
+func AreContainersUsingSecrets(containers []corev1.Container, secrets map[string]*corev1.Secret) bool {
 	for i := 0; i < len(containers); i++ {
 		envVariables := containers[i].Env
 		for j := 0; j < len(envVariables); j++ {

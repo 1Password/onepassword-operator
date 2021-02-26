@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestIsDeploymentUsingSecretsUsingVolumes(t *testing.T) {
-	secretNamesToSearch := map[string]bool{
-		"onepassword-database-secret": true,
-		"onepassword-api-key":         true,
+	secretNamesToSearch := map[string]*corev1.Secret{
+		"onepassword-database-secret": &corev1.Secret{},
+		"onepassword-api-key":         &corev1.Secret{},
 	}
 
 	volumeSecretNames := []string{
@@ -26,9 +27,9 @@ func TestIsDeploymentUsingSecretsUsingVolumes(t *testing.T) {
 }
 
 func TestIsDeploymentUsingSecretsUsingContainers(t *testing.T) {
-	secretNamesToSearch := map[string]bool{
-		"onepassword-database-secret": true,
-		"onepassword-api-key":         true,
+	secretNamesToSearch := map[string]*corev1.Secret{
+		"onepassword-database-secret": &corev1.Secret{},
+		"onepassword-api-key":         &corev1.Secret{},
 	}
 
 	containerSecretNames := []string{
@@ -45,9 +46,9 @@ func TestIsDeploymentUsingSecretsUsingContainers(t *testing.T) {
 }
 
 func TestIsDeploymentNotUSingSecrets(t *testing.T) {
-	secretNamesToSearch := map[string]bool{
-		"onepassword-database-secret": true,
-		"onepassword-api-key":         true,
+	secretNamesToSearch := map[string]*corev1.Secret{
+		"onepassword-database-secret": &corev1.Secret{},
+		"onepassword-api-key":         &corev1.Secret{},
 	}
 
 	deployment := &appsv1.Deployment{}
