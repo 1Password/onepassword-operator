@@ -14,3 +14,16 @@ func AreVolumesUsingSecrets(volumes []corev1.Volume, secrets map[string]*corev1.
 	}
 	return false
 }
+
+func AppendUpdatedVolumeSecrets(volumes []corev1.Volume, secrets map[string]*corev1.Secret, updatedDeploymentSecrets map[string]*corev1.Secret) map[string]*corev1.Secret {
+	for i := 0; i < len(volumes); i++ {
+		if secret := volumes[i].Secret; secret != nil {
+			secretName := secret.SecretName
+			secret, ok := secrets[secretName]
+			if ok {
+				updatedDeploymentSecrets[secret.Name] = secret
+			}
+		}
+	}
+	return updatedDeploymentSecrets
+}

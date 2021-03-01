@@ -50,3 +50,11 @@ func AreAnnotationsUsingSecrets(annotations map[string]string, secrets map[strin
 	}
 	return false
 }
+
+func AppendAnnotationUpdatedSecret(annotations map[string]string, secrets map[string]*corev1.Secret, updatedDeploymentSecrets map[string]*corev1.Secret) map[string]*corev1.Secret {
+	secret, ok := secrets[annotations[NameAnnotation]]
+	if ok {
+		updatedDeploymentSecrets[secret.Name] = secret
+	}
+	return updatedDeploymentSecrets
+}

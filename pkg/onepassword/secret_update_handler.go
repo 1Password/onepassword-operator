@@ -69,16 +69,21 @@ func (h *SecretUpdateHandler) restartDeploymentsWithUpdatedSecrets(updatedSecret
 
 	for i := 0; i < len(deployments.Items); i++ {
 		deployment := &deployments.Items[i]
-		if !isDeploymentSetForAutoRestart(deployment, setForAutoRestartByNamespaceMap) {
+		updatedSecrets := updatedSecretsByNamespace[deployment.Namespace]
+
+		updatedDeploymentSecrets := GetUpdatedSecretsForDeployment(deployment, updatedSecrets)
+		if len(updatedDeploymentSecrets) == 0 {
 			continue
 		}
-		updatedSecrets := updatedSecretsByNamespace[deployment.Namespace]
-		secretName := deployment.Annotations[NameAnnotation]
-		if isUpdatedSecret(secretName, updatedSecrets) || IsDeploymentUsingSecrets(deployment, updatedSecrets) {
-			h.restartDeployment(deployment)
-		} else {
-			log.Info(fmt.Sprintf("Deployment %q at namespace %q is up to date", deployment.GetName(), deployment.Namespace))
+		for _, secret := range updatedDeploymentSecrets {
+			if isSecretSetForAutoRestart(secret, deployment, setForAutoRestartByNamespaceMap) {
+				h.restartDeployment(deployment)
+				continue
+			}
 		}
+
+		log.Info(fmt.Sprintf("Deployment %q at namespace %q is up to date", deployment.GetName(), deployment.Namespace))
+
 	}
 	return nil
 }
@@ -170,6 +175,21 @@ func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap() (map[string
 		namespacesMap[namespace.Name] = h.isNamespaceSetToAutoRestart(&namespace)
 	}
 	return namespacesMap, nil
+}
+
+func isSecretSetForAutoRestart(secret *corev1.Secret, deployment *appsv1.Deployment, setForAutoRestartByNamespace map[string]bool) bool {
+	restartDeployment := secret.Annotations[RestartDeploymentsAnnotation]
+	//If annotation for auto restarts for deployment is not set. Check for the annotation on its namepsace
+	if restartDeployment == "" {
+		return isDeploymentSetForAutoRestart(deployment, setForAutoRestartByNamespace)
+	}
+
+	restartDeploymentBool, err := stringToBool(restartDeployment)
+	if err != nil {
+		log.Error(err, "Error parsing %v annotation on Deployment %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, deployment.Name)
+		return false
+	}
+	return restartDeploymentBool
 }
 
 func isDeploymentSetForAutoRestart(deployment *appsv1.Deployment, setForAutoRestartByNamespace map[string]bool) bool {
