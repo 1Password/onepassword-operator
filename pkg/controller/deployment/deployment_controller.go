@@ -201,5 +201,5 @@ func (r *ReconcileDeployment) HandleApplyingDeployment(namespace string, annotat
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, namespace, item)
+	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, namespace, item, annotations[op.RestartDeploymentsAnnotation])
 }

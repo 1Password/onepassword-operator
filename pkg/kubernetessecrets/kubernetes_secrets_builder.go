@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
+	"github.com/1Password/onepassword-operator/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,20 +14,29 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const onepasswordPrefix = "onepasswordoperator"
-const NameAnnotation = onepasswordPrefix + "/item-name"
-const VersionAnnotation = onepasswordPrefix + "/item-version"
-const restartAnnotation = onepasswordPrefix + "/lastRestarted"
-const ItemPathAnnotation = onepasswordPrefix + "/item-path"
+const OnepasswordPrefix = "onepasswordoperator"
+const NameAnnotation = OnepasswordPrefix + "/item-name"
+const VersionAnnotation = OnepasswordPrefix + "/item-version"
+const restartAnnotation = OnepasswordPrefix + "/lastRestarted"
+const ItemPathAnnotation = OnepasswordPrefix + "/item-path"
+const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto_restart"
 
 var log = logf.Log
 
-func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item) error {
+func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string) error {
 
 	itemVersion := fmt.Sprint(item.Version)
 	annotations := map[string]string{
 		VersionAnnotation:  itemVersion,
 		ItemPathAnnotation: fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID),
+	}
+	if autoRestart != "" {
+		_, err := utils.StringToBool(autoRestart)
+		if err != nil {
+			log.Error(err, "Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secretName)
+			return err
+		}
+		annotations[RestartDeploymentsAnnotation] = autoRestart
 	}
 	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, annotations, *item)
 

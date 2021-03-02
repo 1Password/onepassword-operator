@@ -3,11 +3,10 @@ package onepassword
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
+	"github.com/1Password/onepassword-operator/pkg/utils"
 
 	"github.com/1Password/connect-sdk-go/connect"
 	"github.com/1Password/connect-sdk-go/onepassword"
@@ -184,9 +183,9 @@ func isSecretSetForAutoRestart(secret *corev1.Secret, deployment *appsv1.Deploym
 		return isDeploymentSetForAutoRestart(deployment, setForAutoRestartByNamespace)
 	}
 
-	restartDeploymentBool, err := stringToBool(restartDeployment)
+	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
 	if err != nil {
-		log.Error(err, "Error parsing %v annotation on Deployment %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, deployment.Name)
+		log.Error(err, "Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secret.Name)
 		return false
 	}
 	return restartDeploymentBool
@@ -199,7 +198,7 @@ func isDeploymentSetForAutoRestart(deployment *appsv1.Deployment, setForAutoRest
 		return setForAutoRestartByNamespace[deployment.Namespace]
 	}
 
-	restartDeploymentBool, err := stringToBool(restartDeployment)
+	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
 	if err != nil {
 		log.Error(err, "Error parsing %v annotation on Deployment %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, deployment.Name)
 		return false
@@ -214,18 +213,10 @@ func (h *SecretUpdateHandler) isNamespaceSetToAutoRestart(namespace *corev1.Name
 		return h.shouldAutoRestartDeploymentsGlobal
 	}
 
-	restartDeploymentBool, err := stringToBool(restartDeployment)
+	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
 	if err != nil {
 		log.Error(err, "Error parsing %v annotation on Namespace %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, namespace.Name)
 		return false
 	}
 	return restartDeploymentBool
-}
-
-func stringToBool(str string) (bool, error) {
-	restartDeploymentBool, err := strconv.ParseBool(strings.ToLower(str))
-	if err != nil {
-		return false, err
-	}
-	return restartDeploymentBool, nil
 }

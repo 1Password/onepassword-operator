@@ -7,6 +7,7 @@ import (
 	onepasswordv1 "github.com/1Password/onepassword-operator/pkg/apis/onepassword/v1"
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/onepassword"
+	op "github.com/1Password/onepassword-operator/pkg/onepassword"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
 	"github.com/1Password/connect-sdk-go/connect"
@@ -143,11 +144,12 @@ func (r *ReconcileOnePasswordItem) removeOnePasswordFinalizerFromOnePasswordItem
 
 func (r *ReconcileOnePasswordItem) HandleOnePasswordItem(resource *onepasswordv1.OnePasswordItem, request reconcile.Request) error {
 	secretName := resource.GetName()
+	autoRestart := resource.Annotations[op.RestartDeploymentsAnnotation]
 
 	item, err := onepassword.GetOnePasswordItemByPath(r.opConnectClient, resource.Spec.ItemPath)
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item)
+	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item, autoRestart)
 }
