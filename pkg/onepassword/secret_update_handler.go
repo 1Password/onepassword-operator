@@ -3,11 +3,10 @@ package onepassword
 import (
 	"context"
 	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
+	"github.com/1Password/onepassword-operator/pkg/utils"
 
 	"github.com/1Password/connect-sdk-go/connect"
 	"github.com/1Password/connect-sdk-go/onepassword"
@@ -45,7 +44,7 @@ func (h *SecretUpdateHandler) UpdateKubernetesSecretsTask() error {
 	return h.restartDeploymentsWithUpdatedSecrets(updatedKubernetesSecrets)
 }
 
-func (h *SecretUpdateHandler) restartDeploymentsWithUpdatedSecrets(updatedSecretsByNamespace map[string]map[string]bool) error {
+func (h *SecretUpdateHandler) restartDeploymentsWithUpdatedSecrets(updatedSecretsByNamespace map[string]map[string]*corev1.Secret) error {
 	// No secrets to update. Exit
 	if len(updatedSecretsByNamespace) == 0 || updatedSecretsByNamespace == nil {
 		return nil
@@ -69,16 +68,21 @@ func (h *SecretUpdateHandler) restartDeploymentsWithUpdatedSecrets(updatedSecret
 
 	for i := 0; i < len(deployments.Items); i++ {
 		deployment := &deployments.Items[i]
-		if !isDeploymentSetForAutoRestart(deployment, setForAutoRestartByNamespaceMap) {
+		updatedSecrets := updatedSecretsByNamespace[deployment.Namespace]
+
+		updatedDeploymentSecrets := GetUpdatedSecretsForDeployment(deployment, updatedSecrets)
+		if len(updatedDeploymentSecrets) == 0 {
 			continue
 		}
-		updatedSecrets := updatedSecretsByNamespace[deployment.Namespace]
-		secretName := deployment.Annotations[NameAnnotation]
-		if isUpdatedSecret(secretName, updatedSecrets) || IsDeploymentUsingSecrets(deployment, updatedSecrets) {
-			h.restartDeployment(deployment)
-		} else {
-			log.Info(fmt.Sprintf("Deployment %q at namespace %q is up to date", deployment.GetName(), deployment.Namespace))
+		for _, secret := range updatedDeploymentSecrets {
+			if isSecretSetForAutoRestart(secret, deployment, setForAutoRestartByNamespaceMap) {
+				h.restartDeployment(deployment)
+				continue
+			}
 		}
+
+		log.Info(fmt.Sprintf("Deployment %q at namespace %q is up to date", deployment.GetName(), deployment.Namespace))
+
 	}
 	return nil
 }
@@ -94,7 +98,7 @@ func (h *SecretUpdateHandler) restartDeployment(deployment *appsv1.Deployment) {
 	}
 }
 
-func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]bool, error) {
+func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*corev1.Secret, error) {
 	secrets := &corev1.SecretList{}
 	err := h.client.List(context.Background(), secrets)
 	if err != nil {
@@ -102,7 +106,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]b
 		return nil, err
 	}
 
-	updatedSecrets := map[string]map[string]bool{}
+	updatedSecrets := map[string]map[string]*corev1.Secret{}
 	for i := 0; i < len(secrets.Items); i++ {
 		secret := secrets.Items[i]
 
@@ -130,9 +134,9 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]b
 			updatedSecret := kubeSecrets.BuildKubernetesSecretFromOnePasswordItem(secret.Name, secret.Namespace, secret.Annotations, *item)
 			h.client.Update(context.Background(), updatedSecret)
 			if updatedSecrets[secret.Namespace] == nil {
-				updatedSecrets[secret.Namespace] = make(map[string]bool)
+				updatedSecrets[secret.Namespace] = make(map[string]*corev1.Secret)
 			}
-			updatedSecrets[secret.Namespace][secret.Name] = true
+			updatedSecrets[secret.Namespace][secret.Name] = &secret
 		}
 	}
 	return updatedSecrets, nil
@@ -148,7 +152,7 @@ func isItemLockedForForcedRestarts(item *onepassword.Item) bool {
 	return false
 }
 
-func isUpdatedSecret(secretName string, updatedSecrets map[string]bool) bool {
+func isUpdatedSecret(secretName string, updatedSecrets map[string]*corev1.Secret) bool {
 	_, ok := updatedSecrets[secretName]
 	if ok {
 		return true
@@ -172,6 +176,21 @@ func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap() (map[string
 	return namespacesMap, nil
 }
 
+func isSecretSetForAutoRestart(secret *corev1.Secret, deployment *appsv1.Deployment, setForAutoRestartByNamespace map[string]bool) bool {
+	restartDeployment := secret.Annotations[RestartDeploymentsAnnotation]
+	//If annotation for auto restarts for deployment is not set. Check for the annotation on its namepsace
+	if restartDeployment == "" {
+		return isDeploymentSetForAutoRestart(deployment, setForAutoRestartByNamespace)
+	}
+
+	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
+	if err != nil {
+		log.Error(err, "Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secret.Name)
+		return false
+	}
+	return restartDeploymentBool
+}
+
 func isDeploymentSetForAutoRestart(deployment *appsv1.Deployment, setForAutoRestartByNamespace map[string]bool) bool {
 	restartDeployment := deployment.Annotations[RestartDeploymentsAnnotation]
 	//If annotation for auto restarts for deployment is not set. Check for the annotation on its namepsace
@@ -179,7 +198,7 @@ func isDeploymentSetForAutoRestart(deployment *appsv1.Deployment, setForAutoRest
 		return setForAutoRestartByNamespace[deployment.Namespace]
 	}
 
-	restartDeploymentBool, err := stringToBool(restartDeployment)
+	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
 	if err != nil {
 		log.Error(err, "Error parsing %v annotation on Deployment %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, deployment.Name)
 		return false
@@ -194,18 +213,10 @@ func (h *SecretUpdateHandler) isNamespaceSetToAutoRestart(namespace *corev1.Name
 		return h.shouldAutoRestartDeploymentsGlobal
 	}
 
-	restartDeploymentBool, err := stringToBool(restartDeployment)
+	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
 	if err != nil {
 		log.Error(err, "Error parsing %v annotation on Namespace %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, namespace.Name)
 		return false
 	}
 	return restartDeploymentBool
-}
-
-func stringToBool(str string) (bool, error) {
-	restartDeploymentBool, err := strconv.ParseBool(strings.ToLower(str))
-	if err != nil {
-		return false, err
-	}
-	return restartDeploymentBool, nil
 }

@@ -13,6 +13,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
+const restartDeploymentAnnotation = "false"
+
 type k8s struct {
 	clientset kubernetes.Interface
 }
@@ -28,7 +30,7 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
 	kubeClient := fake.NewFakeClient()
-	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item)
+	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -53,7 +55,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
 	kubeClient := fake.NewFakeClient()
-	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item)
+	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -64,7 +66,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	newItem.Version = 456
 	newItem.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
 	newItem.ID = "h46bb3jddvay7nxopfhvlwg35q"
-	err = CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &newItem)
+	err = CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -124,6 +126,10 @@ func compareAnnotationsToItem(annotations map[string]string, item onepassword.It
 	}
 	if annotations[VersionAnnotation] != fmt.Sprint(item.Version) {
 		t.Errorf("Expected annotation version to be %v but was %v", item.Version, annotations[VersionAnnotation])
+	}
+
+	if annotations[RestartDeploymentsAnnotation] != "false" {
+		t.Errorf("Expected restart deployments annotation to be %v but was %v", restartDeploymentAnnotation, RestartDeploymentsAnnotation)
 	}
 }
 

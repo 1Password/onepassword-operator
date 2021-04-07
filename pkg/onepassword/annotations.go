@@ -4,6 +4,7 @@ import (
 	"regexp"
 
 	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
 )
 
 const (
@@ -42,10 +43,18 @@ func FilterAnnotations(annotations map[string]string, regex *regexp.Regexp) map[
 	return filteredAnnotations
 }
 
-func AreAnnotationsUsingSecrets(annotations map[string]string, secrets map[string]bool) bool {
+func AreAnnotationsUsingSecrets(annotations map[string]string, secrets map[string]*corev1.Secret) bool {
 	_, ok := secrets[annotations[NameAnnotation]]
 	if ok {
 		return true
 	}
 	return false
+}
+
+func AppendAnnotationUpdatedSecret(annotations map[string]string, secrets map[string]*corev1.Secret, updatedDeploymentSecrets map[string]*corev1.Secret) map[string]*corev1.Secret {
+	secret, ok := secrets[annotations[NameAnnotation]]
+	if ok {
+		updatedDeploymentSecrets[secret.Name] = secret
+	}
+	return updatedDeploymentSecrets
 }

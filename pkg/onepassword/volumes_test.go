@@ -2,12 +2,14 @@ package onepassword
 
 import (
 	"testing"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 func TestAreVolmesUsingSecrets(t *testing.T) {
-	secretNamesToSearch := map[string]bool{
-		"onepassword-database-secret": true,
-		"onepassword-api-key":         true,
+	secretNamesToSearch := map[string]*corev1.Secret{
+		"onepassword-database-secret": &corev1.Secret{},
+		"onepassword-api-key":         &corev1.Secret{},
 	}
 
 	volumeSecretNames := []string{
@@ -24,9 +26,9 @@ func TestAreVolmesUsingSecrets(t *testing.T) {
 }
 
 func TestAreVolumesNotUsingSecrets(t *testing.T) {
-	secretNamesToSearch := map[string]bool{
-		"onepassword-database-secret": true,
-		"onepassword-api-key":         true,
+	secretNamesToSearch := map[string]*corev1.Secret{
+		"onepassword-database-secret": &corev1.Secret{},
+		"onepassword-api-key":         &corev1.Secret{},
 	}
 
 	volumeSecretNames := []string{

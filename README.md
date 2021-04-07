@@ -176,6 +176,18 @@ metadata:
 ```
 If the value is not set, the auto reset settings on the namespace will be used.
 
+**Per OnePasswordItem Custom Resource**
+This method allows for managing auto restarts on a given OnePasswordItem custom resource. Auto restarts can by managed by setting the annotation `onepasswordoperator/auto_restart` to either `true` or `false` on the desired OnePasswordItem. An example of this is shown below:
+```yaml
+# enabled auto restarts for the OnePasswordItem
+apiVersion: onepassword.com/v1
+kind: OnePasswordItem
+metadata:
+  name: example
+  onepasswordoperator/auto_restart: "true"
+```
+If the value is not set, the auto reset settings on the deployment will be used.
+
 ## Development
 
 ### Creating a Docker image

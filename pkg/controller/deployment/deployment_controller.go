@@ -142,7 +142,7 @@ func (r *ReconcileDeployment) cleanupKubernetesSecretForDeployment(secretName st
 	if len(secretName) == 0 {
 		return nil
 	}
-	updatedSecrets := map[string]bool{secretName: true}
+	updatedSecrets := map[string]*corev1.Secret{secretName: kubernetesSecret}
 
 	multipleDeploymentsUsingSecret, err := r.areMultipleDeploymentsUsingSecret(updatedSecrets, *deletedDeployment)
 	if err != nil {
@@ -160,7 +160,7 @@ func (r *ReconcileDeployment) cleanupKubernetesSecretForDeployment(secretName st
 	return nil
 }
 
-func (r *ReconcileDeployment) areMultipleDeploymentsUsingSecret(updatedSecrets map[string]bool, deletedDeployment appsv1.Deployment) (bool, error) {
+func (r *ReconcileDeployment) areMultipleDeploymentsUsingSecret(updatedSecrets map[string]*corev1.Secret, deletedDeployment appsv1.Deployment) (bool, error) {
 	deployments := &appsv1.DeploymentList{}
 	opts := []client.ListOption{
 		client.InNamespace(deletedDeployment.Namespace),
@@ -201,5 +201,5 @@ func (r *ReconcileDeployment) HandleApplyingDeployment(namespace string, annotat
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, namespace, item)
+	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, namespace, item, annotations[op.RestartDeploymentsAnnotation])
 }
