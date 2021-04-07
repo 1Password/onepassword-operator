@@ -7,7 +7,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-const AnnotationRegExpString = "^onepasswordoperator\\/[a-zA-Z\\.]+"
+const AnnotationRegExpString = "^operator.1password.io\\/[a-zA-Z\\.]+"
 
 func TestFilterAnnotations(t *testing.T) {
 	invalidAnnotation1 := "onepasswordconnect/vaultId"

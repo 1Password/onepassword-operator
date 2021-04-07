@@ -17,7 +17,7 @@ import (
 )
 
 const envHostVariable = "OP_HOST"
-const lockTag = "onepasswordconnectoperator:ignore_secret"
+const lockTag = "operator.1password.io:ignore-secret"
 
 var log = logf.Log.WithName("update_op_kubernetes_secrets_task")
 

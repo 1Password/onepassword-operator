@@ -8,12 +8,12 @@ import (
 )
 
 const (
-	OnepasswordPrefix            = "onepasswordoperator"
+	OnepasswordPrefix            = "operator.1password.io"
 	ItemPathAnnotation           = OnepasswordPrefix + "/item-path"
 	NameAnnotation               = OnepasswordPrefix + "/item-name"
 	VersionAnnotation            = OnepasswordPrefix + "/item-version"
-	RestartAnnotation            = OnepasswordPrefix + "/lastRestarted"
-	RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto_restart"
+	RestartAnnotation            = OnepasswordPrefix + "/last-restarted"
+	RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
 )
 
 func GetAnnotationsForDeployment(deployment *appsv1.Deployment, regex *regexp.Regexp) (map[string]string, bool) {

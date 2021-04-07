@@ -28,7 +28,7 @@ import (
 var log = logf.Log.WithName("controller_deployment")
 var finalizer = "onepassword.com/finalizer.secret"
 
-const annotationRegExpString = "^onepasswordoperator\\/[a-zA-Z\\.]+"
+const annotationRegExpString = "^operator.1password.io\\/[a-zA-Z\\.]+"
 
 func Add(mgr manager.Manager, opConnectClient connect.Client) error {
 	return add(mgr, newReconciler(mgr, opConnectClient))
