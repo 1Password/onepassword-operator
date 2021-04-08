@@ -18,6 +18,13 @@ Prerequisites:
 
 ### Quickstart for Deploying 1Password Connect to Kubernetes
 
+
+#### Deploy with Helm
+The 1Password Connect Helm Chart helps to simplify the deployment of 1Password Connect and the 1Password Connect Kubernetes Operator to Kubernetes. 
+
+[The 1Password Connect Helm Chart can be found here.](https://github.com/1Password/connect-helm-charts)
+
+#### Deploy using the Connect Operator
 If 1Password Connect is already running, you can skip this step. This guide will provide a quickstart option for deploying a default configuration of 1Password Connect via starting the deploying the 1Password Connect Operator, however it is recommended that you instead deploy your own manifest file if customization of the 1Password Connect deployment is desired.
 
 Encode the 1password-credentials.json file you generated in the prerequisite steps and save it to a file named op-session:
@@ -30,8 +37,7 @@ $ cat 1password-credentials.json | base64 | \
 Create a Kubernetes secret from the op-session file:
 ```bash
 
-$ kubectl create secret generic op-credentials --from-file=op-session \
-  --dry-run=client -o yaml | kubectl apply -f -
+$  kubectl create secret generic op-credentials --from-file=1password-credentials.json
 ```
 
 Add the following environment variable to the onepassword-connect-operator container in `deploy/operator.yaml`:
@@ -44,10 +50,18 @@ Adding this environment variable will have the operator automatically deploy a d
 
 **Create Kubernetes Secret for OP_CONNECT_TOKEN**
 
+"Create a Connect token for the operator and save it as a Kubernetes Secret: 
+
 ```bash
-# where <OP_CONNECT_TOKEN> is the 1Password Connect API token
-$ kubectl create secret generic onepassword-token --from-literal=token=<OP_CONNECT_TOKEN>
+$ kubectl create secret generic op-operator-connect-token --from-literal=token=<OP_CONNECT_TOKEN>"
 ```
+
+If you do not have a token for the operator, you can generate a token and save it to kubernetes with the following command:
+```bash
+$ kubectl create secret generic op-operator-connect-token --from-literal=token=$(op create connect token <server> op-k8s-operator --vault <vault>)
+```
+
+[More information on generating a token can be found here](https://support.1password.com/cs/secrets-automation/#appendix-issue-additional-access-tokens)
 
 **Set Permissions For Operator**
 
@@ -65,19 +79,8 @@ $ kubectl apply -f deploy/crds/onepassword.com_onepassworditems_crd.yaml
 
 **Deploying the Operator**
 
-An example Deployment yaml can be found at `/deploy/operator.yaml`.
+An sample Deployment yaml can be found at `/deploy/operator.yaml`.
 
-```yaml
-containers:
-    - name: onepassword-operator
-      image: 1password/onepassword-operator
-```
-
-and update the image pull policy to `Always`
-
-```yaml
-imagePullPolicy: Always
-```
 
 To further configure the 1Password Kubernetes Operator the Following Environment variables can be set in the operator yaml:
 
@@ -101,21 +104,21 @@ To create a Kubernetes Secret from a 1Password item, create a yaml file with the
 apiVersion: onepassword.com/v1
 kind: OnePasswordItem # {insert_new_name}
 metadata:
-  name: {item_name} #this name will also be used for naming the generated kubernetes secret
+  name: <item_name> #this name will also be used for naming the generated kubernetes secret
 spec:
-  itemPath: "vaults/{vault_id_or_title}/items/{item_id_or_title}" 
+  itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>" 
 ```
 
 Deploy the OnePasswordItem to Kubernetes:
 
 ```bash
-$ kubectl apply -f {your_item}.yaml
+$ kubectl apply -f <your_item>.yaml
 ```
 
 To test that the Kubernetes Secret check that the following command returns a secret:
 
 ```bash
-$ kubectl get secret {secret_name}
+$ kubectl get secret <secret_name>
 ```
 
 Note: Deleting the `OnePasswordItem` that you've created will automatically delete the created Kubernetes Secret.
@@ -132,7 +135,7 @@ metadata:
     operator.1password.io/item-name: "{secret_name}"
 ```
 
-Applying this yaml file will create a Kubernetes Secret with the name `{secret_name}` and contents from the location specified at the specified Item Path.
+Applying this yaml file will create a Kubernetes Secret with the name `<secret_name>` and contents from the location specified at the specified Item Path.
 
 Note: Deleting the Deployment that you've created will automatically delete the created Kubernetes Secret only if the deployment is still annotated with `operator.1password.io/item-path` and `operator.1password.io/item-name` and no other deployment is using the secret.
 
