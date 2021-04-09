@@ -14,12 +14,12 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const OnepasswordPrefix = "onepasswordoperator"
+const OnepasswordPrefix = "operator.1password.io"
 const NameAnnotation = OnepasswordPrefix + "/item-name"
 const VersionAnnotation = OnepasswordPrefix + "/item-version"
-const restartAnnotation = OnepasswordPrefix + "/lastRestarted"
+const restartAnnotation = OnepasswordPrefix + "/last-restarted"
 const ItemPathAnnotation = OnepasswordPrefix + "/item-path"
-const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto_restart"
+const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
 
 var log = logf.Log
 
