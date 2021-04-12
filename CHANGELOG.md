@@ -1,12 +1,32 @@
 [//]: # (START/LATEST)
 # Latest
 
+## Features
+  * A user-friendly description of a new feature. {issue-number}
+
+## Fixes
+ * A user-friendly description of a fix. {issue-number}
+
+## Security
+ * A user-friendly description of a security fix. {issue-number}
+
+---
+
+[//]: # (START/v1.0.0)
+# v1.0.0
+
 ## Features:
-*
+* Option to automatically deploy 1Password Connect via the operator
+* Ignore restart annotation when looking for 1Password annotations
+* Release Automation
+* Upgrading apiextensions.k8s.io/v1beta apiversion from the operator custom resource
+* Adding configuration for auto rolling restart on deployments
+* Configure Auto Restarts for a OnePasswordItem Custom Resource
+* Update Connect Dependencies to latest
+* Add Github action for building and testing operator
 ## Fixes:
-*
-## Security:
-*
+* Fix spec field example for OnePasswordItem in readme
+* Casing of annotations are now consistent
 
 ---
 
