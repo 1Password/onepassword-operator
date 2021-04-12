@@ -1,6 +1,6 @@
 # cloud.google.com/go v0.49.0
 cloud.google.com/go/compute/metadata
-# github.com/1Password/connect-sdk-go v0.0.2
+# github.com/1Password/connect-sdk-go v1.0.1
 github.com/1Password/connect-sdk-go/connect
 github.com/1Password/connect-sdk-go/onepassword
 # github.com/Azure/go-autorest/autorest v0.9.3-0.20191028180845-3492b2aff503

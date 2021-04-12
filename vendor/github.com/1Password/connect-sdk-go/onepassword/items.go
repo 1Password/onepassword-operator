@@ -2,6 +2,7 @@ package onepassword
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 )
 
@@ -103,4 +104,55 @@ type ItemField struct {
 	Generate bool             `json:"generate,omitempty"`
 	Recipe   *GeneratorRecipe `json:"recipe,omitempty"`
 	Entropy  float64          `json:"entropy,omitempty"`
+}
+
+// Get Retrieve the value of a field on the item by its label. To specify a
+// field from a specific section pass in <section label>.<field label>. If
+// no field matching the selector is found return "".
+func (i *Item) GetValue(field string) string {
+	if i == nil || len(i.Fields) == 0 {
+		return ""
+	}
+
+	sectionFilter := false
+	sectionLabel := ""
+	fieldLabel := field
+	if strings.Contains(field, ".") {
+		parts := strings.Split(field, ".")
+
+		// Test to make sure the . isn't the last character
+		if len(parts) == 2 {
+			sectionFilter = true
+			sectionLabel = parts[0]
+			fieldLabel = parts[1]
+		}
+	}
+
+	for _, f := range i.Fields {
+		if sectionFilter {
+			if f.Section != nil {
+				if sectionLabel != i.SectionLabelForID(f.Section.ID) {
+					continue
+				}
+			}
+		}
+
+		if fieldLabel == f.Label {
+			return f.Value
+		}
+	}
+
+	return ""
+}
+
+func (i *Item) SectionLabelForID(id string) string {
+	if i != nil || len(i.Sections) > 0 {
+		for _, s := range i.Sections {
+			if s.ID == id {
+				return s.Label
+			}
+		}
+	}
+
+	return ""
 }

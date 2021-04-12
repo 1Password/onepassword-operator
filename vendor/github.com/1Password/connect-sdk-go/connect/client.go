@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	defaultUserAgent = "connect-sdk-go/0.0.1"
+	defaultUserAgent = "connect-sdk-go/%s"
 )
 
 // Client Represents an available 1Password Connect API to connect to
@@ -61,7 +61,7 @@ func NewClientFromEnvironment() (Client, error) {
 
 // NewClient Returns a Secret Service client for a given url and jwt
 func NewClient(url string, token string) Client {
-	return NewClientWithUserAgent(url, token, defaultUserAgent)
+	return NewClientWithUserAgent(url, token, fmt.Sprintf(defaultUserAgent, SDKVersion))
 }
 
 // NewClientWithUserAgent Returns a Secret Service client for a given url and jwt and identifies with userAgent
