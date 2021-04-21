@@ -53,3 +53,7 @@ docker_manifests:
     image_templates:
       - 1password/{{ .ProjectName }}:{{ .Version }}-amd64
       - 1password/{{ .ProjectName }}:{{ .Version }}-arm64v8
+  - name_template: 1password/{{ .ProjectName }}:latest
+    image_templates:
+      - 1password/{{ .ProjectName }}:{{ .Version }}-amd64
+      - 1password/{{ .ProjectName }}:{{ .Version }}-arm64v8
