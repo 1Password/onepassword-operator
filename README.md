@@ -102,7 +102,7 @@ To create a Kubernetes Secret from a 1Password item, create a yaml file with the
 
 ```yaml
 apiVersion: onepassword.com/v1
-kind: OnePasswordItem # {insert_new_name}
+kind: OnePasswordItem
 metadata:
   name: <item_name> #this name will also be used for naming the generated kubernetes secret
 spec:
@@ -131,8 +131,8 @@ kind: Deployment
 metadata:
   name: deployment-example
   annotations:
-    operator.1password.io/item-path: "vaults/{vault_id_or_title}/items/{item_id_or_title}"
-    operator.1password.io/item-name: "{secret_name}"
+    operator.1password.io/item-path: "vaults/<vault_id_or_title>/items/<item_id_or_title>"
+    operator.1password.io/item-name: "<secret_name>"
 ```
 
 Applying this yaml file will create a Kubernetes Secret with the name `<secret_name>` and contents from the location specified at the specified Item Path.
