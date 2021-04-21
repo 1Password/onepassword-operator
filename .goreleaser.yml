@@ -1,0 +1,55 @@
+project_name: onepassword-operator
+builds:
+  - env:
+      - CGO_ENABLED=0
+    binary: manager
+    main: ./cmd/manager/main.go
+    flags:
+      - -mod=vendor
+      - -trimpath
+    ldflags:
+      - -s -w -X "github.com/1Password/onepassword-operator/version.Version={{ .Version }}"
+    mod_timestamp: '{{ .CommitTimestamp }}'
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+dockers:
+  - image_templates: ["1password/{{ .ProjectName }}:{{ .Version }}-amd64"]
+    goos: linux
+    goarch: amd64
+    dockerfile: Dockerfile-goreleaser
+    use_buildx: true
+    extra_files:
+      - deploy/connect/
+    build_flag_templates:
+      - --platform=linux/amd64
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/1Password/onepassword-operator
+      - --label=org.opencontainers.image.source=https://github.com/1Password/onepassword-operator
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+  - image_templates: ["1password/{{ .ProjectName }}:{{ .Version }}-arm64v8"]
+    goos: linux
+    goarch: arm64
+    dockerfile: Dockerfile-goreleaser
+    use_buildx: true
+    extra_files:
+      - deploy/connect/
+    build_flag_templates:
+      - --platform=linux/arm64/v8
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/1Password/onepassword-operator
+      - --label=org.opencontainers.image.source=https://github.com/1Password/onepassword-operator
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses=MIT
+docker_manifests:
+  - name_template: 1password/{{ .ProjectName }}:{{ .Version }}
+    image_templates:
+      - 1password/{{ .ProjectName }}:{{ .Version }}-amd64
+      - 1password/{{ .ProjectName }}:{{ .Version }}-arm64v8
