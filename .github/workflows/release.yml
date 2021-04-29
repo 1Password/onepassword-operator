@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 jobs:
-  goreleaser:
+  release-docker:
     runs-on: ubuntu-latest
     env:
       DOCKER_CLI_EXPERIMENTAL: "enabled"
