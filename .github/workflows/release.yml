@@ -28,6 +28,9 @@ jobs:
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+      - name: Get the version from tag
+        id: get_version
+        run: echo ::set-output name=VERSION::${GITHUB_REF#refs/tags/v}
       -
         name: Set up QEMU
         uses: docker/setup-qemu-action@v1
@@ -51,4 +54,4 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           build-args: |
-            operator_version=${{ github.event.ref }}
+            operator_version=${{ steps.get_version.outputs.VERSION }}
