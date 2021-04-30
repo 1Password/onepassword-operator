@@ -12,6 +12,15 @@
 
 ---
 
+[//]: # (START/v1.0.1)
+# v1.0.1
+
+## Features
+* This release also contains an arm64 Docker image. {#20}
+* Docker images are also pushed to the :latest and :<major>.<minor> tags.
+
+---
+
 [//]: # (START/v1.0.0)
 # v1.0.0
 
