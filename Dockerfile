@@ -16,7 +16,7 @@ ARG operator_version=dev
 RUN CGO_ENABLED=0 \
     GO111MODULE=on \
     go build \
-    -ldflags "-X version.Version=$operator_version" \
+    -ldflags "-X \"github.com/1Password/onepassword-operator/version.Version=$operator_version\"" \
     -mod vendor \
     -a -o manager main.go
 
