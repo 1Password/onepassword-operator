@@ -163,7 +163,8 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: "example-namespace"
-  operator.1password.io/auto-restart: "true"
+  annotations:
+    operator.1password.io/auto-restart: "true"
 ```
 If the value is not set, the auto reset settings on the operator will be used. This value can be overwritten by deployment.
 
@@ -175,7 +176,8 @@ apiVersion: v1
 kind: Deployment
 metadata:
   name: "example-deployment"
-  operator.1password.io/auto-restart: "true"
+  annotations:
+    operator.1password.io/auto-restart: "true"
 ```
 If the value is not set, the auto reset settings on the namespace will be used.
 
@@ -187,7 +189,8 @@ apiVersion: onepassword.com/v1
 kind: OnePasswordItem
 metadata:
   name: example
-  operator.1password.io/auto-restart: "true"
+  annotations:
+    operator.1password.io/auto-restart: "true"
 ```
 If the value is not set, the auto reset settings on the deployment will be used.
 
