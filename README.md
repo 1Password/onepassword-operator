@@ -53,12 +53,12 @@ Adding this environment variable will have the operator automatically deploy a d
 "Create a Connect token for the operator and save it as a Kubernetes Secret: 
 
 ```bash
-$ kubectl create secret generic op-operator-connect-token --from-literal=token=<OP_CONNECT_TOKEN>"
+$ kubectl create secret generic onepassword-token --from-literal=token=<OP_CONNECT_TOKEN>"
 ```
 
 If you do not have a token for the operator, you can generate a token and save it to kubernetes with the following command:
 ```bash
-$ kubectl create secret generic op-operator-connect-token --from-literal=token=$(op create connect token <server> op-k8s-operator --vault <vault>)
+$ kubectl create secret generic onepassword-token --from-literal=token=$(op create connect token <server> op-k8s-operator --vault <vault>)
 ```
 
 [More information on generating a token can be found here](https://support.1password.com/cs/secrets-automation/#appendix-issue-additional-access-tokens)
