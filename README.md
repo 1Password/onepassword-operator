@@ -13,8 +13,8 @@ Prerequisites:
 - [1Password Command Line Tool Installed](https://1password.com/downloads/command-line/)
 - [kubectl installed](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 - [docker installed](https://docs.docker.com/get-docker/)
-- [Generated a 1password-credentials.json file and issued a 1Password Connect API Token for the K8s Operator integration](https://support.b5dev.com/cs/connect)
-- [1Password Connect deployed to Kubernetes](https://support.b5dev.com/cs/connect-deploy-kubernetes/#step-2-deploy-a-connect-server). **NOTE**: If customization of the 1Password Connect deployment is not required you can skip this prerequisite.
+- [Generated a 1password-credentials.json file and issued a 1Password Connect API Token for the K8s Operator integration](https://support.b5dev.com/secrets-automation/)
+- [1Password Connect deployed to Kubernetes](https://support.b5dev.com/connect-deploy-kubernetes/#step-2-deploy-a-1password-connect-server). **NOTE**: If customization of the 1Password Connect deployment is not required you can skip this prerequisite.
 
 ### Quickstart for Deploying 1Password Connect to Kubernetes
 
@@ -61,7 +61,7 @@ If you do not have a token for the operator, you can generate a token and save i
 $ kubectl create secret generic op-operator-connect-token --from-literal=token=$(op create connect token <server> op-k8s-operator --vault <vault>)
 ```
 
-[More information on generating a token can be found here](https://support.1password.com/cs/secrets-automation/#appendix-issue-additional-access-tokens)
+[More information on generating a token can be found here](https://support.1password.com/secrets-automation/#appendix-issue-additional-access-tokens)
 
 **Set Permissions For Operator**
 
