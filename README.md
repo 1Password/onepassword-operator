@@ -84,9 +84,9 @@ An sample Deployment yaml can be found at `/deploy/operator.yaml`.
 
 To further configure the 1Password Kubernetes Operator the Following Environment variables can be set in the operator yaml:
 
-- **WATCH_NAMESPACE:** comma separated list of what Namespaces to watch for changes.
 - **OP_CONNECT_HOST** (required): Specifies the host name within Kubernetes in which to access the 1Password Connect.
-- **POLLING_INTERVAL** (default: 600)**:** The number of seconds the 1Password Kubernetes Operator will wait before checking for updates from 1Password Connect.
+- **WATCH_NAMESPACE:** (default: watch all namespaces): Comma separated list of what Namespaces to watch for changes.
+- **POLLING_INTERVAL** (default: 600): The number of seconds the 1Password Kubernetes Operator will wait before checking for updates from 1Password Connect.
 - **MANAGE_CONNECT** (default: false): If set to true, on deployment of the operator, a default configuration of the OnePassword Connect Service will be deployed to the `default` namespace.
 - **AUTO_RESTART** (default: false): If set to true, the operator will restart any deployment using a secret from 1Password Connect. This can be overwritten by namespace, deployment, or individual secret. More details on AUTO_RESTART can be found in the ["Configuring Automatic Rolling Restarts of Deployments"](#configuring-automatic-rolling-restarts-of-deployments) section.
 
