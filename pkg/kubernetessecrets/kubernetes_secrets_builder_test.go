@@ -48,7 +48,7 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	compareAnnotationsToItem(createdSecret.Annotations, item, t)
 
 	if createdSecret.Annotations["testAnnotation"] != "exists" {
-		t.Errorf("Expected testAnntion to be merged with existing annotations, but wasn't.")
+		t.Errorf("Expected testAnnotation to be merged with existing annotations, but wasn't.")
 	}
 }
 
