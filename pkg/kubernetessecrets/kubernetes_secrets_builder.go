@@ -23,14 +23,13 @@ const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
 
 var log = logf.Log
 
-
 func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, annotations map[string]string) error {
 
 	itemVersion := fmt.Sprint(item.Version)
 
 	// Remove OP Annotations if they already exist
-	delete(annotations,VersionAnnotation)
-	delete(annotations,ItemPathAnnotation)
+	delete(annotations, VersionAnnotation)
+	delete(annotations, ItemPathAnnotation)
 
 	secretAnnotations := map[string]string{
 		VersionAnnotation:  itemVersion,
@@ -78,7 +77,7 @@ func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotation
 			Name:        name,
 			Namespace:   namespace,
 			Annotations: annotations,
-			Labels: labels,
+			Labels:      labels,
 		},
 		Data: BuildKubernetesSecretData(item.Fields),
 	}
