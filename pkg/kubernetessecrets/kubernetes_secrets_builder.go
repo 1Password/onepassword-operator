@@ -23,22 +23,34 @@ const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
 
 var log = logf.Log
 
-func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string) error {
+
+func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, annotations map[string]string) error {
 
 	itemVersion := fmt.Sprint(item.Version)
-	annotations := map[string]string{
+
+	// Remove OP Annotations if they already exist
+	delete(annotations,VersionAnnotation)
+	delete(annotations,ItemPathAnnotation)
+
+	secretAnnotations := map[string]string{
 		VersionAnnotation:  itemVersion,
 		ItemPathAnnotation: fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID),
 	}
+
+	// Merge the original annotations map, with our new secretAnnotations map
+	for k, v := range annotations {
+		secretAnnotations[k] = v
+	}
+
 	if autoRestart != "" {
 		_, err := utils.StringToBool(autoRestart)
 		if err != nil {
 			log.Error(err, "Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secretName)
 			return err
 		}
-		annotations[RestartDeploymentsAnnotation] = autoRestart
+		secretAnnotations[RestartDeploymentsAnnotation] = autoRestart
 	}
-	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, annotations, *item)
+	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels, *item)
 
 	currentSecret := &corev1.Secret{}
 	err := kubeClient.Get(context.Background(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
@@ -51,7 +63,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 
 	if currentSecret.Annotations[VersionAnnotation] != itemVersion {
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
-		currentSecret.ObjectMeta.Annotations = annotations
+		currentSecret.ObjectMeta.Annotations = secretAnnotations
 		currentSecret.Data = secret.Data
 		return kubeClient.Update(context.Background(), currentSecret)
 	}
@@ -60,12 +72,13 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 	return nil
 }
 
-func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, item onepassword.Item) *corev1.Secret {
+func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, labels map[string]string, item onepassword.Item) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        name,
 			Namespace:   namespace,
 			Annotations: annotations,
+			Labels: labels,
 		},
 		Data: BuildKubernetesSecretData(item.Fields),
 	}
