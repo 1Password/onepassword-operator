@@ -23,23 +23,17 @@ const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
 
 var log = logf.Log
 
-func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, annotations map[string]string) error {
+func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, secretAnnotations map[string]string) error {
 
 	itemVersion := fmt.Sprint(item.Version)
 
-	// Remove OP Annotations if they already exist
-	delete(annotations, VersionAnnotation)
-	delete(annotations, ItemPathAnnotation)
-
-	secretAnnotations := map[string]string{
-		VersionAnnotation:  itemVersion,
-		ItemPathAnnotation: fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID),
+	// If secretAnnotations is nil we create an empty map so we can later assign values for the OP Annotations in the map
+	if secretAnnotations == nil {
+		secretAnnotations = map[string]string{}
 	}
 
-	// Merge the original annotations map, with our new secretAnnotations map
-	for k, v := range annotations {
-		secretAnnotations[k] = v
-	}
+	secretAnnotations[VersionAnnotation] = itemVersion
+	secretAnnotations[ItemPathAnnotation] = fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID)
 
 	if autoRestart != "" {
 		_, err := utils.StringToBool(autoRestart)
