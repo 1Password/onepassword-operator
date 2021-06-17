@@ -25,7 +25,7 @@ func TestServiceSetup(t *testing.T) {
 	// Create a fake client to mock API calls.
 	client := fake.NewFakeClientWithScheme(s, objs...)
 
-	err := setupService(client, "../../deploy/connect/service.yaml")
+	err := setupService(client, "../../deploy/connect/service.yaml", defaultNamespacedName.Namespace)
 
 	if err != nil {
 		t.Errorf("Error Setting Up Connect: %v", err)
@@ -50,7 +50,7 @@ func TestDeploymentSetup(t *testing.T) {
 	// Create a fake client to mock API calls.
 	client := fake.NewFakeClientWithScheme(s, objs...)
 
-	err := setupDeployment(client, "../../deploy/connect/deployment.yaml")
+	err := setupDeployment(client, "../../deploy/connect/deployment.yaml", defaultNamespacedName.Namespace)
 
 	if err != nil {
 		t.Errorf("Error Setting Up Connect: %v", err)

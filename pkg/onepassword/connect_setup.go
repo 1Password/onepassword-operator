@@ -2,6 +2,7 @@ package onepassword
 
 import (
 	"context"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -17,13 +18,13 @@ var logConnectSetup = logf.Log.WithName("ConnectSetup")
 var deploymentPath = "deploy/connect/deployment.yaml"
 var servicePath = "deploy/connect/service.yaml"
 
-func SetupConnect(kubeClient client.Client) error {
-	err := setupService(kubeClient, servicePath)
+func SetupConnect(kubeClient client.Client, deploymentNamespace string) error {
+	err := setupService(kubeClient, servicePath, deploymentNamespace)
 	if err != nil {
 		return err
 	}
 
-	err = setupDeployment(kubeClient, deploymentPath)
+	err = setupDeployment(kubeClient, deploymentPath, deploymentNamespace)
 	if err != nil {
 		return err
 	}
@@ -31,22 +32,22 @@ func SetupConnect(kubeClient client.Client) error {
 	return nil
 }
 
-func setupDeployment(kubeClient client.Client, deploymentPath string) error {
+func setupDeployment(kubeClient client.Client, deploymentPath string, deploymentNamespace string) error {
 	existingDeployment := &appsv1.Deployment{}
 
 	// check if deployment has already been created
-	err := kubeClient.Get(context.Background(), types.NamespacedName{Name: "onepassword-connect", Namespace: "default"}, existingDeployment)
+	err := kubeClient.Get(context.Background(), types.NamespacedName{Name: "onepassword-connect", Namespace: deploymentNamespace}, existingDeployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logConnectSetup.Info("No existing Connect deployment found. Creating Deployment")
-			return createDeployment(kubeClient, deploymentPath)
+			return createDeployment(kubeClient, deploymentPath, deploymentNamespace)
 		}
 	}
 	return err
 }
 
-func createDeployment(kubeClient client.Client, deploymentPath string) error {
-	deployment, err := getDeploymentToCreate(deploymentPath)
+func createDeployment(kubeClient client.Client, deploymentPath string, deploymentNamespace string) error {
+	deployment, err := getDeploymentToCreate(deploymentPath, deploymentNamespace)
 	if err != nil {
 		return err
 	}
@@ -59,12 +60,16 @@ func createDeployment(kubeClient client.Client, deploymentPath string) error {
 	return nil
 }
 
-func getDeploymentToCreate(deploymentPath string) (*appsv1.Deployment, error) {
+func getDeploymentToCreate(deploymentPath string, deploymentNamespace string) (*appsv1.Deployment, error) {
 	f, err := os.Open(deploymentPath)
 	if err != nil {
 		return nil, err
 	}
-	deployment := &appsv1.Deployment{}
+	deployment := &appsv1.Deployment{
+		ObjectMeta: v1.ObjectMeta{
+			Namespace: deploymentNamespace,
+		},
+	}
 
 	err = yaml.NewYAMLOrJSONDecoder(f, 4096).Decode(deployment)
 	if err != nil {
@@ -73,26 +78,30 @@ func getDeploymentToCreate(deploymentPath string) (*appsv1.Deployment, error) {
 	return deployment, nil
 }
 
-func setupService(kubeClient client.Client, servicePath string) error {
+func setupService(kubeClient client.Client, servicePath string, deploymentNamespace string) error {
 	existingService := &corev1.Service{}
 
 	//check if service has already been created
-	err := kubeClient.Get(context.Background(), types.NamespacedName{Name: "onepassword-connect", Namespace: "default"}, existingService)
+	err := kubeClient.Get(context.Background(), types.NamespacedName{Name: "onepassword-connect", Namespace: deploymentNamespace}, existingService)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logConnectSetup.Info("No existing Connect service found. Creating Service")
-			return createService(kubeClient, servicePath)
+			return createService(kubeClient, servicePath, deploymentNamespace)
 		}
 	}
 	return err
 }
 
-func createService(kubeClient client.Client, servicePath string) error {
+func createService(kubeClient client.Client, servicePath string, deploymentNamespace string) error {
 	f, err := os.Open(servicePath)
 	if err != nil {
 		return err
 	}
-	service := &corev1.Service{}
+	service := &corev1.Service{
+		ObjectMeta: v1.ObjectMeta{
+			Namespace: deploymentNamespace,
+		},
+	}
 
 	err = yaml.NewYAMLOrJSONDecoder(f, 4096).Decode(service)
 	if err != nil {
