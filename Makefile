@@ -20,12 +20,12 @@ test/coverage:	## Run test suite with coverage report
 	go test -v ./... -cover
 
 build:	## Build operator Docker image
-	@docker build -f Dockerfile --build-arg operator_version=$(curVersion) -t $(DOCKER_IMG_TAG)
+	@docker build -f Dockerfile --build-arg operator_version=$(curVersion) -t $(DOCKER_IMG_TAG) .
 	@echo "Successfully built and tagged image."
 	@echo "Tag: $(DOCKER_IMG_TAG)"
 
 build/local:	## Build local version of the operator Docker image
-	@docker build -f Dockerfile -t local/$(DOCKER_IMG_TAG)
+	@docker build -f Dockerfile -t local/$(DOCKER_IMG_TAG) .
 
 build/binary: clean	## Build operator binary
 	@mkdir -p dist
