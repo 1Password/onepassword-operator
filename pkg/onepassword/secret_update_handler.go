@@ -122,7 +122,9 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 		}
 
 		itemVersion := fmt.Sprint(item.Version)
-		if currentVersion != itemVersion {
+		itemPathString := fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID)
+
+		if currentVersion != itemVersion || secret.Annotations[ItemPathAnnotation] != itemPathString {
 			if isItemLockedForForcedRestarts(item) {
 				log.Info(fmt.Sprintf("Secret '%v' has been updated in 1Password but is set to be ignored. Updates to an ignored secret will not trigger an update to a kubernetes secret or a rolling restart.", secret.GetName()))
 				secret.Annotations[VersionAnnotation] = itemVersion
