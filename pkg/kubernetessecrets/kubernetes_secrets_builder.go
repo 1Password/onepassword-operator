@@ -49,7 +49,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 		return err
 	}
 
-	if currentSecret.Annotations[VersionAnnotation] != itemVersion {
+	if currentSecret.Annotations[VersionAnnotation] != itemVersion || currentSecret.Annotations[ItemPathAnnotation] != annotations[ItemPathAnnotation]{
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
 		currentSecret.ObjectMeta.Annotations = annotations
 		currentSecret.Data = secret.Data
