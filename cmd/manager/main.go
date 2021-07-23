@@ -83,9 +83,11 @@ func main() {
 
 	printVersion()
 
-	namespace, err := k8sutil.GetWatchNamespace()
+	namespace := os.Getenv(k8sutil.WatchNamespaceEnvVar)
+
+	deploymentNamespace, err := k8sutil.GetOperatorNamespace()
 	if err != nil {
-		log.Error(err, "Failed to get watch namespace")
+		log.Error(err, "Failed to get namespace")
 		os.Exit(1)
 	}
 
@@ -139,7 +141,7 @@ func main() {
 		go func() {
 			connectStarted := false
 			for connectStarted == false {
-				err := op.SetupConnect(mgr.GetClient())
+				err := op.SetupConnect(mgr.GetClient(), deploymentNamespace)
 				// Cache Not Started is an acceptable error. Retry until cache is started.
 				if err != nil && !errors.Is(err, &cache.ErrCacheNotStarted{}) {
 					log.Error(err, "")
