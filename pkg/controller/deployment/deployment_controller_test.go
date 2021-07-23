@@ -258,7 +258,7 @@ var tests = []testReconcileItem{
 		},
 	},
 	{
-		testName: "Test Do not update if OnePassword Item Version has not changed",
+		testName: "Test Do not update if OnePassword Item Version or VaultPath has not changed",
 		deploymentResource: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
@@ -278,7 +278,8 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
+					op.VersionAnnotation:  fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
 				},
 			},
 			Data: expectedSecretData,

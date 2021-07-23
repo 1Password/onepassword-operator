@@ -97,7 +97,7 @@ var tests = []testReconcileItem{
 		},
 	},
 	{
-		testName: "Test Do not update if OnePassword Version has not changed",
+		testName: "Test Do not update if OnePassword Version or VaultPath has not changed",
 		customResource: &onepasswordv1.OnePasswordItem{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       onePasswordItemKind,
@@ -117,6 +117,7 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
 				},
 			},
 			Data: expectedSecretData,
