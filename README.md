@@ -27,14 +27,16 @@ The 1Password Connect Helm Chart helps to simplify the deployment of 1Password C
 #### Deploy using the Connect Operator
 If 1Password Connect is already running, you can skip this step. This guide will provide a quickstart option for deploying a default configuration of 1Password Connect via starting the deploying the 1Password Connect Operator, however it is recommended that you instead deploy your own manifest file if customization of the 1Password Connect deployment is desired.
 
-Encode the 1password-credentials.json file you generated in the prerequisite steps and save it to a file named op-session:
+Rename the 1password-credentials.json file to 1password-credentials-plain.json and then encode the 1password-credentials-plain.json file you generated in the prerequisite steps and save it to a file named 1password-credentials.json:
+
 
 ```bash
-$ cat 1password-credentials.json | base64 | \
-  tr '/+' '_-' | tr -d '=' | tr -d '\n' > op-session
+mv 1password-credentials.json 1password-credentials-plain.json
+$ cat 1password-credentials-plain.json | base64 | \
+  tr '/+' '_-' | tr -d '=' | tr -d '\n' > 1password-credentials.json
 ```
 
-Create a Kubernetes secret from the op-session file:
+Create a Kubernetes secret from the 1password-credentials.json file:
 ```bash
 
 $  kubectl create secret generic op-credentials --from-file=1password-credentials.json
