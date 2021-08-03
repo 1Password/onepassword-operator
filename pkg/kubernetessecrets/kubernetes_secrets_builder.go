@@ -54,9 +54,10 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 		return err
 	}
 
-	if currentSecret.Annotations[VersionAnnotation] != itemVersion {
+	if CompareSecretFieldsWithOnePasswordItem(currentSecret.Annotations, secretAnnotations) || CompareSecretFieldsWithOnePasswordItem(currentSecret.Labels, labels) {
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
 		currentSecret.ObjectMeta.Annotations = secretAnnotations
+		currentSecret.ObjectMeta.Labels = labels
 		currentSecret.Data = secret.Data
 		return kubeClient.Update(context.Background(), currentSecret)
 	}
@@ -85,4 +86,14 @@ func BuildKubernetesSecretData(fields []*onepassword.ItemField) map[string][]byt
 		}
 	}
 	return secretData
+}
+
+func CompareSecretFieldsWithOnePasswordItem(currentSecretsFields map[string]string, expectedFieldsOnSecret map[string]string) bool{
+	for key, value := range expectedFieldsOnSecret {
+		currentValue, exists := currentSecretsFields[key]
+		if !exists || currentValue != value {
+			return true
+		}
+	}
+	return false
 }
