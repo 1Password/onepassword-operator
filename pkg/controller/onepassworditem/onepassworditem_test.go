@@ -117,6 +117,7 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
 				},
 			},
 			Data: expectedSecretData,
@@ -128,6 +129,7 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
 				},
 			},
 			Data: expectedSecretData,
