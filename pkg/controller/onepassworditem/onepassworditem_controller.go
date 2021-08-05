@@ -3,6 +3,8 @@ package onepassworditem
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"strings"
 
 	onepasswordv1 "github.com/1Password/onepassword-operator/pkg/apis/onepassword/v1"
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
@@ -15,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 	ctrl "sigs.k8s.io/controller-runtime"
 	kubeClient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
@@ -143,7 +146,7 @@ func (r *ReconcileOnePasswordItem) removeOnePasswordFinalizerFromOnePasswordItem
 }
 
 func (r *ReconcileOnePasswordItem) HandleOnePasswordItem(resource *onepasswordv1.OnePasswordItem, request reconcile.Request) error {
-	secretName := resource.GetName()
+	secretName := formatK8sSecretName(resource.GetName())
 	autoRestart := resource.Annotations[op.RestartDeploymentsAnnotation]
 
 	item, err := onepassword.GetOnePasswordItemByPath(r.opConnectClient, resource.Spec.ItemPath)
@@ -152,4 +155,28 @@ func (r *ReconcileOnePasswordItem) HandleOnePasswordItem(resource *onepasswordv1
 	}
 
 	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item, autoRestart)
+}
+
+// formatK8sSecretName replaces any characters not supported by K8s secret names
+//
+// K8s Secrets must be valid DNS subdomain names (https://kubernetes.io/docs/concepts/configuration/secret/#overview-of-secrets)
+func formatK8sSecretName(value string) string {
+	if errs := kubeValidate.IsDNS1123Subdomain(value); len(errs) == 0 {
+		return value
+	}
+	return createValidSecretName(value)
+}
+
+var invalidDNS1123Chars = regexp.MustCompile("[^a-z0-9-]+")
+
+func createValidSecretName(value string) string {
+	result := strings.ToLower(value)
+	result = invalidDNS1123Chars.ReplaceAllString(result, "-")
+
+	if len(result) > kubeValidate.DNS1123SubdomainMaxLength {
+		result = result[0:kubeValidate.DNS1123SubdomainMaxLength]
+	}
+
+	// only alphanumeric characters allowed at beginning and end of value
+	return strings.Trim(result, "-")
 }

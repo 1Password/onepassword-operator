@@ -210,6 +210,38 @@ var tests = []testReconcileItem{
 			passKey: password,
 		},
 	},
+	{
+		testName: "Secret from 1Password item with invalid K8s secret name",
+		customResource: &onepasswordv1.OnePasswordItem{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       onePasswordItemKind,
+				APIVersion: onePasswordItemAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "!my sECReT it3m%",
+				Namespace: namespace,
+			},
+			Spec: onepasswordv1.OnePasswordItemSpec{
+				ItemPath: itemPath,
+			},
+		},
+		existingSecret: nil,
+		expectedError:  nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "my-secret-it3m",
+				Namespace: namespace,
+				Annotations: map[string]string{
+					op.VersionAnnotation: fmt.Sprint(version),
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+	},
 }
 
 func TestReconcileOnePasswordItem(t *testing.T) {
@@ -257,8 +289,8 @@ func TestReconcileOnePasswordItem(t *testing.T) {
 			// watched resource .
 			req := reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Name:      name,
-					Namespace: namespace,
+					Name:      testData.customResource.ObjectMeta.Name,
+					Namespace: testData.customResource.ObjectMeta.Namespace,
 				},
 			}
 			_, err := r.Reconcile(req)
