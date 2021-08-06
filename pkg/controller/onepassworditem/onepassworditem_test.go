@@ -211,7 +211,7 @@ var tests = []testReconcileItem{
 		},
 	},
 	{
-		testName: "Secret from 1Password item with invalid K8s secret name",
+		testName: "Secret from 1Password item with invalid K8s labels",
 		customResource: &onepasswordv1.OnePasswordItem{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       onePasswordItemKind,
