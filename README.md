@@ -98,7 +98,7 @@ kubectl apply -f deploy/operator.yaml
 
 ## Usage
 
-To create a Kubernetes Secret from a 1Password item, create a yaml file with the following
+To create a single Kubernetes Secret from a 1Password item, create a yaml file with the following
 
 ```yaml
 apiVersion: onepassword.com/v1
@@ -107,6 +107,22 @@ metadata:
   name: <item_name> #this name will also be used for naming the generated kubernetes secret
 spec:
   itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>" 
+```
+
+To create a list of Kubernetes Secrets from a 1Password items, create a yaml file with the following
+
+```yaml
+apiVersion: onepassword.com/v1
+kind: OnePasswordItemList
+items:
+  - metadata:
+      name: <item_name_1> #this name will also be used for naming the generated kubernetes secret
+    spec:
+      itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>"
+  - metadata:
+      name: <item_name_2> #this name will also be used for naming the generated kubernetes secret
+    spec:
+      itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>"
 ```
 
 Deploy the OnePasswordItem to Kubernetes:
