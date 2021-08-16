@@ -102,7 +102,7 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	item.Fields = generateFields(5)
 
 	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, item)
-	if kubeSecret.Name != name {
+	if kubeSecret.Name != strings.ToLower(name) {
 		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
 	}
 	if kubeSecret.Namespace != namespace {
