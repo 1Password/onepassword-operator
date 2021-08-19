@@ -258,7 +258,7 @@ var tests = []testReconcileItem{
 		},
 	},
 	{
-		testName: "Test Do not update if OnePassword Item Version has not changed",
+		testName: "Test Do not update if Annotations have not changed",
 		deploymentResource: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
@@ -268,10 +268,10 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
 					op.NameAnnotation:     name,
 				},
+				Labels: map[string]string{},
 			},
 		},
 		existingSecret: &corev1.Secret{
@@ -279,8 +279,9 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.ItemPathAnnotation: itemPath,
 					op.VersionAnnotation: fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
+					op.NameAnnotation:     name,
 				},
 			},
 			Data: expectedSecretData,
@@ -291,9 +292,11 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.ItemPathAnnotation: itemPath,
 					op.VersionAnnotation: fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
+					op.NameAnnotation:     name,
 				},
+				Labels: map[string]string(nil),
 			},
 			Data: expectedSecretData,
 		},

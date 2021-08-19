@@ -3,13 +3,13 @@ package kubernetessecrets
 import (
 	"context"
 	"fmt"
-
 	"github.com/1Password/connect-sdk-go/onepassword"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"reflect"
 	kubernetesClient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -54,7 +54,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 		return err
 	}
 
-	if CompareSecretFieldsWithOnePasswordItem(currentSecret.Annotations, secretAnnotations) || CompareSecretFieldsWithOnePasswordItem(currentSecret.Labels, labels) {
+	if ! reflect.DeepEqual(currentSecret.Annotations, secretAnnotations) || ! reflect.DeepEqual(currentSecret.Labels, labels) {
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
 		currentSecret.ObjectMeta.Annotations = secretAnnotations
 		currentSecret.ObjectMeta.Labels = labels
@@ -86,14 +86,4 @@ func BuildKubernetesSecretData(fields []*onepassword.ItemField) map[string][]byt
 		}
 	}
 	return secretData
-}
-
-func CompareSecretFieldsWithOnePasswordItem(currentSecretsFields map[string]string, expectedFieldsOnSecret map[string]string) bool{
-	for key, value := range expectedFieldsOnSecret {
-		currentValue, exists := currentSecretsFields[key]
-		if !exists || currentValue != value {
-			return true
-		}
-	}
-	return false
 }
