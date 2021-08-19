@@ -31,6 +31,9 @@ const (
 	itemId                    = "nwrhuano7bcwddcviubpp4mhfq"
 	username                  = "test-user"
 	password                  = "QmHumKc$mUeEem7caHtbaBaJ"
+	firstHost                 = "http://localhost:8080"
+	awsKey                    = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+	iceCream                  = "freezing blue 20%"
 	userKey                   = "username"
 	passKey                   = "password"
 	version                   = 123
@@ -211,6 +214,79 @@ var tests = []testReconcileItem{
 			passKey: password,
 		},
 	},
+	{
+		testName: "Secret from 1Password item with invalid K8s labels",
+		customResource: &onepasswordv1.OnePasswordItem{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       onePasswordItemKind,
+				APIVersion: onePasswordItemAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "!my sECReT it3m%",
+				Namespace: namespace,
+			},
+			Spec: onepasswordv1.OnePasswordItemSpec{
+				ItemPath: itemPath,
+			},
+		},
+		existingSecret: nil,
+		expectedError:  nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "my-secret-it3m",
+				Namespace: namespace,
+				Annotations: map[string]string{
+					op.VersionAnnotation: fmt.Sprint(version),
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+	},
+	{
+		testName: "Secret from 1Password item with fields and sections that have invalid K8s labels",
+		customResource: &onepasswordv1.OnePasswordItem{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       onePasswordItemKind,
+				APIVersion: onePasswordItemAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "!my sECReT it3m%",
+				Namespace: namespace,
+			},
+			Spec: onepasswordv1.OnePasswordItemSpec{
+				ItemPath: itemPath,
+			},
+		},
+		existingSecret: nil,
+		expectedError:  nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "my-secret-it3m",
+				Namespace: namespace,
+				Annotations: map[string]string{
+					op.VersionAnnotation: fmt.Sprint(version),
+				},
+			},
+			Data: map[string][]byte{
+				"password":       []byte(password),
+				"username":       []byte(username),
+				"first-host":     []byte(firstHost),
+				"aws-access-key": []byte(awsKey),
+				"ice-cream-type": []byte(iceCream),
+			},
+		},
+		opItem: map[string]string{
+			userKey:            username,
+			passKey:            password,
+			"first host":       firstHost,
+			"AWS Access Key":   awsKey,
+			"😄 ice-cream type": iceCream,
+		},
+	},
 }
 
 func TestReconcileOnePasswordItem(t *testing.T) {
@@ -242,7 +318,10 @@ func TestReconcileOnePasswordItem(t *testing.T) {
 			mocks.GetGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
 
 				item := onepassword.Item{}
-				item.Fields = generateFields(testData.opItem["username"], testData.opItem["password"])
+				item.Fields = []*onepassword.ItemField{}
+				for k, v := range testData.opItem {
+					item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
+				}
 				item.Version = version
 				item.Vault.ID = vaultUUID
 				item.ID = uuid
@@ -258,8 +337,8 @@ func TestReconcileOnePasswordItem(t *testing.T) {
 			// watched resource .
 			req := reconcile.Request{
 				NamespacedName: types.NamespacedName{
-					Name:      name,
-					Namespace: namespace,
+					Name:      testData.customResource.ObjectMeta.Name,
+					Namespace: testData.customResource.ObjectMeta.Namespace,
 				},
 			}
 			_, err := r.Reconcile(req)

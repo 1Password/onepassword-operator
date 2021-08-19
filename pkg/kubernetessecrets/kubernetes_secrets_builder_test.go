@@ -3,6 +3,7 @@ package kubernetessecrets
 import (
 	"context"
 	"fmt"
+	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 	"strings"
 	"testing"
 
@@ -101,7 +102,7 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	item.Fields = generateFields(5)
 
 	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, item)
-	if kubeSecret.Name != name {
+	if kubeSecret.Name != strings.ToLower(name) {
 		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
 	}
 	if kubeSecret.Namespace != namespace {
@@ -111,6 +112,44 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 		t.Errorf("Expected namespace value: %v but got: %v", namespace, kubeSecret.Namespace)
 	}
 	compareFields(item.Fields, kubeSecret.Data, t)
+}
+
+func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
+	name := "inV@l1d k8s secret%name"
+	expectedName := "inv-l1d-k8s-secret-name"
+	namespace := "someNamespace"
+	annotations := map[string]string{
+		"annotationKey": "annotationValue",
+	}
+	item := onepassword.Item{}
+
+	item.Fields = []*onepassword.ItemField{
+		{
+			Label: "label w%th invalid ch!rs-",
+			Value: "value1",
+		},
+		{
+			Label: strings.Repeat("x", kubeValidate.DNS1123SubdomainMaxLength+1),
+			Value: "name exceeds max length",
+		},
+	}
+
+	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, item)
+
+	// Assert Secret's meta.name was fixed
+	if kubeSecret.Name != expectedName {
+		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
+	}
+	if kubeSecret.Namespace != namespace {
+		t.Errorf("Expected namespace value: %v but got: %v", namespace, kubeSecret.Namespace)
+	}
+
+	// assert labels were fixed for each data key
+	for key := range kubeSecret.Data {
+		if !validLabel(key) {
+			t.Errorf("Expected valid kubernetes label, got %s", key)
+		}
+	}
 }
 
 func compareAnnotationsToItem(annotations map[string]string, item onepassword.Item, t *testing.T) {
@@ -163,4 +202,11 @@ func ParseVaultIdAndItemIdFromPath(path string) (string, string, error) {
 		return splitPath[1], splitPath[3], nil
 	}
 	return "", "", fmt.Errorf("%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`", path)
+}
+
+func validLabel(v string) bool {
+	if err := kubeValidate.IsDNS1123Subdomain(v); len(err) > 0 {
+		return false
+	}
+	return true
 }
