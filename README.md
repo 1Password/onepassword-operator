@@ -144,7 +144,12 @@ If a 1Password Item that is linked to a Kubernetes Secret is updated within the 
 ---
 **NOTE**
 
-If multiple 1Password vaults/items have the same `title` when using a title in the access path, the desired action will be performed on the oldest vault/item. Furthermore, titles that include white space characters cannot be used.
+If multiple 1Password vaults/items have the same `title` when using a title in the access path, the desired action will be performed on the oldest vault/item. 
+
+Titles and field names that include white space and other characters that are not a valid [DNS subdomain name](https://kubernetes.io/docs/concepts/configuration/secret/) will create Kubernetes secrets that have titles and fields in the following format:
+ - Invalid characters before the first alphanumeric character and after the last alphanumeric character will be removed
+ - All whitespaces between words will be replaced by `-`
+ - All the letters will be lower-cased.
 
 ---
 

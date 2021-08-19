@@ -3,6 +3,10 @@ package kubernetessecrets
 import (
 	"context"
 	"fmt"
+
+	"regexp"
+	"strings"
+
 	"github.com/1Password/connect-sdk-go/onepassword"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -10,6 +14,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"reflect"
+	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
+
 	kubernetesClient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -69,7 +75,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, labels map[string]string, item onepassword.Item) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        name,
+			Name:        formatSecretName(name),
 			Namespace:   namespace,
 			Annotations: annotations,
 			Labels:      labels,
@@ -82,8 +88,33 @@ func BuildKubernetesSecretData(fields []*onepassword.ItemField) map[string][]byt
 	secretData := map[string][]byte{}
 	for i := 0; i < len(fields); i++ {
 		if fields[i].Value != "" {
-			secretData[fields[i].Label] = []byte(fields[i].Value)
+			key := formatSecretName(fields[i].Label)
+			secretData[key] = []byte(fields[i].Value)
 		}
 	}
 	return secretData
+}
+
+// formatSecretName rewrites a value to be a valid Secret name or Secret data key.
+//
+// The Secret meta.name and data keys must be valid DNS subdomain names (https://kubernetes.io/docs/concepts/configuration/secret/#overview-of-secrets)
+func formatSecretName(value string) string {
+	if errs := kubeValidate.IsDNS1123Subdomain(value); len(errs) == 0 {
+		return value
+	}
+	return createValidSecretName(value)
+}
+
+var invalidDNS1123Chars = regexp.MustCompile("[^a-z0-9-]+")
+
+func createValidSecretName(value string) string {
+	result := strings.ToLower(value)
+	result = invalidDNS1123Chars.ReplaceAllString(result, "-")
+
+	if len(result) > kubeValidate.DNS1123SubdomainMaxLength {
+		result = result[0:kubeValidate.DNS1123SubdomainMaxLength]
+	}
+
+	// first and last character MUST be alphanumeric
+	return strings.Trim(result, "-")
 }
