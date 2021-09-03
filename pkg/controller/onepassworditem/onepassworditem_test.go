@@ -232,7 +232,7 @@ var tests = []testReconcileItem{
 		expectedError:  nil,
 		expectedResultSecret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "my-secret-it3m",
+				Name:      "my-sECReT-it3m",
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: fmt.Sprint(version),
@@ -264,7 +264,7 @@ var tests = []testReconcileItem{
 		expectedError:  nil,
 		expectedResultSecret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "my-secret-it3m",
+				Name:      "my-sECReT-it3m",
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: fmt.Sprint(version),
@@ -274,7 +274,7 @@ var tests = []testReconcileItem{
 				"password":       []byte(password),
 				"username":       []byte(username),
 				"first-host":     []byte(firstHost),
-				"aws-access-key": []byte(awsKey),
+				"AWS-Access-Key": []byte(awsKey),
 				"ice-cream-type": []byte(iceCream),
 			},
 		},

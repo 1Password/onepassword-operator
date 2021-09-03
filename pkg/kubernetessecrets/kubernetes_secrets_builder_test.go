@@ -102,7 +102,7 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	item.Fields = generateFields(5)
 
 	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, item)
-	if kubeSecret.Name != strings.ToLower(name) {
+	if kubeSecret.Name != name {
 		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
 	}
 	if kubeSecret.Namespace != namespace {
@@ -116,7 +116,7 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 
 func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 	name := "inV@l1d k8s secret%name"
-	expectedName := "inv-l1d-k8s-secret-name"
+	expectedName := "inV-l1d-k8s-secret-name"
 	namespace := "someNamespace"
 	annotations := map[string]string{
 		"annotationKey": "annotationValue",
