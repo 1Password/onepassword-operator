@@ -97,11 +97,10 @@ func formatSecretName(value string) string {
 	return createValidSecretName(value)
 }
 
-var invalidDNS1123Chars = regexp.MustCompile("[^a-z0-9-]+")
+var invalidDNS1123Chars = regexp.MustCompile("[^a-zA-Z0-9-]+")
 
 func createValidSecretName(value string) string {
-	result := strings.ToLower(value)
-	result = invalidDNS1123Chars.ReplaceAllString(result, "-")
+	result := invalidDNS1123Chars.ReplaceAllString(value, "-")
 
 	if len(result) > kubeValidate.DNS1123SubdomainMaxLength {
 		result = result[0:kubeValidate.DNS1123SubdomainMaxLength]
