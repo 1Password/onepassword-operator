@@ -55,7 +55,7 @@ var (
 		"password": []byte(password),
 		"username": []byte(username),
 	}
-	itemPath = fmt.Sprintf("vaults/%v/items/%v", vaultId, itemId)
+	itemReference = fmt.Sprintf("op://%v/%v", vaultId, itemId)
 )
 
 var (
@@ -79,7 +79,7 @@ var tests = []testReconcileItem{
 				},
 			},
 			Spec: onepasswordv1.OnePasswordItemSpec{
-				ItemPath: itemPath,
+				ItemReference: itemReference,
 			},
 		},
 		existingSecret: &corev1.Secret{
@@ -111,7 +111,7 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 			},
 			Spec: onepasswordv1.OnePasswordItemSpec{
-				ItemPath: itemPath,
+				ItemReference: itemReference,
 			},
 		},
 		existingSecret: &corev1.Secret{
@@ -152,7 +152,7 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 			},
 			Spec: onepasswordv1.OnePasswordItemSpec{
-				ItemPath: itemPath,
+				ItemReference: itemReference,
 			},
 		},
 		existingSecret: &corev1.Secret{
@@ -193,7 +193,7 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 			},
 			Spec: onepasswordv1.OnePasswordItemSpec{
-				ItemPath: itemPath,
+				ItemReference: itemReference,
 			},
 		},
 		existingSecret: nil,
@@ -225,7 +225,7 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 			},
 			Spec: onepasswordv1.OnePasswordItemSpec{
-				ItemPath: itemPath,
+				ItemReference: itemReference,
 			},
 		},
 		existingSecret: nil,
@@ -257,7 +257,7 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 			},
 			Spec: onepasswordv1.OnePasswordItemSpec{
-				ItemPath: itemPath,
+				ItemReference: itemReference,
 			},
 		},
 		existingSecret: nil,

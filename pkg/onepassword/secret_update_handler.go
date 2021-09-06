@@ -110,13 +110,13 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 	for i := 0; i < len(secrets.Items); i++ {
 		secret := secrets.Items[i]
 
-		itemPath := secret.Annotations[ItemPathAnnotation]
+		itemReference := secret.Annotations[ItemReferenceAnnotation]
 		currentVersion := secret.Annotations[VersionAnnotation]
-		if len(itemPath) == 0 || len(currentVersion) == 0 {
+		if len(itemReference) == 0 || len(currentVersion) == 0 {
 			continue
 		}
 
-		item, err := GetOnePasswordItemByPath(h.opConnectClient, secret.Annotations[ItemPathAnnotation])
+		item, err := GetOnePasswordItemByReference(h.opConnectClient, secret.Annotations[ItemReferenceAnnotation])
 		if err != nil {
 			return nil, fmt.Errorf("Failed to retrieve item: %v", err)
 		}

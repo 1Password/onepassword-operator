@@ -3,9 +3,10 @@ package kubernetessecrets
 import (
 	"context"
 	"fmt"
-	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 	"strings"
 	"testing"
+
+	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
 	corev1 "k8s.io/api/core/v1"
@@ -42,7 +43,7 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 		t.Errorf("Secret was not created: %v", err)
 	}
 	compareFields(item.Fields, createdSecret.Data, t)
-	compareAnnotationsToItem(createdSecret.Annotations, item, t)
+	compareAnnotationsToItem(item.Vault.ID, item.ID, createdSecret.Annotations, item, t)
 }
 
 func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
@@ -78,7 +79,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 		t.Errorf("Secret was not found: %v", err)
 	}
 	compareFields(newItem.Fields, updatedSecret.Data, t)
-	compareAnnotationsToItem(updatedSecret.Annotations, newItem, t)
+	compareAnnotationsToItem(newItem.Vault.ID, newItem.ID, updatedSecret.Annotations, newItem, t)
 }
 func TestBuildKubernetesSecretData(t *testing.T) {
 	fields := generateFields(5)
@@ -152,11 +153,7 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 	}
 }
 
-func compareAnnotationsToItem(annotations map[string]string, item onepassword.Item, t *testing.T) {
-	actualVaultId, actualItemId, err := ParseVaultIdAndItemIdFromPath(annotations[ItemPathAnnotation])
-	if err != nil {
-		t.Errorf("Was unable to parse Item Path")
-	}
+func compareAnnotationsToItem(actualVaultId, actualItemId string, annotations map[string]string, item onepassword.Item, t *testing.T) {
 	if actualVaultId != item.Vault.ID {
 		t.Errorf("Expected annotation vault id to be %v but was %v", item.Vault.ID, actualVaultId)
 	}
@@ -194,14 +191,6 @@ func generateFields(numToGenerate int) []*onepassword.ItemField {
 		fields = append(fields, &field)
 	}
 	return fields
-}
-
-func ParseVaultIdAndItemIdFromPath(path string) (string, string, error) {
-	splitPath := strings.Split(path, "/")
-	if len(splitPath) == 4 && splitPath[0] == "vaults" && splitPath[2] == "items" {
-		return splitPath[1], splitPath[3], nil
-	}
-	return "", "", fmt.Errorf("%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`", path)
 }
 
 func validLabel(v string) bool {

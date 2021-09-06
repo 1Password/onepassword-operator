@@ -2,7 +2,7 @@
 
 The 1Password Connect Kubernetes Operator provides the ability to integrate Kubernetes with 1Password. This Operator manages `OnePasswordItem` Custom Resource Definitions (CRDs) that define the location of an Item stored in 1Password. The `OnePasswordItem` CRD, when created, will be used to compose a Kubernetes Secret containing the contents of the specified item.
 
-The 1Password Connect Kubernetes Operator also allows for Kubernetes Secrets to be composed from a 1Password Item through annotation of an Item Path on a deployment.
+The 1Password Connect Kubernetes Operator also allows for Kubernetes Secrets to be composed from a 1Password Item through annotation of an Item Reference on a deployment.
 
 The 1Password Connect Kubernetes Operator will continually check for updates from 1Password for any Kubernetes Secret that it has generated. If a Kubernetes Secret is updated, any Deployment using that secret can be automatically restarted.
 
@@ -106,7 +106,7 @@ kind: OnePasswordItem
 metadata:
   name: <item_name> #this name will also be used for naming the generated kubernetes secret
 spec:
-  itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>" 
+  itemReference: "op://<vault_id_or_title>/<item_id_or_title>" 
 ```
 
 Deploy the OnePasswordItem to Kubernetes:
@@ -131,20 +131,20 @@ kind: Deployment
 metadata:
   name: deployment-example
   annotations:
-    operator.1password.io/item-path: "vaults/<vault_id_or_title>/items/<item_id_or_title>"
+    operator.1password.io/item-reference: "op://<vault>/<item>"
     operator.1password.io/item-name: "<secret_name>"
 ```
 
-Applying this yaml file will create a Kubernetes Secret with the name `<secret_name>` and contents from the location specified at the specified Item Path.
+Applying this yaml file will create a Kubernetes Secret with the name `<secret_name>` and contents from the location specified at the specified Item Reference.
 
-Note: Deleting the Deployment that you've created will automatically delete the created Kubernetes Secret only if the deployment is still annotated with `operator.1password.io/item-path` and `operator.1password.io/item-name` and no other deployment is using the secret.
+Note: Deleting the Deployment that you've created will automatically delete the created Kubernetes Secret only if the deployment is still annotated with `operator.1password.io/item-reference` and `operator.1password.io/item-name` and no other deployment is using the secret.
 
 If a 1Password Item that is linked to a Kubernetes Secret is updated within the POLLING_INTERVAL the associated Kubernetes Secret will be updated. However, if you do not want a specific secret to be updated you can add the tag `operator.1password.io:ignore-secret` to the item stored in 1Password. While this tag is in place, any updates made to an item will not trigger an update to the associated secret in Kubernetes.
 
 ---
 **NOTE**
 
-If multiple 1Password vaults/items have the same `title` when using a title in the access path, the desired action will be performed on the oldest vault/item. 
+If multiple 1Password vaults/items have the same `title` when using a title in the access reference, the desired action will be performed on the oldest vault/item. 
 
 Titles and field names that include white space and other characters that are not a valid [DNS subdomain name](https://kubernetes.io/docs/concepts/configuration/secret/) will create Kubernetes secrets that have titles and fields in the following format:
  - Invalid characters before the first alphanumeric character and after the last alphanumeric character will be removed

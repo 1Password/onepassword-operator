@@ -9,7 +9,7 @@ import (
 
 const (
 	OnepasswordPrefix            = "operator.1password.io"
-	ItemPathAnnotation           = OnepasswordPrefix + "/item-path"
+	ItemReferenceAnnotation      = OnepasswordPrefix + "/item-reference"
 	NameAnnotation               = OnepasswordPrefix + "/item-name"
 	VersionAnnotation            = OnepasswordPrefix + "/item-version"
 	RestartAnnotation            = OnepasswordPrefix + "/last-restarted"

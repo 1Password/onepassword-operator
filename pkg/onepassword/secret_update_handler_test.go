@@ -51,7 +51,7 @@ var (
 		"password": []byte(password),
 		"username": []byte(username),
 	}
-	itemPath = fmt.Sprintf("vaults/%v/items/%v", vaultId, itemId)
+	itemReference = fmt.Sprintf("op://%v/%v", vaultId, itemId)
 )
 
 var defaultNamespace = &corev1.Namespace{
@@ -73,8 +73,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					NameAnnotation:     "unlrelated secret",
-					ItemPathAnnotation: itemPath,
+					NameAnnotation:          "unlrelated secret",
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 		},
@@ -83,8 +83,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  "old version",
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       "old version",
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -95,8 +95,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  fmt.Sprint(itemVersion),
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       fmt.Sprint(itemVersion),
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -149,8 +149,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  "old version",
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       "old version",
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -161,8 +161,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  fmt.Sprint(itemVersion),
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       fmt.Sprint(itemVersion),
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -186,8 +186,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					ItemPathAnnotation: itemPath,
-					NameAnnotation:     name,
+					ItemReferenceAnnotation: itemReference,
+					NameAnnotation:          name,
 				},
 			},
 		},
@@ -196,8 +196,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  "old version",
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       "old version",
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -208,8 +208,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  fmt.Sprint(itemVersion),
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       fmt.Sprint(itemVersion),
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -255,8 +255,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  "old version",
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       "old version",
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -267,8 +267,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  fmt.Sprint(itemVersion),
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       fmt.Sprint(itemVersion),
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -292,8 +292,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					ItemPathAnnotation: itemPath,
-					NameAnnotation:     name,
+					ItemReferenceAnnotation: itemReference,
+					NameAnnotation:          name,
 				},
 			},
 		},
@@ -302,8 +302,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  fmt.Sprint(itemVersion),
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       fmt.Sprint(itemVersion),
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -314,8 +314,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  fmt.Sprint(itemVersion),
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       fmt.Sprint(itemVersion),
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -369,8 +369,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  "old version",
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       "old version",
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -381,8 +381,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  fmt.Sprint(itemVersion),
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       fmt.Sprint(itemVersion),
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -439,7 +439,7 @@ var tests = []testUpdateSecretTask{
 				Namespace: namespace,
 				Annotations: map[string]string{
 					VersionAnnotation:            "old version",
-					ItemPathAnnotation:           itemPath,
+					ItemReferenceAnnotation:      itemReference,
 					RestartDeploymentsAnnotation: "true",
 				},
 			},
@@ -452,7 +452,7 @@ var tests = []testUpdateSecretTask{
 				Namespace: namespace,
 				Annotations: map[string]string{
 					VersionAnnotation:            fmt.Sprint(itemVersion),
-					ItemPathAnnotation:           itemPath,
+					ItemReferenceAnnotation:      itemReference,
 					RestartDeploymentsAnnotation: "true",
 				},
 			},
@@ -510,7 +510,7 @@ var tests = []testUpdateSecretTask{
 				Namespace: namespace,
 				Annotations: map[string]string{
 					VersionAnnotation:            "old version",
-					ItemPathAnnotation:           itemPath,
+					ItemReferenceAnnotation:      itemReference,
 					RestartDeploymentsAnnotation: "false",
 				},
 			},
@@ -523,7 +523,7 @@ var tests = []testUpdateSecretTask{
 				Namespace: namespace,
 				Annotations: map[string]string{
 					VersionAnnotation:            fmt.Sprint(itemVersion),
-					ItemPathAnnotation:           itemPath,
+					ItemReferenceAnnotation:      itemReference,
 					RestartDeploymentsAnnotation: "false",
 				},
 			},
@@ -580,8 +580,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  "old version",
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       "old version",
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -592,8 +592,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  fmt.Sprint(itemVersion),
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       fmt.Sprint(itemVersion),
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -657,8 +657,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  "old version",
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       "old version",
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -669,8 +669,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  fmt.Sprint(itemVersion),
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       fmt.Sprint(itemVersion),
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -730,8 +730,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  "old version",
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       "old version",
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,
@@ -742,8 +742,8 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:  fmt.Sprint(itemVersion),
-					ItemPathAnnotation: itemPath,
+					VersionAnnotation:       fmt.Sprint(itemVersion),
+					ItemReferenceAnnotation: itemReference,
 				},
 			},
 			Data: expectedSecretData,

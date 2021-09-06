@@ -22,7 +22,7 @@ func TestFilterAnnotations(t *testing.T) {
 	if len(filteredAnnotations) != 2 {
 		t.Errorf("Unexpected number of filtered annotations returned. Expected 2, got %v", len(filteredAnnotations))
 	}
-	_, found := filteredAnnotations[ItemPathAnnotation]
+	_, found := filteredAnnotations[ItemReferenceAnnotation]
 	if !found {
 		t.Errorf("One Password Annotation was filtered when it should not have been")
 	}
@@ -87,7 +87,7 @@ func TestGetNoAnnotationsForDeployment(t *testing.T) {
 
 func getValidAnnotations() map[string]string {
 	return map[string]string{
-		ItemPathAnnotation: "vaults/b3e4c7fc-8bf7-4c22-b8bb-147539f10e4f/items/b3e4c7fc-8bf7-4c22-b8bb-147539f10e4f",
-		NameAnnotation:     "secretName",
+		ItemReferenceAnnotation: "op://b3e4c7fc-8bf7-4c22-b8bb-147539f10e4f/b3e4c7fc-8bf7-4c22-b8bb-147539f10e4f",
+		NameAnnotation:          "secretName",
 	}
 }
