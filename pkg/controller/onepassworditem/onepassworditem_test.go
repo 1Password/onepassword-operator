@@ -286,6 +286,47 @@ var tests = []testReconcileItem{
 			"😄 ice-cream type": iceCream,
 		},
 	},
+	{
+		testName: "Secret from 1Password item with `_` and `.`",
+		customResource: &onepasswordv1.OnePasswordItem{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       onePasswordItemKind,
+				APIVersion: onePasswordItemAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "!.my_sECReT.it3m%-_",
+				Namespace: namespace,
+			},
+			Spec: onepasswordv1.OnePasswordItemSpec{
+				ItemPath: itemPath,
+			},
+		},
+		existingSecret: nil,
+		expectedError:  nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "my_sECReT.it3m",
+				Namespace: namespace,
+				Annotations: map[string]string{
+					op.VersionAnnotation: fmt.Sprint(version),
+				},
+			},
+			Data: map[string][]byte{
+				"password":       []byte(password),
+				"username":       []byte(username),
+				"first-host":     []byte(firstHost),
+				"AWS-Access-Key": []byte(awsKey),
+				"ice_cream.type": []byte(iceCream),
+			},
+		},
+		opItem: map[string]string{
+			userKey:               username,
+			passKey:               password,
+			"first host":          firstHost,
+			"AWS Access Key":      awsKey,
+			"😄 -_ice_cream.type.": iceCream,
+		},
+	},
 }
 
 func TestReconcileOnePasswordItem(t *testing.T) {
