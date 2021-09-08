@@ -232,7 +232,7 @@ var tests = []testReconcileItem{
 		expectedError:  nil,
 		expectedResultSecret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "my-sECReT-it3m",
+				Name:      "my-secret-it3m",
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: fmt.Sprint(version),
@@ -264,7 +264,7 @@ var tests = []testReconcileItem{
 		expectedError:  nil,
 		expectedResultSecret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "my-sECReT-it3m",
+				Name:      "my-secret-it3m",
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: fmt.Sprint(version),
@@ -287,7 +287,7 @@ var tests = []testReconcileItem{
 		},
 	},
 	{
-		testName: "Secret from 1Password item with `_` and `.`",
+		testName: "Secret from 1Password item with `-`, `_` and `.`",
 		customResource: &onepasswordv1.OnePasswordItem{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       onePasswordItemKind,
@@ -305,18 +305,18 @@ var tests = []testReconcileItem{
 		expectedError:  nil,
 		expectedResultSecret: &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "my_sECReT.it3m",
+				Name:      "my-secret.it3m",
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
 			Data: map[string][]byte{
-				"password":       []byte(password),
-				"username":       []byte(username),
-				"first-host":     []byte(firstHost),
-				"AWS-Access-Key": []byte(awsKey),
-				"ice_cream.type": []byte(iceCream),
+				"password":          []byte(password),
+				"username":          []byte(username),
+				"first-host":        []byte(firstHost),
+				"AWS-Access-Key":    []byte(awsKey),
+				"-_ice_cream.type.": []byte(iceCream),
 			},
 		},
 		opItem: map[string]string{

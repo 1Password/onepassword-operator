@@ -3,13 +3,13 @@ package kubernetessecrets
 import (
 	"context"
 	"fmt"
-	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 	"strings"
 	"testing"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -102,7 +102,7 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	item.Fields = generateFields(5)
 
 	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, item)
-	if kubeSecret.Name != name {
+	if kubeSecret.Name != strings.ToLower(name) {
 		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
 	}
 	if kubeSecret.Namespace != namespace {
@@ -116,7 +116,7 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 
 func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 	name := "inV@l1d k8s secret%name"
-	expectedName := "inV-l1d-k8s-secret-name"
+	expectedName := "inv-l1d-k8s-secret-name"
 	namespace := "someNamespace"
 	annotations := map[string]string{
 		"annotationKey": "annotationValue",
@@ -129,7 +129,7 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 			Value: "value1",
 		},
 		{
-			Label: strings.Repeat("x", kubeValidate.DNS1123SubdomainMaxLength+1),
+			Label: strings.Repeat("x", kubeValidate.LabelValueMaxLength+1),
 			Value: "name exceeds max length",
 		},
 	}
@@ -205,7 +205,7 @@ func ParseVaultIdAndItemIdFromPath(path string) (string, string, error) {
 }
 
 func validLabel(v string) bool {
-	if err := kubeValidate.IsDNS1123Subdomain(v); len(err) > 0 {
+	if err := kubeValidate.IsConfigMapKey(v); len(err) > 0 {
 		return false
 	}
 	return true

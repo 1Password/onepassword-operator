@@ -80,16 +80,17 @@ func BuildKubernetesSecretData(fields []*onepassword.ItemField) map[string][]byt
 	secretData := map[string][]byte{}
 	for i := 0; i < len(fields); i++ {
 		if fields[i].Value != "" {
-			key := formatSecretName(fields[i].Label)
+			key := formatSecretDataName(fields[i].Label)
 			secretData[key] = []byte(fields[i].Value)
 		}
 	}
 	return secretData
 }
 
-// formatSecretName rewrites a value to be a valid Secret name or Secret data key.
+// formatSecretName rewrites a value to be a valid Secret name.
 //
-// The Secret meta.name and data keys must be valid DNS subdomain names (https://kubernetes.io/docs/concepts/configuration/secret/#overview-of-secrets)
+// The Secret meta.name and data keys must be valid DNS subdomain names
+// (https://kubernetes.io/docs/concepts/configuration/secret/#overview-of-secrets)
 func formatSecretName(value string) string {
 	if errs := kubeValidate.IsDNS1123Subdomain(value); len(errs) == 0 {
 		return value
@@ -97,15 +98,36 @@ func formatSecretName(value string) string {
 	return createValidSecretName(value)
 }
 
-var invalidDNS1123Chars = regexp.MustCompile("[^a-zA-Z0-9-_.]+")
+// formatSecretDataName rewrites a value to be a valid Secret data key.
+//
+// The Secret data keys must consist of alphanumeric numbers, `-`, `_` or `.`
+// (https://kubernetes.io/docs/concepts/configuration/secret/#overview-of-secrets)
+func formatSecretDataName(value string) string {
+	if errs := kubeValidate.IsConfigMapKey(value); len(errs) == 0 {
+		return value
+	}
+	return createValidSecretDataName(value)
+}
+
+var invalidDNS1123Chars = regexp.MustCompile("[^a-z0-9-.]+")
 
 func createValidSecretName(value string) string {
-	result := invalidDNS1123Chars.ReplaceAllString(value, "-")
+	result := strings.ToLower(value)
+	result = invalidDNS1123Chars.ReplaceAllString(result, "-")
 
 	if len(result) > kubeValidate.DNS1123SubdomainMaxLength {
 		result = result[0:kubeValidate.DNS1123SubdomainMaxLength]
 	}
 
 	// first and last character MUST be alphanumeric
-	return strings.Trim(result, "-._")
+	return strings.Trim(result, "-.")
+}
+
+var invalidDataChars = regexp.MustCompile("[^a-zA-Z0-9-._]+")
+var invalidStartEndChars = regexp.MustCompile("(^[^a-zA-Z0-9-._]+|[^a-zA-Z0-9-._]+$)")
+
+func createValidSecretDataName(value string) string {
+	result := invalidStartEndChars.ReplaceAllString(value, "")
+	result = invalidDataChars.ReplaceAllString(result, "-")
+	return result
 }
