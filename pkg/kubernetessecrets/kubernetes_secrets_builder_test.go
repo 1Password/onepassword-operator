@@ -129,7 +129,7 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 			Value: "value1",
 		},
 		{
-			Label: strings.Repeat("x", kubeValidate.LabelValueMaxLength+1),
+			Label: strings.Repeat("x", kubeValidate.DNS1123SubdomainMaxLength+1),
 			Value: "name exceeds max length",
 		},
 	}

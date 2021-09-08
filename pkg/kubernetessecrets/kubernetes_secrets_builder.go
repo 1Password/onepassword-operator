@@ -129,5 +129,10 @@ var invalidStartEndChars = regexp.MustCompile("(^[^a-zA-Z0-9-._]+|[^a-zA-Z0-9-._
 func createValidSecretDataName(value string) string {
 	result := invalidStartEndChars.ReplaceAllString(value, "")
 	result = invalidDataChars.ReplaceAllString(result, "-")
+
+	if len(result) > kubeValidate.DNS1123SubdomainMaxLength {
+		result = result[0:kubeValidate.DNS1123SubdomainMaxLength]
+	}
+
 	return result
 }
