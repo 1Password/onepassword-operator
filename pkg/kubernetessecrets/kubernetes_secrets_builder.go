@@ -97,7 +97,7 @@ func formatSecretName(value string) string {
 	return createValidSecretName(value)
 }
 
-var invalidDNS1123Chars = regexp.MustCompile("[^a-zA-Z0-9-]+")
+var invalidDNS1123Chars = regexp.MustCompile("[^a-zA-Z0-9-_.]+")
 
 func createValidSecretName(value string) string {
 	result := invalidDNS1123Chars.ReplaceAllString(value, "-")
@@ -107,5 +107,5 @@ func createValidSecretName(value string) string {
 	}
 
 	// first and last character MUST be alphanumeric
-	return strings.Trim(result, "-")
+	return strings.Trim(result, "-._")
 }
