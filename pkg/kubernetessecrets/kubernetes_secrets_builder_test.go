@@ -3,13 +3,13 @@ package kubernetessecrets
 import (
 	"context"
 	"fmt"
-	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 	"strings"
 	"testing"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -217,7 +217,7 @@ func ParseVaultIdAndItemIdFromPath(path string) (string, string, error) {
 }
 
 func validLabel(v string) bool {
-	if err := kubeValidate.IsDNS1123Subdomain(v); len(err) > 0 {
+	if err := kubeValidate.IsConfigMapKey(v); len(err) > 0 {
 		return false
 	}
 	return true
