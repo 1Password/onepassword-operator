@@ -178,7 +178,8 @@ func main() {
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				updatedSecretsPoller.UpdateKubernetesSecretsTask()
+				err := updatedSecretsPoller.UpdateKubernetesSecretsTask()
+				log.Error(err, "Error occured during update secret task")
 			}
 		}
 	}()

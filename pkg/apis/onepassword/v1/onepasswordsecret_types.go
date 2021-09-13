@@ -8,7 +8,7 @@ import (
 
 // OnePasswordItemSpec defines the desired state of OnePasswordItem
 type OnePasswordItemSpec struct {
-	ItemPath string `json:"itemPath,omitempty"`
+	ItemReference string `json:"itemReference,omitempty"`
 }
 
 // OnePasswordItemStatus defines the observed state of OnePasswordItem

@@ -23,7 +23,7 @@ const OnepasswordPrefix = "operator.1password.io"
 const NameAnnotation = OnepasswordPrefix + "/item-name"
 const VersionAnnotation = OnepasswordPrefix + "/item-version"
 const restartAnnotation = OnepasswordPrefix + "/last-restarted"
-const ItemPathAnnotation = OnepasswordPrefix + "/item-path"
+const ItemReferenceAnnotation = OnepasswordPrefix + "/item-reference"
 const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
 
 var log = logf.Log
@@ -32,8 +32,8 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 
 	itemVersion := fmt.Sprint(item.Version)
 	annotations := map[string]string{
-		VersionAnnotation:  itemVersion,
-		ItemPathAnnotation: fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID),
+		VersionAnnotation:       itemVersion,
+		ItemReferenceAnnotation: fmt.Sprintf("op://%v/%v", item.Vault.ID, item.ID),
 	}
 	if autoRestart != "" {
 		_, err := utils.StringToBool(autoRestart)

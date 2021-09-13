@@ -11,11 +11,16 @@ import (
 
 var logger = logf.Log.WithName("retrieve_item")
 
-func GetOnePasswordItemByPath(opConnectClient connect.Client, path string) (*onepassword.Item, error) {
-	vaultValue, itemValue, err := ParseVaultAndItemFromPath(path)
+const (
+	secretReferencePrefix = "op://"
+)
+
+func GetOnePasswordItemByReference(opConnectClient connect.Client, reference string) (*onepassword.Item, error) {
+	vaultValue, itemValue, err := ParseReference(reference)
 	if err != nil {
 		return nil, err
 	}
+
 	vaultId, err := getVaultId(opConnectClient, vaultValue)
 	if err != nil {
 		return nil, err
@@ -33,12 +38,28 @@ func GetOnePasswordItemByPath(opConnectClient connect.Client, path string) (*one
 	return item, nil
 }
 
-func ParseVaultAndItemFromPath(path string) (string, string, error) {
-	splitPath := strings.Split(path, "/")
-	if len(splitPath) == 4 && splitPath[0] == "vaults" && splitPath[2] == "items" {
-		return splitPath[1], splitPath[3], nil
+func ParseReference(reference string) (string, string, error) {
+	if !strings.HasPrefix(reference, secretReferencePrefix) {
+		return "", "", fmt.Errorf("secret reference should start with `op://`")
 	}
-	return "", "", fmt.Errorf("%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`", path)
+	path := strings.TrimPrefix(reference, secretReferencePrefix)
+
+	splitPath := strings.Split(path, "/")
+	if len(splitPath) != 2 {
+		return "", "", fmt.Errorf("Invalid secret reference : %s. Secret references should match op://<vault>/<item>", reference)
+	}
+
+	vault := splitPath[0]
+	if vault == "" {
+		return "", "", fmt.Errorf("Invalid secret reference : %s. Vault can't be empty.", reference)
+	}
+
+	item := splitPath[1]
+	if item == "" {
+		return "", "", fmt.Errorf("Invalid secret reference : %s. Item can't be empty.", reference)
+	}
+
+	return vault, item, nil
 }
 
 func getVaultId(client connect.Client, vaultIdentifier string) (string, error) {

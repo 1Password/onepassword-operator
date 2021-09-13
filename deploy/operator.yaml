@@ -16,6 +16,7 @@ spec:
       containers:
         - name: onepassword-connect-operator
           image: 1password/onepassword-operator
+          imagePullPolicy: Never
           command: ["/manager"]
           env:
             - name: WATCH_NAMESPACE

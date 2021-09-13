@@ -192,11 +192,11 @@ func (r *ReconcileDeployment) HandleApplyingDeployment(namespace string, annotat
 
 	secretName := annotations[op.NameAnnotation]
 	if len(secretName) == 0 {
-		reqLog.Info("No 'item-name' annotation set. 'item-path' and 'item-name' must be set as annotations to add new secret.")
+		reqLog.Info("No 'item-name' annotation set. 'item-reference' and 'item-name' must be set as annotations to add new secret.")
 		return nil
 	}
 
-	item, err := op.GetOnePasswordItemByPath(r.opConnectClient, annotations[op.ItemPathAnnotation])
+	item, err := op.GetOnePasswordItemByReference(r.opConnectClient, annotations[op.ItemReferenceAnnotation])
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}

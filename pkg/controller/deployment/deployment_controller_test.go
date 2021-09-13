@@ -52,7 +52,7 @@ var (
 		"password": []byte(password),
 		"username": []byte(username),
 	}
-	itemPath = fmt.Sprintf("vaults/%v/items/%v", vaultId, itemId)
+	ItemReference = fmt.Sprintf("op://%v/%v", vaultId, itemId)
 )
 
 var (
@@ -76,8 +76,8 @@ var tests = []testReconcileItem{
 					finalizer,
 				},
 				Annotations: map[string]string{
-					op.ItemPathAnnotation: itemPath,
-					op.NameAnnotation:     name,
+					op.ItemReferenceAnnotation: ItemReference,
+					op.NameAnnotation:          name,
 				},
 			},
 		},
@@ -90,8 +90,8 @@ var tests = []testReconcileItem{
 				Name:      "another-deployment",
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.ItemPathAnnotation: itemPath,
-					op.NameAnnotation:     name,
+					op.ItemReferenceAnnotation: ItemReference,
+					op.NameAnnotation:          name,
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -152,8 +152,8 @@ var tests = []testReconcileItem{
 					finalizer,
 				},
 				Annotations: map[string]string{
-					op.ItemPathAnnotation: itemPath,
-					op.NameAnnotation:     name,
+					op.ItemReferenceAnnotation: ItemReference,
+					op.NameAnnotation:          name,
 				},
 			},
 		},
@@ -166,8 +166,8 @@ var tests = []testReconcileItem{
 				Name:      "another-deployment",
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.ItemPathAnnotation: itemPath,
-					op.NameAnnotation:     name,
+					op.ItemReferenceAnnotation: ItemReference,
+					op.NameAnnotation:          name,
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -235,8 +235,8 @@ var tests = []testReconcileItem{
 					finalizer,
 				},
 				Annotations: map[string]string{
-					op.ItemPathAnnotation: itemPath,
-					op.NameAnnotation:     name,
+					op.ItemReferenceAnnotation: ItemReference,
+					op.NameAnnotation:          name,
 				},
 			},
 		},
@@ -268,8 +268,8 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.ItemPathAnnotation: itemPath,
-					op.NameAnnotation:     name,
+					op.ItemReferenceAnnotation: ItemReference,
+					op.NameAnnotation:          name,
 				},
 			},
 		},
@@ -310,8 +310,8 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.ItemPathAnnotation: itemPath,
-					op.NameAnnotation:     name,
+					op.ItemReferenceAnnotation: ItemReference,
+					op.NameAnnotation:          name,
 				},
 			},
 		},
@@ -352,8 +352,8 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.ItemPathAnnotation: itemPath,
-					op.NameAnnotation:     name,
+					op.ItemReferenceAnnotation: ItemReference,
+					op.NameAnnotation:          name,
 				},
 			},
 		},
