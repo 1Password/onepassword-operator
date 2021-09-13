@@ -143,12 +143,14 @@ func (r *ReconcileOnePasswordItem) removeOnePasswordFinalizerFromOnePasswordItem
 
 func (r *ReconcileOnePasswordItem) HandleOnePasswordItem(resource *onepasswordv1.OnePasswordItem, request reconcile.Request) error {
 	secretName := resource.GetName()
-	autoRestart := resource.Annotations[op.RestartDeploymentsAnnotation]
+	labels := resource.Labels
+	annotations := resource.Annotations
+	autoRestart := annotations[op.RestartDeploymentsAnnotation]
 
 	item, err := onepassword.GetOnePasswordItemByPath(r.opConnectClient, resource.Spec.ItemPath)
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item, autoRestart)
+	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item, autoRestart, labels, annotations)
 }

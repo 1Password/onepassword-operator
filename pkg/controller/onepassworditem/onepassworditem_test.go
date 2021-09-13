@@ -120,6 +120,7 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
 				},
 			},
 			Data: expectedSecretData,
@@ -131,6 +132,7 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
 				},
 			},
 			Data: expectedSecretData,
@@ -150,6 +152,11 @@ var tests = []testReconcileItem{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: namespace,
+				Annotations: map[string]string{
+					op.VersionAnnotation: fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
+				},
+				Labels: map[string]string{},
 			},
 			Spec: onepasswordv1.OnePasswordItemSpec{
 				ItemPath: itemPath,
@@ -161,7 +168,9 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: "456",
+					op.ItemPathAnnotation: itemPath,
 				},
+				Labels: map[string]string{},
 			},
 			Data: expectedSecretData,
 		},
@@ -172,7 +181,9 @@ var tests = []testReconcileItem{
 				Namespace: namespace,
 				Annotations: map[string]string{
 					op.VersionAnnotation: fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
 				},
+				Labels: map[string]string{},
 			},
 			Data: expectedSecretData,
 		},
