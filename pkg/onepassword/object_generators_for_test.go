@@ -17,8 +17,7 @@ func generateVolumes(names []string) []corev1.Volume {
 	}
 	return volumes
 }
-
-func generateContainers(names []string) []corev1.Container {
+func generateContainersWithSecretRefsFromEnv(names []string) []corev1.Container {
 	containers := []corev1.Container{}
 	for i := 0; i < len(names); i++ {
 		container := corev1.Container{
@@ -34,6 +33,19 @@ func generateContainers(names []string) []corev1.Container {
 						},
 					},
 				},
+			},
+		}
+		containers = append(containers, container)
+	}
+	return containers
+}
+
+func generateContainersWithSecretRefsFromEnvFrom(names []string) []corev1.Container {
+	containers := []corev1.Container{}
+	for i := 0; i < len(names); i++ {
+		container := corev1.Container{
+			EnvFrom: []corev1.EnvFromSource{
+				{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: names[i]}}},
 			},
 		}
 		containers = append(containers, container)
