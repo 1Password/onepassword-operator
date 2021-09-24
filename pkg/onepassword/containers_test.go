@@ -74,14 +74,11 @@ func TestAppendUpdatedContainerSecretsParsesEnvFromEnv(t *testing.T) {
 
 	containers := generateContainersWithSecretRefsFromEnvFrom(containerSecretNames)
 
-	//fmt.Println(containers)
 	updatedDeploymentSecrets := map[string]*corev1.Secret{}
 	updatedDeploymentSecrets = AppendUpdatedContainerSecrets(containers, secretNamesToSearch, updatedDeploymentSecrets)
 
 	secretKeyName := "onepassword-api-key"
 
-	//fmt.Println(updatedDeploymentSecrets)
-	//fmt.Println(secretNamesToSearch)
 	if updatedDeploymentSecrets[secretKeyName] != secretNamesToSearch[secretKeyName] {
 		t.Errorf("Expected that updated Secret from envfrom is found.")
 	}
