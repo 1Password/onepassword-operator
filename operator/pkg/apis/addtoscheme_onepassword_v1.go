@@ -1,7 +1,7 @@
 package apis
 
 import (
-	v1 "github.com/1Password/onepassword-operator/pkg/apis/onepassword/v1"
+	v1 "github.com/1Password/onepassword-operator/operator/pkg/apis/onepassword/v1"
 )
 
 func init() {

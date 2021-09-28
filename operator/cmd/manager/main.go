@@ -11,16 +11,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/1Password/onepassword-operator/pkg/controller"
-	op "github.com/1Password/onepassword-operator/pkg/onepassword"
+	"github.com/1Password/onepassword-operator/operator/pkg/controller"
+	op "github.com/1Password/onepassword-operator/operator/pkg/onepassword"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/client-go/rest"
 
-	"github.com/1Password/onepassword-operator/pkg/apis"
-	"github.com/1Password/onepassword-operator/version"
+	"github.com/1Password/onepassword-operator/operator/pkg/apis"
+	"github.com/1Password/onepassword-operator/operator/version"
 
 	"github.com/1Password/connect-sdk-go/connect"
 

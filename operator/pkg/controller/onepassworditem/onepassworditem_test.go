@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/1Password/onepassword-operator/pkg/mocks"
-	op "github.com/1Password/onepassword-operator/pkg/onepassword"
+	"github.com/1Password/onepassword-operator/operator/pkg/mocks"
+	op "github.com/1Password/onepassword-operator/operator/pkg/onepassword"
 
-	onepasswordv1 "github.com/1Password/onepassword-operator/pkg/apis/onepassword/v1"
+	onepasswordv1 "github.com/1Password/onepassword-operator/operator/pkg/apis/onepassword/v1"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
 	"github.com/stretchr/testify/assert"
@@ -119,7 +119,7 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
+					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
 				},
 			},
@@ -131,7 +131,7 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
+					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
 				},
 			},
@@ -153,7 +153,7 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
+					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
 				},
 				Labels: map[string]string{},
@@ -167,7 +167,7 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: "456",
+					op.VersionAnnotation:  "456",
 					op.ItemPathAnnotation: itemPath,
 				},
 				Labels: map[string]string{},
@@ -180,7 +180,7 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
+					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
 				},
 				Labels: map[string]string{},

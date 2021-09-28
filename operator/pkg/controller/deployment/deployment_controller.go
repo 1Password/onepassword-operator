@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 
-	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
-	op "github.com/1Password/onepassword-operator/pkg/onepassword"
-	"github.com/1Password/onepassword-operator/pkg/utils"
+	kubeSecrets "github.com/1Password/onepassword-operator/operator/pkg/kubernetessecrets"
+	op "github.com/1Password/onepassword-operator/operator/pkg/onepassword"
+	"github.com/1Password/onepassword-operator/operator/pkg/utils"
 
 	"regexp"
 

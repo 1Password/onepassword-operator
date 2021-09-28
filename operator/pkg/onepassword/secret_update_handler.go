@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
-	"github.com/1Password/onepassword-operator/pkg/utils"
+	kubeSecrets "github.com/1Password/onepassword-operator/operator/pkg/kubernetessecrets"
+	"github.com/1Password/onepassword-operator/operator/pkg/utils"
 
 	"github.com/1Password/connect-sdk-go/connect"
 	"github.com/1Password/connect-sdk-go/onepassword"
