@@ -3,8 +3,10 @@ package deployment
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	kubeSecrets "github.com/1Password/onepassword-operator/operator/pkg/kubernetessecrets"
+	"github.com/1Password/onepassword-operator/operator/pkg/onepassword"
 	op "github.com/1Password/onepassword-operator/operator/pkg/onepassword"
 	"github.com/1Password/onepassword-operator/operator/pkg/utils"
 
@@ -114,7 +116,7 @@ func (r *ReconcileDeployment) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 		}
 		// Handles creation or updating secrets for deployment if needed
-		if err := r.HandleApplyingDeployment(deployment.Namespace, annotations, request); err != nil {
+		if err := r.HandleApplyingDeployment(deployment, annotations, request); err != nil {
 			return reconcile.Result{}, err
 		}
 		return reconcile.Result{}, nil
@@ -187,8 +189,16 @@ func (r *ReconcileDeployment) removeOnePasswordFinalizerFromDeployment(deploymen
 	return r.kubeClient.Update(context.Background(), deployment)
 }
 
-func (r *ReconcileDeployment) HandleApplyingDeployment(namespace string, annotations map[string]string, request reconcile.Request) error {
+func (r *ReconcileDeployment) HandleApplyingDeployment(deployment *appsv1.Deployment, annotations map[string]string, request reconcile.Request) error {
 	reqLog := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
+	namespace := deployment.Namespace
+
+	// check if deployment is marked to be injected with secrets via the webhook
+	injectedContainers, injected := annotations[op.ContainerInjectAnnotation]
+	if injected {
+		parsedInjectedContainers := strings.Split(injectedContainers, ",")
+		return onepassword.CreateOnePasswordItemResourceFromDeployment(r.opConnectClient, r.kubeClient, deployment, parsedInjectedContainers)
+	}
 
 	secretName := annotations[op.NameAnnotation]
 	secretLabels := map[string]string(nil)

@@ -11,6 +11,8 @@ import (
 
 var logger = logf.Log.WithName("retrieve_item")
 
+const secretReferencePrefix = "op://"
+
 func GetOnePasswordItemByPath(opConnectClient connect.Client, path string) (*onepassword.Item, error) {
 	vaultValue, itemValue, err := ParseVaultAndItemFromPath(path)
 	if err != nil {
@@ -31,6 +33,30 @@ func GetOnePasswordItemByPath(opConnectClient connect.Client, path string) (*one
 		return nil, err
 	}
 	return item, nil
+}
+
+func ParseReference(reference string) (string, string, error) {
+	if !strings.HasPrefix(reference, secretReferencePrefix) {
+		return "", "", fmt.Errorf("secret reference should start with `op://`")
+	}
+	path := strings.TrimPrefix(reference, secretReferencePrefix)
+
+	splitPath := strings.Split(path, "/")
+	if len(splitPath) != 3 {
+		return "", "", fmt.Errorf("Invalid secret reference : %s. Secret references should match op://<vault>/<item>/<field>", reference)
+	}
+
+	vault := splitPath[0]
+	if vault == "" {
+		return "", "", fmt.Errorf("Invalid secret reference : %s. Vault can't be empty.", reference)
+	}
+
+	item := splitPath[1]
+	if item == "" {
+		return "", "", fmt.Errorf("Invalid secret reference : %s. Item can't be empty.", reference)
+	}
+
+	return vault, item, nil
 }
 
 func ParseVaultAndItemFromPath(path string) (string, string, error) {

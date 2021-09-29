@@ -14,6 +14,8 @@ const (
 	VersionAnnotation            = OnepasswordPrefix + "/item-version"
 	RestartAnnotation            = OnepasswordPrefix + "/last-restarted"
 	RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
+	ContainerInjectAnnotation    = OnepasswordPrefix + "/inject"
+	InjectedAnnotation           = OnepasswordPrefix + "/injected"
 )
 
 func GetAnnotationsForDeployment(deployment *appsv1.Deployment, regex *regexp.Regexp) (map[string]string, bool) {

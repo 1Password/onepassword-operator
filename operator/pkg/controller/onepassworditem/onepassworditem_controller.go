@@ -148,6 +148,13 @@ func (r *ReconcileOnePasswordItem) HandleOnePasswordItem(resource *onepasswordv1
 	annotations := resource.Annotations
 	autoRestart := annotations[op.RestartDeploymentsAnnotation]
 
+	// do not create kubernetes secret if the OnePasswordItem was generated
+	// due to secret being injected container via webhook
+	_, injectedSecret := annotations[op.InjectedAnnotation]
+	if injectedSecret {
+		return nil
+	}
+
 	item, err := onepassword.GetOnePasswordItemByPath(r.opConnectClient, resource.Spec.ItemPath)
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve item: %v", err)
