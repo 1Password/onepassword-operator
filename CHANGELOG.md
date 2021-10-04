@@ -12,6 +12,22 @@
 
 ---
 
+[//]: # (START/v1.1.0)
+# v1.1.0
+
+## Fixes
+ * Fix normalization for keys in a Secret's `data` section to allow upper- and lower-case alphanumeric characters. {#66}
+
+---
+
+[//]: # (START/v1.0.2)
+# v1.0.2
+
+## Fixes
+ * Name normalizer added to handle non-conforming item names.
+
+---
+
 [//]: # (START/v1.0.1)
 # v1.0.1
 

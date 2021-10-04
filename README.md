@@ -30,14 +30,13 @@ If 1Password Connect is already running, you can skip this step. This guide will
 Encode the 1password-credentials.json file you generated in the prerequisite steps and save it to a file named op-session:
 
 ```bash
-$ cat 1password-credentials.json | base64 | \
+cat 1password-credentials.json | base64 | \
   tr '/+' '_-' | tr -d '=' | tr -d '\n' > op-session
 ```
 
 Create a Kubernetes secret from the op-session file:
 ```bash
-
-$  kubectl create secret generic op-credentials --from-file=1password-credentials.json=op-session
+kubectl create secret generic op-credentials --from-file=1password-credentials.json=op-session
 ```
 
 Add the following environment variable to the onepassword-connect-operator container in `deploy/operator.yaml`:
@@ -53,12 +52,12 @@ Adding this environment variable will have the operator automatically deploy a d
 "Create a Connect token for the operator and save it as a Kubernetes Secret: 
 
 ```bash
-$ kubectl create secret generic onepassword-token --from-literal=token=<OP_CONNECT_TOKEN>"
+kubectl create secret generic onepassword-token --from-literal=token=<OP_CONNECT_TOKEN>"
 ```
 
 If you do not have a token for the operator, you can generate a token and save it to kubernetes with the following command:
 ```bash
-$ kubectl create secret generic onepassword-token --from-literal=token=$(op create connect token <server> op-k8s-operator --vault <vault>)
+kubectl create secret generic onepassword-token --from-literal=token=$(op create connect token <server> op-k8s-operator --vault <vault>)
 ```
 
 [More information on generating a token can be found here](https://support.1password.com/secrets-automation/#appendix-issue-additional-access-tokens)
@@ -68,13 +67,13 @@ $ kubectl create secret generic onepassword-token --from-literal=token=$(op crea
 We must create a service account, role, and role binding and Kubernetes. Examples can be found in the `/deploy` folder.
 
 ```bash
-$ kubectl apply -f deploy/permissions.yaml
+kubectl apply -f deploy/permissions.yaml
 ```
 
 **Create Custom One Password Secret Resource**
 
 ```bash
-$ kubectl apply -f deploy/crds/onepassword.com_onepassworditems_crd.yaml
+kubectl apply -f deploy/crds/onepassword.com_onepassworditems_crd.yaml
 ```
 
 **Deploying the Operator**
@@ -112,13 +111,13 @@ spec:
 Deploy the OnePasswordItem to Kubernetes:
 
 ```bash
-$ kubectl apply -f <your_item>.yaml
+kubectl apply -f <your_item>.yaml
 ```
 
 To test that the Kubernetes Secret check that the following command returns a secret:
 
 ```bash
-$ kubectl get secret <secret_name>
+kubectl get secret <secret_name>
 ```
 
 Note: Deleting the `OnePasswordItem` that you've created will automatically delete the created Kubernetes Secret.
@@ -144,7 +143,12 @@ If a 1Password Item that is linked to a Kubernetes Secret is updated within the 
 ---
 **NOTE**
 
-If multiple 1Password vaults/items have the same `title` when using a title in the access path, the desired action will be performed on the oldest vault/item. Furthermore, titles that include white space characters cannot be used.
+If multiple 1Password vaults/items have the same `title` when using a title in the access path, the desired action will be performed on the oldest vault/item. 
+
+Titles and field names that include white space and other characters that are not a valid [DNS subdomain name](https://kubernetes.io/docs/concepts/configuration/secret/) will create Kubernetes secrets that have titles and fields in the following format:
+ - Invalid characters before the first alphanumeric character and after the last alphanumeric character will be removed
+ - All whitespaces between words will be replaced by `-`
+ - All the letters will be lower-cased.
 
 ---
 

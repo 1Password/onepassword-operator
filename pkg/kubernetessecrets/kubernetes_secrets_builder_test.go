@@ -9,6 +9,7 @@ import (
 	"github.com/1Password/connect-sdk-go/onepassword"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
+	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -30,7 +31,11 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
 	kubeClient := fake.NewFakeClient()
-	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation)
+	secretLabels := map[string]string{}
+	secretAnnotations := map[string]string{
+		"testAnnotation": "exists",
+	}
+	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretAnnotations)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -42,6 +47,10 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	}
 	compareFields(item.Fields, createdSecret.Data, t)
 	compareAnnotationsToItem(createdSecret.Annotations, item, t)
+
+	if createdSecret.Annotations["testAnnotation"] != "exists" {
+		t.Errorf("Expected testAnnotation to be merged with existing annotations, but wasn't.")
+	}
 }
 
 func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
@@ -55,7 +64,9 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
 	kubeClient := fake.NewFakeClient()
-	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation)
+	secretLabels := map[string]string{}
+	secretAnnotations := map[string]string{}
+	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretAnnotations)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -66,7 +77,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	newItem.Version = 456
 	newItem.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
 	newItem.ID = "h46bb3jddvay7nxopfhvlwg35q"
-	err = CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation)
+	err = CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation, secretLabels, secretAnnotations)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -99,9 +110,10 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	}
 	item := onepassword.Item{}
 	item.Fields = generateFields(5)
+	labels := map[string]string{}
 
-	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, item)
-	if kubeSecret.Name != name {
+	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, item)
+	if kubeSecret.Name != strings.ToLower(name) {
 		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
 	}
 	if kubeSecret.Namespace != namespace {
@@ -111,6 +123,45 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 		t.Errorf("Expected namespace value: %v but got: %v", namespace, kubeSecret.Namespace)
 	}
 	compareFields(item.Fields, kubeSecret.Data, t)
+}
+
+func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
+	name := "inV@l1d k8s secret%name"
+	expectedName := "inv-l1d-k8s-secret-name"
+	namespace := "someNamespace"
+	annotations := map[string]string{
+		"annotationKey": "annotationValue",
+	}
+	labels := map[string]string{}
+	item := onepassword.Item{}
+
+	item.Fields = []*onepassword.ItemField{
+		{
+			Label: "label w%th invalid ch!rs-",
+			Value: "value1",
+		},
+		{
+			Label: strings.Repeat("x", kubeValidate.DNS1123SubdomainMaxLength+1),
+			Value: "name exceeds max length",
+		},
+	}
+
+	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels,  item)
+
+	// Assert Secret's meta.name was fixed
+	if kubeSecret.Name != expectedName {
+		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
+	}
+	if kubeSecret.Namespace != namespace {
+		t.Errorf("Expected namespace value: %v but got: %v", namespace, kubeSecret.Namespace)
+	}
+
+	// assert labels were fixed for each data key
+	for key := range kubeSecret.Data {
+		if !validLabel(key) {
+			t.Errorf("Expected valid kubernetes label, got %s", key)
+		}
+	}
 }
 
 func compareAnnotationsToItem(annotations map[string]string, item onepassword.Item, t *testing.T) {
@@ -163,4 +214,11 @@ func ParseVaultIdAndItemIdFromPath(path string) (string, string, error) {
 		return splitPath[1], splitPath[3], nil
 	}
 	return "", "", fmt.Errorf("%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`", path)
+}
+
+func validLabel(v string) bool {
+	if err := kubeValidate.IsConfigMapKey(v); len(err) > 0 {
+		return false
+	}
+	return true
 }
