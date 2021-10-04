@@ -36,8 +36,7 @@ cat 1password-credentials.json | base64 | \
 
 Create a Kubernetes secret from the op-session file:
 ```bash
-
-kubectl create secret generic op-credentials --from-file=1password-credentials.json
+kubectl create secret generic op-credentials --from-file=1password-credentials.json=op-session
 ```
 
 Add the following environment variable to the onepassword-connect-operator container in `deploy/operator.yaml`:
