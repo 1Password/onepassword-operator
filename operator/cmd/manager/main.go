@@ -13,6 +13,11 @@ import (
 
 	"github.com/1Password/onepassword-operator/operator/pkg/controller"
 	op "github.com/1Password/onepassword-operator/operator/pkg/onepassword"
+	"github.com/1Password/onepassword-operator/operator/pkg/onepassword/message"
+	"github.com/suborbital/grav/discovery/local"
+	"github.com/suborbital/grav/grav"
+	"github.com/suborbital/grav/transport/websocket"
+	"github.com/suborbital/vektor/vlog"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 
@@ -40,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
+const envHostVariable = "OP_CONNECT_HOST"
 const envPollingIntervalVariable = "POLLING_INTERVAL"
 const manageConnect = "MANAGE_CONNECT"
 const restartDeploymentsEnvVariable = "AUTO_RESTART"
@@ -167,21 +173,28 @@ func main() {
 	// Add the Metrics Service
 	addMetrics(ctx, cfg)
 
-	// Setup update secrets task
-	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opConnectClient, shouldAutoRestartDeployments())
+	_, connectSet := os.LookupEnv(envHostVariable)
 	done := make(chan bool)
-	ticker := time.NewTicker(getPollingIntervalForUpdatingSecrets())
-	go func() {
-		for {
-			select {
-			case <-done:
-				ticker.Stop()
-				return
-			case <-ticker.C:
-				updatedSecretsPoller.UpdateKubernetesSecretsTask()
+	updateSecretsHandler := op.NewManager(mgr.GetClient(), opConnectClient, shouldAutoRestartDeployments())
+	// Setup update secrets task
+	if connectSet {
+		consumeConnectEvents(*updateSecretsHandler)
+	} else {
+		// If not using connect then we will use polling to get secret updates
+		// TODO implement 1Password events-api
+		ticker := time.NewTicker(getPollingIntervalForUpdatingSecrets())
+		go func() {
+			for {
+				select {
+				case <-done:
+					ticker.Stop()
+					return
+				case <-ticker.C:
+					updateSecretsHandler.UpdateKubernetesSecretsTask("", "")
+				}
 			}
-		}
-	}()
+		}()
+	}
 
 	// Start the Cmd
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
@@ -299,4 +312,44 @@ func shouldAutoRestartDeployments() bool {
 		return shouldAutoRestartDeploymentsBool
 	}
 	return false
+}
+
+func consumeConnectEvents(updateSecretsHandler op.SecretUpdateHandler) {
+	log.Info(fmt.Sprintf("Operator Version: %s", version.Version))
+	log.Info("Testing stuff")
+	logger := vlog.Default(vlog.Level(vlog.LogLevelDebug))
+	gwss := websocket.New()
+	locald := local.New()
+
+	port := "42829"
+	if port, err := strconv.Atoi(os.Getenv("OP_BUS_PORT")); err == nil {
+		port = port
+	}
+
+	g := grav.New(
+		grav.UseLogger(logger),
+		grav.UseEndpoint(port, "http://onepassword-connect/meta/message"),
+		grav.UseTransport(gwss),
+		grav.UseDiscovery(locald),
+	)
+
+	pod := g.Connect()
+	pod.OnType(message.TypeItemUpdate, ItemUpdate(updateSecretsHandler))
+}
+
+// B5ItemUsage Grav message handler for activity.event messages. On READ
+// events an update will be sent to the b5 api
+func ItemUpdate(updateSecretsHandler op.SecretUpdateHandler) grav.MsgFunc {
+	return func(msg grav.Message) error {
+		e := message.ItemUpdateEvent{}
+		if err := msg.UnmarshalData(&e); err != nil {
+			log.Error(err, "failed to UnmarshalData into Event")
+			return nil
+		}
+
+		log.Info(fmt.Sprintf("Detected update for item %s at vault %s", e.ItemId, e.VaultId))
+		updateSecretsHandler.UpdateKubernetesSecretsTask("", "")
+
+		return nil
+	}
 }

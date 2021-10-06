@@ -918,7 +918,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 				shouldAutoRestartDeploymentsGlobal: testData.globalAutoRestartEnabled,
 			}
 
-			err := h.UpdateKubernetesSecretsTask()
+			err := h.UpdateKubernetesSecretsTask("", "")
 
 			assert.Equal(t, testData.expectedError, err)
 
