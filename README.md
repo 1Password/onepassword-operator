@@ -10,7 +10,7 @@ The 1Password Connect Kubernetes Operator also allows for Kubernetes Secrets to 
 
 The 1Password Connect Kubernetes Operator will continually check for updates from 1Password for any Kubernetes Secret that it has generated. If a Kubernetes Secret is updated, any Deployment using that secret can be automatically restarted.
 
-[Click here for more details on the 1Password Kubernetes Operator](https://github.com/1Password/onepassword-operator/operator)
+[Click here for more details on the 1Password Kubernetes Operator](operator/README.md)
 
 
 # Security
