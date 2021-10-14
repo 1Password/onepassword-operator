@@ -4,6 +4,7 @@ go 1.13
 
 require (
 	github.com/1Password/connect-sdk-go v1.0.1
+	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b
 	github.com/operator-framework/operator-sdk v0.19.0
 	github.com/prometheus/common v0.14.0 // indirect
 	github.com/spf13/pflag v1.0.5
@@ -14,6 +15,7 @@ require (
 	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/kubectl v0.18.2
+	k8s.io/kubernetes v1.13.0
 	sigs.k8s.io/controller-runtime v0.6.0
 )
 

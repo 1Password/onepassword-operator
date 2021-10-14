@@ -11,7 +11,9 @@ versionFile = $(CURDIR)/.VERSION
 curVersion := $(shell cat $(versionFile) | sed 's/^v//')
 
 OPERATOR_NAME := onepassword-connect-operator
-DOCKER_IMG_TAG ?= $(OPERATOR_NAME):v$(curVersion)
+OPERATOR_NAME := onepassword-secrets-injector
+OPERATOR_DOCKER_IMG_TAG ?= $(OPERATOR_NAME):v$(curVersion)
+INJECTOR_DOCKER_IMG_TAG ?= $(OPERATOR_NAME):v$(curVersion)
 
 test:	## Run test suite
 	go test ./...
@@ -20,16 +22,29 @@ test/coverage:	## Run test suite with coverage report
 	go test -v ./... -cover
 
 build/operator:	## Build operator Docker image
-	@docker build -f operator/Dockerfile --build-arg operator_version=$(curVersion) -t $(DOCKER_IMG_TAG) .
+	@docker build -f operator/Dockerfile --build-arg operator_version=$(curVersion) -t $(OPERATOR_DOCKER_IMG_TAG) .
 	@echo "Successfully built and tagged image."
-	@echo "Tag: $(DOCKER_IMG_TAG)"
+	@echo "Tag: $(OPERATOR_DOCKER_IMG_TAG)"
 
 build/operator/local:	## Build local version of the operator Docker image 
-	@docker build -f operator/Dockerfile -t local/$(DOCKER_IMG_TAG) .
+	@docker build -f operator/Dockerfile -t local/$(OPERATOR_DOCKER_IMG_TAG) .
 
 build/operator/binary: clean	## Build operator binary
 	@mkdir -p dist
 	@go build -mod vendor -a -o manager ./operator/cmd/manager/main.go
+	@mv manager ./dist
+
+build/secret-injector:	## Build secret-injector Docker image
+	@docker build -f secret-injector/Dockerfile --build-arg operator_version=$(curVersion) -t $(INJECTOR_DOCKER_IMG_TAG) .
+	@echo "Successfully built and tagged image."
+	@echo "Tag: $(INJECTOR_DOCKER_IMG_TAG)"
+
+build/secret-injector/local:	## Build local version of the secret-injector Docker image 
+	@docker build -f secret-injector/Dockerfile -t local/$(INJECTOR_DOCKER_IMG_TAG) .
+
+build/secret-injector/binary: clean	## Build secret-injector binary
+	@mkdir -p dist
+	@go build -mod vendor -a -o manager ./secret-injector/cmd/manager/main.go
 	@mv manager ./dist
 
 clean:

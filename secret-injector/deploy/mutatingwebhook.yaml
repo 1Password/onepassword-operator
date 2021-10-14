@@ -1,0 +1,22 @@
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: op-secret-injector-webhook-cfg
+  labels:
+    app: op-secret-injector
+webhooks:
+- name: op-secret-injector.morven.me
+  clientConfig:
+    service:
+      name: op-secret-injector-webhook-svc
+      namespace: op-secret-injector
+      path: "/inject"
+    caBundle: ${CA_BUNDLE}
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: [""]
+    apiVersions: ["v1"]
+    resources: ["pods"]
+  namespaceSelector:
+    matchLabels:
+      op-secret-injection: enabled

@@ -12,6 +12,10 @@ The 1Password Connect Kubernetes Operator will continually check for updates fro
 
 [Click here for more details on the 1Password Kubernetes Operator](operator/README.md)
 
+## 1Password Secret Injector
+
+[Click here for more details on the 1Password Secret Injector](secret-injector/README.md)
+
 
 # Security
 

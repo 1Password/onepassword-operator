@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: op-secret-injector-webhook-svc
+  namespace: op-secret-injector
+  labels:
+    app: op-secret-injector
+spec:
+  ports:
+  - port: 443
+    targetPort: 8443
+  selector:
+    app: op-secret-injector
