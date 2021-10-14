@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/1Password/onepassword-operator/pkg/mocks"
+	"github.com/1Password/onepassword-operator/operator/pkg/mocks"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
 	"github.com/stretchr/testify/assert"

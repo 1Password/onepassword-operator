@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/1Password/onepassword-operator/pkg/mocks"
-	op "github.com/1Password/onepassword-operator/pkg/onepassword"
+	"github.com/1Password/onepassword-operator/operator/pkg/mocks"
+	op "github.com/1Password/onepassword-operator/operator/pkg/onepassword"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
 	"github.com/stretchr/testify/assert"

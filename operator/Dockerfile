@@ -7,18 +7,18 @@ COPY go.mod go.mod
 COPY go.sum go.sum
 
 # Copy the go source
-COPY cmd/manager/main.go main.go
-COPY pkg/ pkg/
-COPY version/ version/
+COPY operator/cmd/manager/main.go operator/main.go
+COPY operator/pkg/ operator/pkg/
+COPY operator/version/ operator/version/
 COPY vendor/ vendor/
 # Build
 ARG operator_version=dev
 RUN CGO_ENABLED=0 \
     GO111MODULE=on \
     go build \
-    -ldflags "-X \"github.com/1Password/onepassword-operator/version.Version=$operator_version\"" \
+    -ldflags "-X \"github.com/1Password/onepassword-operator/operator/version.Version=$operator_version\"" \
     -mod vendor \
-    -a -o manager main.go
+    -a -o manager operator/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
@@ -26,6 +26,6 @@ FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/manager .
 USER nonroot:nonroot
-COPY deploy/connect/ deploy/connect/
+COPY operator/deploy/connect/ operator/deploy/connect/
 
 ENTRYPOINT ["/manager"]

@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/1Password/onepassword-operator/pkg/controller/onepassworditem"
+	"github.com/1Password/onepassword-operator/operator/pkg/controller/onepassworditem"
 )
 
 func init() {

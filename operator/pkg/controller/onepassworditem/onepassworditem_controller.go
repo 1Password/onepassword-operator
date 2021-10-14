@@ -3,11 +3,12 @@ package onepassworditem
 import (
 	"context"
 	"fmt"
-	onepasswordv1 "github.com/1Password/onepassword-operator/pkg/apis/onepassword/v1"
-	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
-	"github.com/1Password/onepassword-operator/pkg/onepassword"
-	op "github.com/1Password/onepassword-operator/pkg/onepassword"
-	"github.com/1Password/onepassword-operator/pkg/utils"
+
+	onepasswordv1 "github.com/1Password/onepassword-operator/operator/pkg/apis/onepassword/v1"
+	kubeSecrets "github.com/1Password/onepassword-operator/operator/pkg/kubernetessecrets"
+	"github.com/1Password/onepassword-operator/operator/pkg/onepassword"
+	op "github.com/1Password/onepassword-operator/operator/pkg/onepassword"
+	"github.com/1Password/onepassword-operator/operator/pkg/utils"
 
 	"github.com/1Password/connect-sdk-go/connect"
 
