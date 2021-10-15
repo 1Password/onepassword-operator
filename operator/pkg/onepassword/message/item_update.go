@@ -9,9 +9,9 @@ const (
 
 // ItemUpdateEvent is the data for a sync status message
 type ItemUpdateEvent struct {
-	VaultId string `json:"vaultId"`
-	ItemId  string `json:"itemId"`
-	Version string `json:"version"`
+	VaultUUID   string `json:"vault_uuid"`
+	ItemUUID    string `json:"item_uuid"`
+	ItemVersion string `json:"item_version"`
 }
 
 // Type returns a the syns status data type

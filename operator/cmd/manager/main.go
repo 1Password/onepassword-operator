@@ -17,7 +17,6 @@ import (
 	"github.com/suborbital/grav/discovery/local"
 	"github.com/suborbital/grav/grav"
 	"github.com/suborbital/grav/transport/websocket"
-	"github.com/suborbital/vektor/vlog"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 
@@ -45,6 +44,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager/signals"
 )
 
+const connectBusPortVariable = "OP_BUS_PORT"
 const envHostVariable = "OP_CONNECT_HOST"
 const envPollingIntervalVariable = "POLLING_INTERVAL"
 const manageConnect = "MANAGE_CONNECT"
@@ -315,20 +315,16 @@ func shouldAutoRestartDeployments() bool {
 }
 
 func consumeConnectEvents(updateSecretsHandler op.SecretUpdateHandler) {
-	log.Info(fmt.Sprintf("Operator Version: %s", version.Version))
-	log.Info("Testing stuff")
-	logger := vlog.Default(vlog.Level(vlog.LogLevelDebug))
 	gwss := websocket.New()
 	locald := local.New()
 
-	port := "42829"
-	if port, err := strconv.Atoi(os.Getenv("OP_BUS_PORT")); err == nil {
-		port = port
+	port, found := os.LookupEnv(connectBusPortVariable)
+	if !found {
+		port = "42829"
 	}
 
 	g := grav.New(
-		grav.UseLogger(logger),
-		grav.UseEndpoint(port, "http://onepassword-connect/meta/message"),
+		grav.UseEndpoint(port, fmt.Sprintf("%s/meta/message", envHostVariable)),
 		grav.UseTransport(gwss),
 		grav.UseDiscovery(locald),
 	)
@@ -337,8 +333,9 @@ func consumeConnectEvents(updateSecretsHandler op.SecretUpdateHandler) {
 	pod.OnType(message.TypeItemUpdate, ItemUpdate(updateSecretsHandler))
 }
 
-// B5ItemUsage Grav message handler for activity.event messages. On READ
-// events an update will be sent to the b5 api
+// ItemUpdateEvent Grav message handler for activity.event messages. Starts update
+// process for updating Kubernetes Secrets and OnePasswordItems and triggers
+// auto restarts for deployments
 func ItemUpdate(updateSecretsHandler op.SecretUpdateHandler) grav.MsgFunc {
 	return func(msg grav.Message) error {
 		e := message.ItemUpdateEvent{}
@@ -347,7 +344,7 @@ func ItemUpdate(updateSecretsHandler op.SecretUpdateHandler) grav.MsgFunc {
 			return nil
 		}
 
-		log.Info(fmt.Sprintf("Detected update for item %s at vault %s", e.ItemId, e.VaultId))
+		log.Info(fmt.Sprintf("Detected update for item %s at vault %s", e.ItemUUID, e.VaultUUID))
 		updateSecretsHandler.UpdateKubernetesSecretsTask("", "")
 
 		return nil
