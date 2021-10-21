@@ -64,7 +64,7 @@ func CreateOnePasswordCRSecretFromReference(opClient connect.Client, kubeClient 
 
 	currentOnepassworditem := &onepasswordv1.OnePasswordItem{}
 	err = kubeClient.Get(context.Background(), types.NamespacedName{Name: onepassworditem.Name, Namespace: onepassworditem.Namespace}, currentOnepassworditem)
-	if err != nil && errors.IsNotFound(err) {
+	if errors.IsNotFound(err) {
 		log.Info(fmt.Sprintf("Creating OnePasswordItem CR %v at namespace '%v'", onepassworditem.Name, onepassworditem.Namespace))
 		return kubeClient.Create(context.Background(), onepassworditem)
 	} else if err != nil {
