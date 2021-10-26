@@ -13,6 +13,14 @@ var logger = logf.Log.WithName("retrieve_item")
 
 const secretReferencePrefix = "op://"
 
+type InvalidOPFormatError struct {
+	Reference string
+}
+
+func (e *InvalidOPFormatError) Error() string {
+	return fmt.Sprintf("Invalid secret reference : %s. Secret references should start with op://", e.Reference)
+}
+
 func GetOnePasswordItemByPath(opConnectClient connect.Client, path string) (*onepassword.Item, error) {
 	vaultValue, itemValue, err := ParseVaultAndItemFromPath(path)
 	if err != nil {
@@ -37,7 +45,7 @@ func GetOnePasswordItemByPath(opConnectClient connect.Client, path string) (*one
 
 func ParseReference(reference string) (string, string, error) {
 	if !strings.HasPrefix(reference, secretReferencePrefix) {
-		return "", "", fmt.Errorf("secret reference should start with `op://`")
+		return "", "", &InvalidOPFormatError{Reference: reference}
 	}
 	path := strings.TrimPrefix(reference, secretReferencePrefix)
 

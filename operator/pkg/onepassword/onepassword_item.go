@@ -2,12 +2,13 @@ package onepassword
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/1Password/connect-sdk-go/connect"
 	onepasswordv1 "github.com/1Password/onepassword-operator/operator/pkg/apis/onepassword/v1"
 	"github.com/1Password/onepassword-operator/operator/pkg/utils"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8sErrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
@@ -41,6 +42,10 @@ func CreateOnePasswordCRSecretsFromContainer(opClient connect.Client, kubeClient
 		// if value is not of format op://<vault>/<item>/<field> then ignore
 		vault, item, err := ParseReference(env.Value)
 		if err != nil {
+			var ev *InvalidOPFormatError
+			if !errors.As(err, &ev) {
+				return err
+			}
 			continue
 		}
 		// create a one password item custom resource to track updates for injected secrets
@@ -64,7 +69,7 @@ func CreateOnePasswordCRSecretFromReference(opClient connect.Client, kubeClient 
 
 	currentOnepassworditem := &onepasswordv1.OnePasswordItem{}
 	err = kubeClient.Get(context.Background(), types.NamespacedName{Name: onepassworditem.Name, Namespace: onepassworditem.Namespace}, currentOnepassworditem)
-	if errors.IsNotFound(err) {
+	if k8sErrors.IsNotFound(err) {
 		log.Info(fmt.Sprintf("Creating OnePasswordItem CR %v at namespace '%v'", onepassworditem.Name, onepassworditem.Namespace))
 		return kubeClient.Create(context.Background(), onepassworditem)
 	} else if err != nil {
