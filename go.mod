@@ -9,13 +9,10 @@ require (
 	github.com/prometheus/common v0.14.0 // indirect
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.6.1
-	github.com/suborbital/grav v0.4.1
-	github.com/suborbital/vektor v0.5.0
 	k8s.io/api v0.18.2
 	k8s.io/apimachinery v0.18.2
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/kubectl v0.18.2
-	k8s.io/kubernetes v1.13.0
 	sigs.k8s.io/controller-runtime v0.6.0
 )
 

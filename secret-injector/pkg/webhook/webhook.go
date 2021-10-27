@@ -263,7 +263,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 
 		c, didMutate, containerPatch, err := whsvr.mutateContainer(ctx, &c, i)
 		if err != nil {
-			glog.Errorf("Error occured mutating container: ", err)
+			glog.Error("Error occured mutating container: ", err)
 			return &v1beta1.AdmissionResponse{
 				Result: &metav1.Status{
 					Message: err.Error(),

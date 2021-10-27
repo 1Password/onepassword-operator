@@ -36,13 +36,13 @@ type SecretUpdateHandler struct {
 	shouldAutoRestartDeploymentsGlobal bool
 }
 
-func (h *SecretUpdateHandler) UpdateKubernetesSecretsTask(vaultId, itemId string) error {
-	updatedKubernetesSecrets, err := h.updateKubernetesSecrets(vaultId, itemId)
+func (h *SecretUpdateHandler) UpdateKubernetesSecretsTask() error {
+	updatedKubernetesSecrets, err := h.updateKubernetesSecrets()
 	if err != nil {
 		return err
 	}
 
-	updatedInjectedSecrets, err := h.updateInjectedSecrets(vaultId, itemId)
+	updatedInjectedSecrets, err := h.updateInjectedSecrets()
 	if err != nil {
 		return err
 	}
@@ -113,7 +113,7 @@ func (h *SecretUpdateHandler) restartDeployment(deployment *appsv1.Deployment) {
 	}
 }
 
-func (h *SecretUpdateHandler) updateKubernetesSecrets(vaultId, itemId string) (map[string]map[string]*corev1.Secret, error) {
+func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*corev1.Secret, error) {
 	secrets := &corev1.SecretList{}
 	err := h.client.List(context.Background(), secrets)
 	if err != nil {
@@ -126,13 +126,8 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(vaultId, itemId string) (m
 		secret := secrets.Items[i]
 
 		itemPath := secret.Annotations[ItemPathAnnotation]
-
 		currentVersion := secret.Annotations[VersionAnnotation]
 		if len(itemPath) == 0 || len(currentVersion) == 0 {
-			continue
-		}
-
-		if vaultId != "" && itemId != "" && itemPath != fmt.Sprintf("vaults/%s/items%s", vaultId, itemId) {
 			continue
 		}
 
@@ -162,7 +157,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(vaultId, itemId string) (m
 	return updatedSecrets, nil
 }
 
-func (h *SecretUpdateHandler) updateInjectedSecrets(vaultId, itemId string) (map[string]map[string]*onepasswordv1.OnePasswordItem, error) {
+func (h *SecretUpdateHandler) updateInjectedSecrets() (map[string]map[string]*onepasswordv1.OnePasswordItem, error) {
 	// fetch all onepassworditems
 	onepasswordItems := &onepasswordv1.OnePasswordItemList{}
 	err := h.client.List(context.Background(), onepasswordItems)
@@ -183,9 +178,6 @@ func (h *SecretUpdateHandler) updateInjectedSecrets(vaultId, itemId string) (map
 		itemPath := item.Spec.ItemPath
 		currentVersion := item.Annotations[VersionAnnotation]
 		if len(itemPath) == 0 || len(currentVersion) == 0 {
-			continue
-		}
-		if vaultId != "" && itemId != "" && itemPath != fmt.Sprintf("vaults/%s/items%s", vaultId, itemId) {
 			continue
 		}
 
