@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"regexp"
-	"strings"
 
 	"reflect"
 
@@ -76,7 +75,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, labels map[string]string, item onepassword.Item) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        formatSecretName(name),
+			Name:        utils.FormatSecretName(name),
 			Namespace:   namespace,
 			Annotations: annotations,
 			Labels:      labels,
@@ -96,17 +95,6 @@ func BuildKubernetesSecretData(fields []*onepassword.ItemField) map[string][]byt
 	return secretData
 }
 
-// formatSecretName rewrites a value to be a valid Secret name.
-//
-// The Secret meta.name and data keys must be valid DNS subdomain names
-// (https://kubernetes.io/docs/concepts/configuration/secret/#overview-of-secrets)
-func formatSecretName(value string) string {
-	if errs := kubeValidate.IsDNS1123Subdomain(value); len(errs) == 0 {
-		return value
-	}
-	return createValidSecretName(value)
-}
-
 // formatSecretDataName rewrites a value to be a valid Secret data key.
 //
 // The Secret data keys must consist of alphanumeric numbers, `-`, `_` or `.`
@@ -116,20 +104,6 @@ func formatSecretDataName(value string) string {
 		return value
 	}
 	return createValidSecretDataName(value)
-}
-
-var invalidDNS1123Chars = regexp.MustCompile("[^a-z0-9-.]+")
-
-func createValidSecretName(value string) string {
-	result := strings.ToLower(value)
-	result = invalidDNS1123Chars.ReplaceAllString(result, "-")
-
-	if len(result) > kubeValidate.DNS1123SubdomainMaxLength {
-		result = result[0:kubeValidate.DNS1123SubdomainMaxLength]
-	}
-
-	// first and last character MUST be alphanumeric
-	return strings.Trim(result, "-.")
 }
 
 var invalidDataChars = regexp.MustCompile("[^a-zA-Z0-9-._]+")

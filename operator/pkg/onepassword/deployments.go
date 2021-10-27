@@ -1,6 +1,9 @@
 package onepassword
 
 import (
+	"strings"
+
+	onepasswordv1 "github.com/1Password/onepassword-operator/operator/pkg/apis/onepassword/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -23,4 +26,15 @@ func GetUpdatedSecretsForDeployment(deployment *appsv1.Deployment, secrets map[s
 	AppendUpdatedVolumeSecrets(volumes, secrets, updatedSecretsForDeployment)
 
 	return updatedSecretsForDeployment
+}
+
+func IsDeploymentUsingInjectedSecrets(deployment *appsv1.Deployment, items map[string]*onepasswordv1.OnePasswordItem) bool {
+	containers := deployment.Spec.Template.Spec.Containers
+	containers = append(containers, deployment.Spec.Template.Spec.InitContainers...)
+	injectedContainers, enabled := deployment.Spec.Template.Annotations[ContainerInjectAnnotation]
+	if !enabled {
+		return false
+	}
+	parsedInjectedContainers := strings.Split(injectedContainers, ",")
+	return AreContainersUsingInjectedSecrets(containers, parsedInjectedContainers, items)
 }

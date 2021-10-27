@@ -8,6 +8,7 @@ import (
 	"github.com/1Password/onepassword-operator/operator/pkg/mocks"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
+	onepasswordv1 "github.com/1Password/onepassword-operator/operator/pkg/apis/onepassword/v1"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -20,23 +21,25 @@ import (
 )
 
 const (
-	deploymentKind       = "Deployment"
-	deploymentAPIVersion = "v1"
-	name                 = "test-deployment"
-	namespace            = "default"
-	vaultId              = "hfnjvi6aymbsnfc2xeeoheizda"
-	itemId               = "nwrhuano7bcwddcviubpp4mhfq"
-	username             = "test-user"
-	password             = "QmHumKc$mUeEem7caHtbaBaJ"
-	userKey              = "username"
-	passKey              = "password"
-	itemVersion          = 123
+	deploymentKind              = "Deployment"
+	deploymentAPIVersion        = "v1"
+	name                        = "test-deployment"
+	namespace                   = "default"
+	vaultId                     = "hfnjvi6aymbsnfc2xeeoheizda"
+	itemId                      = "nwrhuano7bcwddcviubpp4mhfq"
+	username                    = "test-user"
+	password                    = "QmHumKc$mUeEem7caHtbaBaJ"
+	userKey                     = "username"
+	passKey                     = "password"
+	itemVersion                 = 123
+	injectedOnePasswordItemName = "injectedsecret-" + vaultId + "-" + itemId
 )
 
 type testUpdateSecretTask struct {
 	testName                 string
 	existingDeployment       *appsv1.Deployment
 	existingNamespace        *corev1.Namespace
+	existingOnePasswordItem  *onepasswordv1.OnePasswordItem
 	existingSecret           *corev1.Secret
 	expectedError            error
 	expectedResultSecret     *corev1.Secret
@@ -755,6 +758,123 @@ var tests = []testUpdateSecretTask{
 		expectedRestart:          true,
 		globalAutoRestartEnabled: false,
 	},
+	{
+		testName:          "OP item has new version. Secret needs update. Deployment is restarted based on injected secrets in containers",
+		existingNamespace: defaultNamespace,
+		existingDeployment: &appsv1.Deployment{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       deploymentKind,
+				APIVersion: deploymentAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      name,
+						Namespace: namespace,
+						Annotations: map[string]string{
+							ContainerInjectAnnotation: "test-app",
+						},
+					},
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name: "test-app",
+								Env: []corev1.EnvVar{
+									{
+										Name:  name,
+										Value: fmt.Sprintf("op://%s/%s/test", vaultId, itemId),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingOnePasswordItem: &onepasswordv1.OnePasswordItem{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "OnePasswordItem",
+				APIVersion: "onepassword.com/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      injectedOnePasswordItemName,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					InjectedAnnotation: "true",
+					VersionAnnotation:  "old",
+				},
+			},
+			Spec: onepasswordv1.OnePasswordItemSpec{
+				ItemPath: itemPath,
+			},
+		},
+		expectedError: nil,
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          true,
+		globalAutoRestartEnabled: true,
+	},
+	{
+		testName:          "OP item has new version. Secret needs update. Deployment does not have a inject annotation",
+		existingNamespace: defaultNamespace,
+		existingDeployment: &appsv1.Deployment{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       deploymentKind,
+				APIVersion: deploymentAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Name: "test-app",
+								Env: []corev1.EnvVar{
+									{
+										Name:  name,
+										Value: fmt.Sprintf("op://%s/%s/test", vaultId, itemId),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingOnePasswordItem: &onepasswordv1.OnePasswordItem{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "OnePasswordItem",
+				APIVersion: "onepassword.com/v1",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-%s", vaultId, itemId),
+				Namespace: namespace,
+				Annotations: map[string]string{
+					InjectedAnnotation: "true",
+					VersionAnnotation:  "old",
+				},
+			},
+			Spec: onepasswordv1.OnePasswordItemSpec{
+				ItemPath: itemPath,
+			},
+		},
+		expectedError: nil,
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          false,
+		globalAutoRestartEnabled: true,
+	},
 }
 
 func TestUpdateSecretHandler(t *testing.T) {
@@ -763,7 +883,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 
 			// Register operator types with the runtime scheme.
 			s := scheme.Scheme
-			s.AddKnownTypes(appsv1.SchemeGroupVersion, testData.existingDeployment)
+			s.AddKnownTypes(appsv1.SchemeGroupVersion, &onepasswordv1.OnePasswordItem{}, &onepasswordv1.OnePasswordItemList{}, &appsv1.Deployment{})
 
 			// Objects to track in the fake client.
 			objs := []runtime.Object{
@@ -773,6 +893,10 @@ func TestUpdateSecretHandler(t *testing.T) {
 
 			if testData.existingSecret != nil {
 				objs = append(objs, testData.existingSecret)
+			}
+
+			if testData.existingOnePasswordItem != nil {
+				objs = append(objs, testData.existingOnePasswordItem)
 			}
 
 			// Create a fake client to mock API calls.
@@ -825,9 +949,9 @@ func TestUpdateSecretHandler(t *testing.T) {
 
 			_, ok := deployment.Spec.Template.Annotations[RestartAnnotation]
 			if ok {
-				assert.True(t, testData.expectedRestart, "Expected deployment to restart but it did not")
+				assert.True(t, testData.expectedRestart, "Deployment was restarted but should not have been.")
 			} else {
-				assert.False(t, testData.expectedRestart, "Deployment was restarted but should not have been.")
+				assert.False(t, testData.expectedRestart, "Expected deployment to restart but it did not")
 			}
 		})
 	}
