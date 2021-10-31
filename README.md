@@ -12,9 +12,11 @@ The 1Password Connect Kubernetes Operator will continually check for updates fro
 
 [Click here for more details on the 1Password Kubernetes Operator](operator/README.md)
 
-## 1Password Secret Injector
+## 1Password Secrets Injector for Kubernetes
 
-[Click here for more details on the 1Password Secret Injector](secret-injector/README.md)
+The 1Password Secrets Injector for Kubernetes provides the ability to integrate Kubernetes with 1Password. The 1Password Secrets Injector implements a mutating webhook to inject 1Password secrets as environment variables into a pod or deployment. This differs from the secert creation provided by the 1Password Kubernetes operator in that a Kubernetes Secret will not be created when injecting a secret into your resource.
+
+[Click here for more details on the 1Password Secrets Injector for Kubernetes](secret-injector/README.md)
 
 
 # Security

@@ -24,6 +24,9 @@ const (
 
 	// binVolumeMountPath is the mount path where the OP CLI binary can be found.
 	binVolumeMountPath = "/op/bin/"
+
+	connectTokenEnv = "OP_CONNECT_TOKEN"
+	connectHostEnv  = "OP_CONNECT_HOST"
 )
 
 // binVolume is the shared, in-memory volume where the OP CLI binary lives.
@@ -281,7 +284,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 	// into a shared volume mount.
 	var binInitContainer = corev1.Container{
 		Name:            "copy-op-bin",
-		Image:           "op-example" + ":" + version,
+		Image:           "1password/op" + ":" + version,
 		ImagePullPolicy: corev1.PullIfNotPresent,
 		Command: []string{"sh", "-c",
 			fmt.Sprintf("cp /usr/local/bin/op %s", binVolumeMountPath)},
@@ -332,31 +335,57 @@ func createOPCLIPatch(pod *corev1.Pod, annotations map[string]string, containers
 
 func createOPConnectPatch(container *corev1.Container, containerIndex int, host, tokenSecretName, tokenSecretKey string) []patchOperation {
 	var patch []patchOperation
-	connectHostEnvVar := corev1.EnvVar{
-		Name:  "OP_CONNECT_HOST",
-		Value: host,
+	envs := []corev1.EnvVar{}
+
+	hostConfig, tokenConfig := isConnectConfigurationSet(container)
+
+	if hostConfig {
+		connectHostEnvVar := corev1.EnvVar{
+			Name:  "OP_CONNECT_HOST",
+			Value: host,
+		}
+		envs = append(envs, connectHostEnvVar)
 	}
 
-	connectTokenEnvVar := corev1.EnvVar{
-		Name: "OP_CONNECT_TOKEN",
-		ValueFrom: &corev1.EnvVarSource{
-			SecretKeyRef: &corev1.SecretKeySelector{
-				Key: tokenSecretKey,
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: tokenSecretName,
+	if tokenConfig {
+		connectTokenEnvVar := corev1.EnvVar{
+			Name: "OP_CONNECT_TOKEN",
+			ValueFrom: &corev1.EnvVarSource{
+				SecretKeyRef: &corev1.SecretKeySelector{
+					Key: tokenSecretKey,
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: tokenSecretName,
+					},
 				},
 			},
-		},
-	}
-
-	envs := []corev1.EnvVar{
-		connectHostEnvVar,
-		connectTokenEnvVar,
+		}
+		envs = append(envs, connectTokenEnvVar)
 	}
 
 	patch = append(patch, setEnvironment(*container, containerIndex, envs, "/spec/containers")...)
 
 	return patch
+}
+
+func isConnectConfigurationSet(container *corev1.Container) (bool, bool) {
+
+	hostConfig := false
+	tokenConfig := false
+
+	for _, env := range container.Env {
+		if env.Name == connectHostEnv {
+			hostConfig = true
+		}
+
+		if env.Name == connectTokenEnv {
+			tokenConfig = true
+		}
+
+		if tokenConfig && hostConfig {
+			break
+		}
+	}
+	return hostConfig, tokenConfig
 }
 
 func (whsvr *WebhookServer) mutateContainer(_ context.Context, container *corev1.Container, containerIndex int) (*corev1.Container, bool, []patchOperation, error) {

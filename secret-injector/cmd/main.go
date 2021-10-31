@@ -37,17 +37,17 @@ func main() {
 
 	connectHost, present := os.LookupEnv(connectHostEnv)
 	if !present {
-		glog.Error("")
+		glog.Error("Connect host not set")
 	}
 
 	connectTokenName, present := os.LookupEnv(connectTokenSecretNameEnv)
 	if !present {
-		glog.Error("")
+		glog.Error("Connect token name not set")
 	}
 
 	connectTokenKey, present := os.LookupEnv(connectTokenSecretKeyEnv)
 	if !present {
-		glog.Error("")
+		glog.Error("Connect token key not set")
 	}
 
 	webhookConfig := webhook.Config{
