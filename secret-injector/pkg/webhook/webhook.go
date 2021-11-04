@@ -226,6 +226,12 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 
 	containers := map[string]struct{}{}
 
+	if containersStr == "" {
+		glog.Infof("No mutations made for %s/%s", pod.Namespace, pod.Name)
+		return &v1beta1.AdmissionResponse{
+			Allowed: true,
+		}
+	}
 	for _, container := range strings.Split(containersStr, ",") {
 		containers[container] = struct{}{}
 	}
@@ -280,6 +286,13 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 		}
 	}
 
+	if !mutated {
+		glog.Infof("No mutations made for %s/%s", pod.Namespace, pod.Name)
+		return &v1beta1.AdmissionResponse{
+			Allowed: true,
+		}
+	}
+
 	// binInitContainer is the container that pulls the OP CLI
 	// into a shared volume mount.
 	var binInitContainer = corev1.Container{
@@ -296,12 +309,6 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 		},
 	}
 
-	if !mutated {
-		glog.Infof("No mutations made for %s/%s", pod.Namespace, pod.Name)
-		return &v1beta1.AdmissionResponse{
-			Allowed: true,
-		}
-	}
 	annotations := map[string]string{injectionStatus: "injected"}
 	patchBytes, err := createOPCLIPatch(&pod, annotations, []corev1.Container{binInitContainer}, patch)
 	if err != nil {
