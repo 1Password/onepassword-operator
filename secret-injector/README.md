@@ -67,10 +67,10 @@ kubectl create -f deploy/mutatingwebhook-ca-bundle.yaml
 
 ## Usage
 
-For every namespace you want the 1Password Secret Injector to inject secrets for, you must add the label `sidecar-injector=enabled` label to the namespace:
+For every namespace you want the 1Password Secret Injector to inject secrets for, you must add the label `op-secret-injection=enabled` label to the namespace:
 
 ```
-kubectl label namespace injection sidecar-injection=enabled
+kubectl label namespace <namespace> op-secret-injection=enabled
 ```
 
 To inject a 1Password secret as an environment variable, your pod or deployment you must add an environment variable to the resource with a value referencing your 1Password item in the format `op://<vault>/<item>[/section]/<field>`. You must also annotate your pod/deployment spec with `operator.1password.io/inject` which expects a comma separated list of the names of the containers to that will be mutated and have secrets injected.
