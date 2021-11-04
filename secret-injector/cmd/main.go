@@ -33,20 +33,21 @@ func main() {
 	pair, err := tls.LoadX509KeyPair(parameters.CertFile, parameters.KeyFile)
 	if err != nil {
 		glog.Errorf("Failed to load key pair: %v", err)
+		os.Exit(1)
 	}
 
 	connectHost, present := os.LookupEnv(connectHostEnv)
-	if !present {
+	if !present || connectHost == "" {
 		glog.Error("Connect host not set")
 	}
 
 	connectTokenName, present := os.LookupEnv(connectTokenSecretNameEnv)
-	if !present {
+	if !present || connectTokenName == "" {
 		glog.Error("Connect token name not set")
 	}
 
 	connectTokenKey, present := os.LookupEnv(connectTokenSecretKeyEnv)
-	if !present {
+	if !present || connectTokenKey == "" {
 		glog.Error("Connect token key not set")
 	}
 
@@ -72,6 +73,7 @@ func main() {
 	go func() {
 		if err := webhookServer.Server.ListenAndServeTLS("", ""); err != nil {
 			glog.Errorf("Failed to listen and serve webhook server: %v", err)
+			os.Exit(1)
 		}
 	}()
 
