@@ -11,9 +11,9 @@ versionFile = $(CURDIR)/.VERSION
 curVersion := $(shell cat $(versionFile) | sed 's/^v//')
 
 OPERATOR_NAME := onepassword-connect-operator
-OPERATOR_NAME := onepassword-secrets-injector
+INJECTOR_NAME := onepassword-secrets-injector
 OPERATOR_DOCKER_IMG_TAG ?= $(OPERATOR_NAME):v$(curVersion)
-INJECTOR_DOCKER_IMG_TAG ?= $(OPERATOR_NAME):v$(curVersion)
+INJECTOR_DOCKER_IMG_TAG ?= $(INJECTOR_NAME):v$(curVersion)
 
 test:	## Run test suite
 	go test ./...

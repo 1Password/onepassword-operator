@@ -1,5 +1,5 @@
 # 1Password Secrets Injector for Kubernetes
-The 1Password Secrets Injector for Kubernetes provides the ability to integrate Kubernetes with 1Password. The 1Password Secrets Injector implements a mutating webhook to inject 1Password secrets as environment variables into a pod or deployment. This differs from the secert creation provided by the 1Password Kubernetes operator in that a Kubernetes Secret will not be created when injecting a secret into your resource.
+The 1Password Secrets Injector implements a mutating webhook to inject 1Password secrets as environment variables into a pod or deployment. Unlike the 1Password Kubernetes Operator, the Secrets Injector does not create a Kubernetes Secret when assigning secrets to your resource.
 
 ## Use with the 1Password Kubernetes Operator
 The 1Password Secrets Injector for Kubernetes can be used in conjuction with the 1Password Kubernetes Operator in order to provide automatic deployment restarts when a 1Password item being used by your deployment has been updated.
@@ -108,7 +108,7 @@ spec:
             value: op://my-vault/my-item/sql/username
           - name: DB_PASSWORD
             value: op://my-vault/my-item/sql/password
-        - name: my-app //because my-app is not listed in the inject annotaion above the environment values for this container will not be updated with secret values
+        - name: my-app //because my-app is not listed in the inject annotation above this container will not be injected with secrets
           image: my-image
           env:
           - name: DB_USERNAME
