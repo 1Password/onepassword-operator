@@ -1,14 +1,15 @@
 apiVersion: admissionregistration.k8s.io/v1beta1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: op-secret-injector-webhook-cfg
+  name: op-secret-injector-webhook-config
   labels:
     app: op-secret-injector
 webhooks:
-- name: op-secret-injector.morven.me
+- name: op-secret-injector.1password
+  failurePolicy: Fail
   clientConfig:
     service:
-      name: op-secret-injector-webhook-svc
+      name: op-secret-injector-webhook-service
       namespace: op-secret-injector
       path: "/inject"
     caBundle: ${CA_BUNDLE}

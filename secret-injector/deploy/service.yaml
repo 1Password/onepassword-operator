@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: op-secret-injector-webhook-svc
+  name: op-secret-injector-webhook-service
   namespace: op-secret-injector
   labels:
     app: op-secret-injector

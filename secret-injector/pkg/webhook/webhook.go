@@ -55,33 +55,28 @@ var (
 	defaulter = runtime.ObjectDefaulter(runtimeScheme)
 )
 
-var ignoredNamespaces = []string{
-	metav1.NamespaceSystem,
-	metav1.NamespacePublic,
-}
-
 const (
 	injectionStatus   = "operator.1password.io/status"
 	injectAnnotation  = "operator.1password.io/inject"
 	versionAnnotation = "operator.1password.io/version"
 )
 
-type WebhookServer struct {
+type SecretInjector struct {
 	Config Config
 	Server *http.Server
 }
 
-// Webhook Server parameters
-type WebhookServerParameters struct {
+// the command line parameters for configuraing the webhook
+type SecretInjectorParameters struct {
 	Port     int    // webhook server port
 	CertFile string // path to the x509 certificate for https
 	KeyFile  string // path to the x509 private key matching `CertFile`
 }
 
 type Config struct {
-	ConnectHost      string
-	ConnectTokenName string
-	ConnectTokenKey  string
+	ConnectHost      string // the host in which a connect server is running
+	ConnectTokenName string // the token name of the secret that stores the connect token
+	ConnectTokenKey  string // the name of the data field in the secret the stores the connect token
 }
 
 type patchOperation struct {
@@ -105,15 +100,8 @@ func applyDefaultsWorkaround(containers []corev1.Container, volumes []corev1.Vol
 	})
 }
 
-// Check whether the target resoured need to be mutated
-func mutationRequired(ignoredList []string, metadata *metav1.ObjectMeta) bool {
-	// skip special kubernete system namespaces
-	for _, namespace := range ignoredList {
-		if metadata.Namespace == namespace {
-			glog.Infof("Skip mutation for %v for it's in special namespace:%v", metadata.Name, metadata.Namespace)
-			return false
-		}
-	}
+// Check if the pod should have secrets injected
+func mutationRequired(metadata *metav1.ObjectMeta) bool {
 
 	annotations := metadata.GetAnnotations()
 	if annotations == nil {
@@ -123,13 +111,13 @@ func mutationRequired(ignoredList []string, metadata *metav1.ObjectMeta) bool {
 	status := annotations[injectionStatus]
 	_, enabled := annotations[injectAnnotation]
 
-	// determine whether to perform mutation based on annotation for the target resource
+	// if pod has not already been injected and injection has been enabled mark the pod for injection
 	required := false
 	if strings.ToLower(status) != "injected" && enabled {
 		required = true
 	}
 
-	glog.Infof("Mutation policy for %v/%v: status: %q required:%v", metadata.Namespace, metadata.Name, status, required)
+	glog.Infof("Pod %v at namepspace %v. Secret injection status: %v Secret Injection Enabled:%v", metadata.Name, metadata.Namespace, status, required)
 	return required
 }
 
@@ -197,8 +185,8 @@ func updateAnnotation(target map[string]string, added map[string]string) (patch 
 	return patch
 }
 
-// main mutation process
-func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
+// mutation process for injecting secrets into pods
+func (s *SecretInjector) mutate(ar *v1beta1.AdmissionReview) *v1beta1.AdmissionResponse {
 	ctx := context.Background()
 	req := ar.Request
 	var pod corev1.Pod
@@ -211,12 +199,12 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 		}
 	}
 
-	glog.Infof("AdmissionReview for Kind=%v, Namespace=%v Name=%v (%v) UID=%v patchOperation=%v UserInfo=%v",
-		req.Kind, req.Namespace, req.Name, pod.Name, req.UID, req.Operation, req.UserInfo)
+	glog.Infof("Checking if secret injection is needed for %v %s at namespace %v",
+		req.Kind, pod.Name, req.Namespace)
 
-	// determine whether to perform mutation
-	if !mutationRequired(ignoredNamespaces, &pod.ObjectMeta) {
-		glog.Infof("Skipping mutation for %s/%s due to policy check", pod.Namespace, pod.Name)
+	// determine whether to inject secrets
+	if !mutationRequired(&pod.ObjectMeta) {
+		glog.Infof("Secret injection not required for %s at namespace %s", pod.Name, pod.Namespace)
 		return &v1beta1.AdmissionResponse{
 			Allowed: true,
 		}
@@ -227,7 +215,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 	containers := map[string]struct{}{}
 
 	if containersStr == "" {
-		glog.Infof("No mutations made for %s/%s", pod.Namespace, pod.Name)
+		glog.Infof("No containers set for secret injection for %s/%s", pod.Namespace, pod.Name)
 		return &v1beta1.AdmissionResponse{
 			Allowed: true,
 		}
@@ -238,7 +226,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 
 	version, ok := pod.Annotations[versionAnnotation]
 	if !ok {
-		version = "latest"
+		version = "2.0.0-beta.4"
 	}
 
 	mutated := false
@@ -249,7 +237,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 		if !mutate {
 			continue
 		}
-		c, didMutate, initContainerPatch, err := whsvr.mutateContainer(ctx, &c, i)
+		c, didMutate, initContainerPatch, err := s.mutateContainer(ctx, &c, i)
 		if err != nil {
 			return &v1beta1.AdmissionResponse{
 				Result: &metav1.Status{
@@ -270,9 +258,9 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 			continue
 		}
 
-		c, didMutate, containerPatch, err := whsvr.mutateContainer(ctx, &c, i)
+		c, didMutate, containerPatch, err := s.mutateContainer(ctx, &c, i)
 		if err != nil {
-			glog.Error("Error occured mutating container: ", err)
+			glog.Error("Error occured mutating container for secret injection: ", err)
 			return &v1beta1.AdmissionResponse{
 				Result: &metav1.Status{
 					Message: err.Error(),
@@ -287,7 +275,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 	}
 
 	if !mutated {
-		glog.Infof("No mutations made for %s/%s", pod.Namespace, pod.Name)
+		glog.Infof("No containers set for secret injection for %s/%s", pod.Namespace, pod.Name)
 		return &v1beta1.AdmissionResponse{
 			Allowed: true,
 		}
@@ -309,8 +297,7 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 		},
 	}
 
-	annotations := map[string]string{injectionStatus: "injected"}
-	patchBytes, err := createOPCLIPatch(&pod, annotations, []corev1.Container{binInitContainer}, patch)
+	patchBytes, err := createOPCLIPatch(&pod, []corev1.Container{binInitContainer}, patch)
 	if err != nil {
 		return &v1beta1.AdmissionResponse{
 			Result: &metav1.Status{
@@ -331,8 +318,9 @@ func (whsvr *WebhookServer) mutate(ar *v1beta1.AdmissionReview) *v1beta1.Admissi
 }
 
 // create mutation patch for resoures
-func createOPCLIPatch(pod *corev1.Pod, annotations map[string]string, containers []corev1.Container, patch []patchOperation) ([]byte, error) {
+func createOPCLIPatch(pod *corev1.Pod, containers []corev1.Container, patch []patchOperation) ([]byte, error) {
 
+	annotations := map[string]string{injectionStatus: "injected"}
 	patch = append(patch, addVolume(pod.Spec.Volumes, []corev1.Volume{binVolume}, "/spec/volumes")...)
 	patch = append(patch, addContainers(pod.Spec.InitContainers, containers, "/spec/initContainers")...)
 	patch = append(patch, updateAnnotation(pod.Annotations, annotations)...)
@@ -344,9 +332,10 @@ func createOPConnectPatch(container *corev1.Container, containerIndex int, host,
 	var patch []patchOperation
 	envs := []corev1.EnvVar{}
 
+	// if connect configuration is already set in the container do not overwrite it
 	hostConfig, tokenConfig := isConnectConfigurationSet(container)
 
-	if hostConfig {
+	if !hostConfig {
 		connectHostEnvVar := corev1.EnvVar{
 			Name:  "OP_CONNECT_HOST",
 			Value: host,
@@ -354,7 +343,7 @@ func createOPConnectPatch(container *corev1.Container, containerIndex int, host,
 		envs = append(envs, connectHostEnvVar)
 	}
 
-	if tokenConfig {
+	if !tokenConfig {
 		connectTokenEnvVar := corev1.EnvVar{
 			Name: "OP_CONNECT_TOKEN",
 			ValueFrom: &corev1.EnvVarSource{
@@ -395,9 +384,9 @@ func isConnectConfigurationSet(container *corev1.Container) (bool, bool) {
 	return hostConfig, tokenConfig
 }
 
-func (whsvr *WebhookServer) mutateContainer(_ context.Context, container *corev1.Container, containerIndex int) (*corev1.Container, bool, []patchOperation, error) {
-	// Because we are running a command in the pod before starting the container app,
-	// we need to prepend the pod comand with the op run command
+// mutates the container to allow for secrets to be injected into the container via the op cli
+func (s *SecretInjector) mutateContainer(_ context.Context, container *corev1.Container, containerIndex int) (*corev1.Container, bool, []patchOperation, error) {
+	//  prepending op run command to the container command so that secrets are injected before the main process is started
 	if len(container.Command) == 0 {
 		return container, false, nil, fmt.Errorf("not attaching OP to the container %s: the podspec does not define a command", container.Name)
 	}
@@ -423,8 +412,8 @@ func (whsvr *WebhookServer) mutateContainer(_ context.Context, container *corev1
 		Value: container.Command,
 	})
 
-	//creating patch for adding conenct environment variables to container
-	patch = append(patch, createOPConnectPatch(container, containerIndex, whsvr.Config.ConnectHost, whsvr.Config.ConnectTokenName, whsvr.Config.ConnectTokenKey)...)
+	//creating patch for adding connect environment variables to container. If they are already set in the container then this will be skipped
+	patch = append(patch, createOPConnectPatch(container, containerIndex, s.Config.ConnectHost, s.Config.ConnectTokenName, s.Config.ConnectTokenKey)...)
 	return container, true, patch, nil
 }
 
@@ -449,8 +438,8 @@ func setEnvironment(container corev1.Container, containerIndex int, addedEnv []c
 	return patch
 }
 
-// Serve method for webhook server
-func (whsvr *WebhookServer) Serve(w http.ResponseWriter, r *http.Request) {
+// Serve method for secrets injector webhook
+func (s *SecretInjector) Serve(w http.ResponseWriter, r *http.Request) {
 	var body []byte
 	if r.Body != nil {
 		if data, err := ioutil.ReadAll(r.Body); err == nil {
@@ -481,7 +470,7 @@ func (whsvr *WebhookServer) Serve(w http.ResponseWriter, r *http.Request) {
 			},
 		}
 	} else {
-		admissionResponse = whsvr.mutate(&ar)
+		admissionResponse = s.mutate(&ar)
 	}
 
 	admissionReview := v1beta1.AdmissionReview{}

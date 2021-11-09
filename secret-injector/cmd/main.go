@@ -21,7 +21,7 @@ const (
 )
 
 func main() {
-	var parameters webhook.WebhookServerParameters
+	var parameters webhook.SecretInjectorParameters
 
 	glog.Info("Starting webhook")
 	// get command line parameters
@@ -56,7 +56,7 @@ func main() {
 		ConnectTokenName: connectTokenName,
 		ConnectTokenKey:  connectTokenKey,
 	}
-	webhookServer := &webhook.WebhookServer{
+	secretInjector := &webhook.SecretInjector{
 		Config: webhookConfig,
 		Server: &http.Server{
 			Addr:      fmt.Sprintf(":%v", parameters.Port),
@@ -66,12 +66,12 @@ func main() {
 
 	// define http server and server handler
 	mux := http.NewServeMux()
-	mux.HandleFunc("/inject", webhookServer.Serve)
-	webhookServer.Server.Handler = mux
+	mux.HandleFunc("/inject", secretInjector.Serve)
+	secretInjector.Server.Handler = mux
 
 	// start webhook server in new rountine
 	go func() {
-		if err := webhookServer.Server.ListenAndServeTLS("", ""); err != nil {
+		if err := secretInjector.Server.ListenAndServeTLS("", ""); err != nil {
 			glog.Errorf("Failed to listen and serve webhook server: %v", err)
 			os.Exit(1)
 		}
@@ -83,5 +83,5 @@ func main() {
 	<-signalChan
 
 	glog.Infof("Got OS shutdown signal, shutting down webhook server gracefully...")
-	webhookServer.Server.Shutdown(context.Background())
+	secretInjector.Server.Shutdown(context.Background())
 }
