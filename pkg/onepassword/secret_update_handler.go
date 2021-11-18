@@ -118,7 +118,8 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 
 		item, err := GetOnePasswordItemByPath(h.opConnectClient, secret.Annotations[ItemPathAnnotation])
 		if err != nil {
-			return nil, fmt.Errorf("Failed to retrieve item: %v", err)
+			log.Error(err, "failed to retrieve 1Password item at path \"%s\" for secret \"%s\"", secret.Annotations[ItemPathAnnotation], secret.Name)
+			continue
 		}
 
 		itemVersion := fmt.Sprint(item.Version)
