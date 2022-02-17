@@ -50,6 +50,11 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 		}
 		secretAnnotations[RestartDeploymentsAnnotation] = autoRestart
 	}
+
+	// Default to Opaque secrets
+	if secretType == "" {
+		secretType = "Opaque"
+	}
 	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels, secretType, *item)
 
 	currentSecret := &corev1.Secret{}
@@ -67,15 +72,12 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 	if currentSecretType == "" {
 		currentSecretType = "Opaque"
 	}
-	if secretType == "" {
-		secretType = "Opaque"
-	}
 	if !reflect.DeepEqual(currentAnnotations, secretAnnotations) || !reflect.DeepEqual(currentLabels, labels) || !reflect.DeepEqual(currentSecretType, secretType) {
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
 		currentSecret.ObjectMeta.Annotations = secretAnnotations
 		currentSecret.ObjectMeta.Labels = labels
 		currentSecret.Data = secret.Data
-		currentSecret.Type = KubernetesSecretTypes[secretType]
+		currentSecret.Type = corev1.SecretType(secretType)
 		return kubeClient.Update(context.Background(), currentSecret)
 	}
 
@@ -92,7 +94,7 @@ func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotation
 			Labels:      labels,
 		},
 		Data: BuildKubernetesSecretData(item.Fields),
-		Type: KubernetesSecretTypes[secretType],
+		Type: corev1.SecretType(secretType),
 	}
 }
 
