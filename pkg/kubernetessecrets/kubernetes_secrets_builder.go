@@ -61,7 +61,16 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 		return err
 	}
 
-	if !reflect.DeepEqual(currentSecret.Annotations, secretAnnotations) || !reflect.DeepEqual(currentSecret.Labels, labels) || !reflect.DeepEqual(string(currentSecret.Type), secretType) {
+	currentAnnotations := currentSecret.Annotations
+	currentLabels := currentSecret.Labels
+	currentSecretType := string(currentSecret.Type)
+	if currentSecretType == "" {
+		currentSecretType = "Opaque"
+	}
+	if secretType == "" {
+		secretType = "Opaque"
+	}
+	if !reflect.DeepEqual(currentAnnotations, secretAnnotations) || !reflect.DeepEqual(currentLabels, labels) || !reflect.DeepEqual(currentSecretType, secretType) {
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
 		currentSecret.ObjectMeta.Annotations = secretAnnotations
 		currentSecret.ObjectMeta.Labels = labels
