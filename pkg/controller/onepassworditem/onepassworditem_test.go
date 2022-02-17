@@ -119,7 +119,7 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
+					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
 				},
 			},
@@ -131,7 +131,7 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
+					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
 				},
 			},
@@ -153,7 +153,7 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
+					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
 				},
 				Labels: map[string]string{},
@@ -167,7 +167,7 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: "456",
+					op.VersionAnnotation:  "456",
 					op.ItemPathAnnotation: itemPath,
 				},
 				Labels: map[string]string{},
@@ -180,11 +180,65 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
+					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
 				},
 				Labels: map[string]string{},
 			},
+			Type: corev1.SecretTypeOpaque,
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+	},
+	{
+		testName: "Test Updating Type of Existing Kubernetes Secret using OnePasswordItem",
+		customResource: &onepasswordv1.OnePasswordItem{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       onePasswordItemKind,
+				APIVersion: onePasswordItemAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					op.VersionAnnotation:  fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
+				},
+				Labels: map[string]string{},
+			},
+			Spec: onepasswordv1.OnePasswordItemSpec{
+				ItemPath: itemPath,
+			},
+			Type: string(corev1.SecretTypeBasicAuth),
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					op.VersionAnnotation:  fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
+				},
+				Labels: map[string]string{},
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					op.VersionAnnotation:  fmt.Sprint(version),
+					op.ItemPathAnnotation: itemPath,
+				},
+				Labels: map[string]string{},
+			},
+			Type: corev1.SecretTypeBasicAuth,
 			Data: expectedSecretData,
 		},
 		opItem: map[string]string{
@@ -206,6 +260,7 @@ var tests = []testReconcileItem{
 			Spec: onepasswordv1.OnePasswordItemSpec{
 				ItemPath: itemPath,
 			},
+			Type: "custom",
 		},
 		existingSecret: nil,
 		expectedError:  nil,
@@ -217,6 +272,7 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
+			Type: corev1.SecretType("custom"),
 			Data: expectedSecretData,
 		},
 		opItem: map[string]string{
@@ -249,6 +305,7 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
+			Type: corev1.SecretTypeOpaque,
 			Data: expectedSecretData,
 		},
 		opItem: map[string]string{
@@ -281,6 +338,7 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
+			Type: corev1.SecretTypeOpaque,
 			Data: map[string][]byte{
 				"password":       []byte(password),
 				"username":       []byte(username),
@@ -322,6 +380,7 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
+			Type: corev1.SecretTypeOpaque,
 			Data: map[string][]byte{
 				"password":          []byte(password),
 				"username":          []byte(username),

@@ -279,7 +279,7 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
+					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
 					op.NameAnnotation:     name,
 				},
@@ -292,7 +292,7 @@ var tests = []testReconcileItem{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					op.VersionAnnotation: fmt.Sprint(version),
+					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
 					op.NameAnnotation:     name,
 				},
@@ -329,6 +329,7 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: "456",
 				},
 			},
+			Type: corev1.SecretTypeOpaque,
 			Data: expectedSecretData,
 		},
 		expectedError: nil,
@@ -340,6 +341,7 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
+			Type: corev1.SecretTypeOpaque,
 			Data: expectedSecretData,
 		},
 		opItem: map[string]string{
@@ -373,6 +375,7 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
+			Type: corev1.SecretTypeOpaque,
 			Data: expectedSecretData,
 		},
 		opItem: map[string]string{
