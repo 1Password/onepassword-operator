@@ -39,7 +39,7 @@ func TestIsDeploymentUsingSecretsUsingContainers(t *testing.T) {
 	}
 
 	deployment := &appsv1.Deployment{}
-	deployment.Spec.Template.Spec.Containers = generateContainers(containerSecretNames)
+	deployment.Spec.Template.Spec.Containers = generateContainersWithSecretRefsFromEnv(containerSecretNames)
 	if !IsDeploymentUsingSecrets(deployment, secretNamesToSearch) {
 		t.Errorf("Expected that deployment was using secrets but they were not detected.")
 	}
