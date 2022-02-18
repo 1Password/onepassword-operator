@@ -7,13 +7,16 @@ import (
 	"regexp"
 	"strings"
 
+	"reflect"
+
+	errs "errors"
+
 	"github.com/1Password/connect-sdk-go/onepassword"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-	"reflect"
 	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 
 	kubernetesClient "sigs.k8s.io/controller-runtime/pkg/client"
@@ -27,9 +30,11 @@ const restartAnnotation = OnepasswordPrefix + "/last-restarted"
 const ItemPathAnnotation = OnepasswordPrefix + "/item-path"
 const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
 
+var ErrCannotUpdateSecretType = errs.New("Cannot change secret type. Secret type is immutable")
+
 var log = logf.Log
 
-func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, secretAnnotations map[string]string) error {
+func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, secretType string, secretAnnotations map[string]string) error {
 
 	itemVersion := fmt.Sprint(item.Version)
 
@@ -49,7 +54,9 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 		}
 		secretAnnotations[RestartDeploymentsAnnotation] = autoRestart
 	}
-	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels, *item)
+
+	// "Opaque" and "" secret types are treated the same by Kubernetes.
+	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels, secretType, *item)
 
 	currentSecret := &corev1.Secret{}
 	err := kubeClient.Get(context.Background(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
@@ -60,7 +67,14 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 		return err
 	}
 
-	if ! reflect.DeepEqual(currentSecret.Annotations, secretAnnotations) || ! reflect.DeepEqual(currentSecret.Labels, labels) {
+	currentAnnotations := currentSecret.Annotations
+	currentLabels := currentSecret.Labels
+	currentSecretType := string(currentSecret.Type)
+	if !reflect.DeepEqual(currentSecretType, secretType) {
+		return ErrCannotUpdateSecretType
+	}
+
+	if !reflect.DeepEqual(currentAnnotations, secretAnnotations) || !reflect.DeepEqual(currentLabels, labels) {
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
 		currentSecret.ObjectMeta.Annotations = secretAnnotations
 		currentSecret.ObjectMeta.Labels = labels
@@ -72,7 +86,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 	return nil
 }
 
-func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, labels map[string]string, item onepassword.Item) *corev1.Secret {
+func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, labels map[string]string, secretType string, item onepassword.Item) *corev1.Secret {
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:        formatSecretName(name),
@@ -81,6 +95,7 @@ func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotation
 			Labels:      labels,
 		},
 		Data: BuildKubernetesSecretData(item.Fields),
+		Type: corev1.SecretType(secretType),
 	}
 }
 

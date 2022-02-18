@@ -132,7 +132,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 			}
 			log.Info(fmt.Sprintf("Updating kubernetes secret '%v'", secret.GetName()))
 			secret.Annotations[VersionAnnotation] = itemVersion
-			updatedSecret := kubeSecrets.BuildKubernetesSecretFromOnePasswordItem(secret.Name, secret.Namespace, secret.Annotations, secret.Labels, *item)
+			updatedSecret := kubeSecrets.BuildKubernetesSecretFromOnePasswordItem(secret.Name, secret.Namespace, secret.Annotations, secret.Labels, string(secret.Type), *item)
 			h.client.Update(context.Background(), updatedSecret)
 			if updatedSecrets[secret.Namespace] == nil {
 				updatedSecrets[secret.Namespace] = make(map[string]*corev1.Secret)
