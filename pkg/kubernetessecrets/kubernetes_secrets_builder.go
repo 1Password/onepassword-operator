@@ -16,6 +16,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
+	errs "errors"
 
 	kubernetesClient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -51,10 +52,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 		secretAnnotations[RestartDeploymentsAnnotation] = autoRestart
 	}
 
-	// Default to Opaque secrets
-	if secretType == "" {
-		secretType = "Opaque"
-	}
+	// "Opaque" and "" secret types are treated the same by Kubernetes.
 	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels, secretType, *item)
 
 	currentSecret := &corev1.Secret{}
@@ -69,15 +67,15 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 	currentAnnotations := currentSecret.Annotations
 	currentLabels := currentSecret.Labels
 	currentSecretType := string(currentSecret.Type)
-	if currentSecretType == "" {
-		currentSecretType = "Opaque"
+	if !reflect.DeepEqual(currentSecretType, secretType) {
+		return errs.New("Cannot change secret type. Secret type is immutable")
 	}
-	if !reflect.DeepEqual(currentAnnotations, secretAnnotations) || !reflect.DeepEqual(currentLabels, labels) || !reflect.DeepEqual(currentSecretType, secretType) {
+
+	if !reflect.DeepEqual(currentAnnotations, secretAnnotations) || !reflect.DeepEqual(currentLabels, labels) {
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
 		currentSecret.ObjectMeta.Annotations = secretAnnotations
 		currentSecret.ObjectMeta.Labels = labels
 		currentSecret.Data = secret.Data
-		currentSecret.Type = corev1.SecretType(secretType)
 		return kubeClient.Update(context.Background(), currentSecret)
 	}
 
