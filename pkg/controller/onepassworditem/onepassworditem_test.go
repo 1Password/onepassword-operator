@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/mocks"
 	op "github.com/1Password/onepassword-operator/pkg/onepassword"
 
@@ -185,7 +186,6 @@ var tests = []testReconcileItem{
 				},
 				Labels: map[string]string{},
 			},
-			Type: corev1.SecretTypeOpaque,
 			Data: expectedSecretData,
 		},
 		opItem: map[string]string{
@@ -224,7 +224,7 @@ var tests = []testReconcileItem{
 				},
 				Labels: map[string]string{},
 			},
-			Type: corev1.SecretTypeOpaque,
+			Type: corev1.SecretTypeBasicAuth,
 			Data: expectedSecretData,
 		},
 		expectedError: nil,
@@ -281,6 +281,50 @@ var tests = []testReconcileItem{
 		},
 	},
 	{
+		testName: "Error if secret type is changed",
+		customResource: &onepasswordv1.OnePasswordItem{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       onePasswordItemKind,
+				APIVersion: onePasswordItemAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Spec: onepasswordv1.OnePasswordItemSpec{
+				ItemPath: itemPath,
+			},
+			Type: "custom",
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					op.VersionAnnotation: fmt.Sprint(version),
+				},
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: expectedSecretData,
+		},
+		expectedError: kubernetessecrets.ErrCannotUpdateSecretType,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					op.VersionAnnotation: fmt.Sprint(version),
+				},
+			},
+			Type: corev1.SecretTypeOpaque,
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+	},
+	{
 		testName: "Secret from 1Password item with invalid K8s labels",
 		customResource: &onepasswordv1.OnePasswordItem{
 			TypeMeta: metav1.TypeMeta{
@@ -305,7 +349,6 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
-			Type: corev1.SecretTypeOpaque,
 			Data: expectedSecretData,
 		},
 		opItem: map[string]string{
@@ -338,7 +381,6 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
-			Type: corev1.SecretTypeOpaque,
 			Data: map[string][]byte{
 				"password":       []byte(password),
 				"username":       []byte(username),
@@ -380,7 +422,6 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
-			Type: corev1.SecretTypeOpaque,
 			Data: map[string][]byte{
 				"password":          []byte(password),
 				"username":          []byte(username),

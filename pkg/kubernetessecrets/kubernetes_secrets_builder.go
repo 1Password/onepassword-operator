@@ -9,6 +9,8 @@ import (
 
 	"reflect"
 
+	errs "errors"
+
 	"github.com/1Password/connect-sdk-go/onepassword"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
@@ -16,7 +18,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
-	errs "errors"
 
 	kubernetesClient "sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -28,6 +29,8 @@ const VersionAnnotation = OnepasswordPrefix + "/item-version"
 const restartAnnotation = OnepasswordPrefix + "/last-restarted"
 const ItemPathAnnotation = OnepasswordPrefix + "/item-path"
 const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
+
+var ErrCannotUpdateSecretType = errs.New("Cannot change secret type. Secret type is immutable")
 
 var log = logf.Log
 
@@ -68,7 +71,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 	currentLabels := currentSecret.Labels
 	currentSecretType := string(currentSecret.Type)
 	if !reflect.DeepEqual(currentSecretType, secretType) {
-		return errs.New("Cannot change secret type. Secret type is immutable")
+		return ErrCannotUpdateSecretType
 	}
 
 	if !reflect.DeepEqual(currentAnnotations, secretAnnotations) || !reflect.DeepEqual(currentLabels, labels) {

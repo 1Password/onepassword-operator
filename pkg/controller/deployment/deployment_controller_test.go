@@ -329,7 +329,7 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: "456",
 				},
 			},
-			Type: corev1.SecretTypeOpaque,
+			Type: corev1.SecretType(""),
 			Data: expectedSecretData,
 		},
 		expectedError: nil,
@@ -341,7 +341,7 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
-			Type: corev1.SecretTypeOpaque,
+			Type: corev1.SecretType(""),
 			Data: expectedSecretData,
 		},
 		opItem: map[string]string{
@@ -375,7 +375,7 @@ var tests = []testReconcileItem{
 					op.VersionAnnotation: fmt.Sprint(version),
 				},
 			},
-			Type: corev1.SecretTypeOpaque,
+			Type: corev1.SecretType(""),
 			Data: expectedSecretData,
 		},
 		opItem: map[string]string{
