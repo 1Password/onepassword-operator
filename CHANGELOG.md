@@ -18,7 +18,7 @@
 ## Features
   * Support secrets provisioned through FromEnv. {#74}
   * Support configuration of Kubernetes Secret type. {#87}
-  * Improved logging. (#2)
+  * Improved logging. (#72)
 ---
 
 [//]: # (START/v1.1.0)
