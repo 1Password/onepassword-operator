@@ -12,6 +12,15 @@
 
 ---
 
+[//]: # (START/v1.2.0)
+# v1.2.0
+
+## Features
+  * Support secrets provisioned through FromEnv. {#74}
+  * Support configuration of Kubernetes Secret type. {#87}
+  * Improved logging. (#2)
+---
+
 [//]: # (START/v1.1.0)
 # v1.1.0
 
