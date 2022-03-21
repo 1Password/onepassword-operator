@@ -170,7 +170,7 @@ metadata:
   annotations:
     operator.1password.io/auto-restart: "true"
 ```
-If the value is not set, the auto reset settings on the operator will be used. This value can be overwritten by deployment.
+If the value is not set, the auto restart settings on the operator will be used. This value can be overwritten by deployment.
 
 **Per Deployment**
 This method allows for managing auto restarts on a given deployment. Auto restarts can by managed by setting the annotation `operator.1password.io/auto-restart` to either `true` or `false` on the desired deployment. An example of this is shown below:
@@ -183,7 +183,7 @@ metadata:
   annotations:
     operator.1password.io/auto-restart: "true"
 ```
-If the value is not set, the auto reset settings on the namespace will be used.
+If the value is not set, the auto restart settings on the namespace will be used.
 
 **Per OnePasswordItem Custom Resource**
 This method allows for managing auto restarts on a given OnePasswordItem custom resource. Auto restarts can by managed by setting the annotation `operator.1password.io/auto_restart` to either `true` or `false` on the desired OnePasswordItem. An example of this is shown below:
@@ -196,7 +196,7 @@ metadata:
   annotations:
     operator.1password.io/auto-restart: "true"
 ```
-If the value is not set, the auto reset settings on the deployment will be used.
+If the value is not set, the auto restart settings on the deployment will be used.
 
 ## Development
 
