@@ -136,6 +136,11 @@ metadata:
 
 Applying this yaml file will create a Kubernetes Secret with the name `<secret_name>` and contents from the location specified at the specified Item Path.
 
+The contents of the Kubernetes secret will be key-value pairs in which the keys are the fields of the 1Password item and the values are the corresponding values stored in 1Password. 
+In case of fields that store files, the file's contents will be used as the value.
+
+Within an item, if both a field storing a file and a field of another type have the same name, the file field will be ignored and the other field will take precedence.
+
 Note: Deleting the Deployment that you've created will automatically delete the created Kubernetes Secret only if the deployment is still annotated with `operator.1password.io/item-path` and `operator.1password.io/item-name` and no other deployment is using the secret.
 
 If a 1Password Item that is linked to a Kubernetes Secret is updated within the POLLING_INTERVAL the associated Kubernetes Secret will be updated. However, if you do not want a specific secret to be updated you can add the tag `operator.1password.io:ignore-secret` to the item stored in 1Password. While this tag is in place, any updates made to an item will not trigger an update to the associated secret in Kubernetes.
