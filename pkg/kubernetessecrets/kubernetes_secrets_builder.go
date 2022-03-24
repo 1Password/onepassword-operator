@@ -120,6 +120,8 @@ func BuildKubernetesSecretData(fields []*onepassword.ItemField, files []*onepass
 			key := file.Name
 			if secretData[key] == nil {
 				secretData[key] = content
+			} else {
+				log.Info(fmt.Sprintf("File '%s' ignored because of a field with the same name", file.Name))
 			}
 		}
 	}
