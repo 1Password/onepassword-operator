@@ -1,6 +1,6 @@
 # cloud.google.com/go v0.49.0
 cloud.google.com/go/compute/metadata
-# github.com/1Password/connect-sdk-go v1.0.1
+# github.com/1Password/connect-sdk-go v1.2.0
 github.com/1Password/connect-sdk-go/connect
 github.com/1Password/connect-sdk-go/onepassword
 # github.com/Azure/go-autorest/autorest v0.9.3-0.20191028180845-3492b2aff503
@@ -110,7 +110,7 @@ github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
 # github.com/spf13/pflag v1.0.5
 github.com/spf13/pflag
-# github.com/stretchr/testify v1.6.1
+# github.com/stretchr/testify v1.7.0
 github.com/stretchr/testify/assert
 # github.com/uber/jaeger-client-go v2.25.0+incompatible
 github.com/uber/jaeger-client-go
