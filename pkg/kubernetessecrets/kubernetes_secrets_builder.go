@@ -12,6 +12,7 @@ import (
 	errs "errors"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
+
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -94,17 +95,34 @@ func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotation
 			Annotations: annotations,
 			Labels:      labels,
 		},
-		Data: BuildKubernetesSecretData(item.Fields),
+		Data: BuildKubernetesSecretData(item.Fields, item.Files),
 		Type: corev1.SecretType(secretType),
 	}
 }
 
-func BuildKubernetesSecretData(fields []*onepassword.ItemField) map[string][]byte {
+func BuildKubernetesSecretData(fields []*onepassword.ItemField, files []*onepassword.File) map[string][]byte {
 	secretData := map[string][]byte{}
 	for i := 0; i < len(fields); i++ {
 		if fields[i].Value != "" {
 			key := formatSecretDataName(fields[i].Label)
 			secretData[key] = []byte(fields[i].Value)
+		}
+	}
+
+	// populate unpopulated fields from files
+	for _, file := range files {
+		content, err := file.Content()
+		if err != nil {
+			log.Error(err, "Could not load contents of file %s", file.Name)
+			continue
+		}
+		if content != nil {
+			key := file.Name
+			if secretData[key] == nil {
+				secretData[key] = content
+			} else {
+				log.Info(fmt.Sprintf("File '%s' ignored because of a field with the same name", file.Name))
+			}
 		}
 	}
 	return secretData

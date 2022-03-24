@@ -28,6 +28,7 @@ const (
 	Document             ItemCategory = "DOCUMENT"
 	EmailAccount         ItemCategory = "EMAIL_ACCOUNT"
 	SocialSecurityNumber ItemCategory = "SOCIAL_SECURITY_NUMBER"
+	ApiCredential        ItemCategory = "API_CREDENTIAL"
 	Custom               ItemCategory = "CUSTOM"
 )
 
@@ -39,7 +40,7 @@ func (ic *ItemCategory) UnmarshalJSON(b []byte) error {
 	switch category {
 	case Login, Password, Server, Database, CreditCard, Membership, Passport, SoftwareLicense,
 		OutdoorLicense, SecureNote, WirelessRouter, BankAccount, DriverLicense, Identity, RewardProgram,
-		Document, EmailAccount, SocialSecurityNumber:
+		Document, EmailAccount, SocialSecurityNumber, ApiCredential:
 		*ic = category
 	default:
 		*ic = Custom
@@ -64,6 +65,7 @@ type Item struct {
 
 	Sections []*ItemSection `json:"sections,omitempty"`
 	Fields   []*ItemField   `json:"fields,omitempty"`
+	Files    []*File        `json:"files,omitempty"`
 
 	LastEditedBy string    `json:"lastEditedBy,omitempty"`
 	CreatedAt    time.Time `json:"createdAt,omitempty"`

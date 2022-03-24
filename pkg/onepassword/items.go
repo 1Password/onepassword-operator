@@ -30,6 +30,14 @@ func GetOnePasswordItemByPath(opConnectClient connect.Client, path string) (*one
 	if err != nil {
 		return nil, err
 	}
+
+	for _, file := range item.Files {
+		_, err := opConnectClient.GetFileContent(file)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return item, nil
 }
 
