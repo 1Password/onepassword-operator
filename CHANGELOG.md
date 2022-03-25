@@ -12,6 +12,14 @@
 
 ---
 
+[//]: # (START/v1.3.0)
+# v1.3.0
+
+## Features
+  * Added support for loading secrets from files stored in 1Password. {#47}
+
+---
+
 [//]: # (START/v1.2.0)
 # v1.2.0
 
