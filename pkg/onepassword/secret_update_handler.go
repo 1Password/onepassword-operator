@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	v1 "github.com/1Password/onepassword-operator/pkg/apis/onepassword/v1"
+
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
@@ -116,23 +118,30 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 			continue
 		}
 
-		item, err := GetOnePasswordItemByPath(h.opConnectClient, secret.Annotations[ItemPathAnnotation])
+		OnePasswordItemPath := h.getPathFromOnePasswordItem(secret)
+
+		item, err := GetOnePasswordItemByPath(h.opConnectClient, OnePasswordItemPath)
 		if err != nil {
 			log.Error(err, "failed to retrieve 1Password item at path \"%s\" for secret \"%s\"", secret.Annotations[ItemPathAnnotation], secret.Name)
 			continue
 		}
 
 		itemVersion := fmt.Sprint(item.Version)
-		if currentVersion != itemVersion {
+		itemPathString := fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID)
+
+		if currentVersion != itemVersion || secret.Annotations[ItemPathAnnotation] != itemPathString {
 			if isItemLockedForForcedRestarts(item) {
 				log.Info(fmt.Sprintf("Secret '%v' has been updated in 1Password but is set to be ignored. Updates to an ignored secret will not trigger an update to a kubernetes secret or a rolling restart.", secret.GetName()))
 				secret.Annotations[VersionAnnotation] = itemVersion
+				secret.Annotations[ItemPathAnnotation] = itemPathString
 				h.client.Update(context.Background(), &secret)
 				continue
 			}
 			log.Info(fmt.Sprintf("Updating kubernetes secret '%v'", secret.GetName()))
 			secret.Annotations[VersionAnnotation] = itemVersion
+			secret.Annotations[ItemPathAnnotation] = itemPathString
 			updatedSecret := kubeSecrets.BuildKubernetesSecretFromOnePasswordItem(secret.Name, secret.Namespace, secret.Annotations, secret.Labels, string(secret.Type), *item)
+			log.Info(fmt.Sprintf("New secret path: %v and version: %v", updatedSecret.Annotations[ItemPathAnnotation], updatedSecret.Annotations[VersionAnnotation]))
 			h.client.Update(context.Background(), updatedSecret)
 			if updatedSecrets[secret.Namespace] == nil {
 				updatedSecrets[secret.Namespace] = make(map[string]*corev1.Secret)
@@ -175,6 +184,22 @@ func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap() (map[string
 		namespacesMap[namespace.Name] = h.isNamespaceSetToAutoRestart(&namespace)
 	}
 	return namespacesMap, nil
+}
+
+func (h *SecretUpdateHandler) getPathFromOnePasswordItem(secret corev1.Secret) string {
+	onePasswordItem := &v1.OnePasswordItem{}
+
+	// Search for our original OnePasswordItem if it exists
+	err := h.client.Get(context.TODO(), client.ObjectKey{
+		Namespace: secret.Namespace,
+		Name:      secret.Name}, onePasswordItem)
+
+	if err == nil {
+		return onePasswordItem.Spec.ItemPath
+	}
+
+	// If we can't find the OnePassword Item we'll just return the annotation from the secret item.
+	return secret.Annotations[ItemPathAnnotation]
 }
 
 func isSecretSetForAutoRestart(secret *corev1.Secret, deployment *appsv1.Deployment, setForAutoRestartByNamespace map[string]bool) bool {
