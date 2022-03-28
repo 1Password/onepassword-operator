@@ -30,14 +30,13 @@ If 1Password Connect is already running, you can skip this step. This guide will
 Encode the 1password-credentials.json file you generated in the prerequisite steps and save it to a file named op-session:
 
 ```bash
-$ cat 1password-credentials.json | base64 | \
+cat 1password-credentials.json | base64 | \
   tr '/+' '_-' | tr -d '=' | tr -d '\n' > op-session
 ```
 
 Create a Kubernetes secret from the op-session file:
 ```bash
-
-$  kubectl create secret generic op-credentials --from-file=1password-credentials.json
+kubectl create secret generic op-credentials --from-file=op-session
 ```
 
 Add the following environment variable to the onepassword-connect-operator container in `deploy/operator.yaml`:
@@ -53,12 +52,12 @@ Adding this environment variable will have the operator automatically deploy a d
 "Create a Connect token for the operator and save it as a Kubernetes Secret: 
 
 ```bash
-$ kubectl create secret generic onepassword-token --from-literal=token=<OP_CONNECT_TOKEN>"
+kubectl create secret generic onepassword-token --from-literal=token=<OP_CONNECT_TOKEN>"
 ```
 
 If you do not have a token for the operator, you can generate a token and save it to kubernetes with the following command:
 ```bash
-$ kubectl create secret generic onepassword-token --from-literal=token=$(op create connect token <server> op-k8s-operator --vault <vault>)
+kubectl create secret generic onepassword-token --from-literal=token=$(op create connect token <server> op-k8s-operator --vault <vault>)
 ```
 
 [More information on generating a token can be found here](https://support.1password.com/secrets-automation/#appendix-issue-additional-access-tokens)
@@ -68,13 +67,13 @@ $ kubectl create secret generic onepassword-token --from-literal=token=$(op crea
 We must create a service account, role, and role binding and Kubernetes. Examples can be found in the `/deploy` folder.
 
 ```bash
-$ kubectl apply -f deploy/permissions.yaml
+kubectl apply -f deploy/permissions.yaml
 ```
 
 **Create Custom One Password Secret Resource**
 
 ```bash
-$ kubectl apply -f deploy/crds/onepassword.com_onepassworditems_crd.yaml
+kubectl apply -f deploy/crds/onepassword.com_onepassworditems_crd.yaml
 ```
 
 **Deploying the Operator**
@@ -112,13 +111,13 @@ spec:
 Deploy the OnePasswordItem to Kubernetes:
 
 ```bash
-$ kubectl apply -f <your_item>.yaml
+kubectl apply -f <your_item>.yaml
 ```
 
 To test that the Kubernetes Secret check that the following command returns a secret:
 
 ```bash
-$ kubectl get secret <secret_name>
+kubectl get secret <secret_name>
 ```
 
 Note: Deleting the `OnePasswordItem` that you've created will automatically delete the created Kubernetes Secret.
@@ -136,6 +135,11 @@ metadata:
 ```
 
 Applying this yaml file will create a Kubernetes Secret with the name `<secret_name>` and contents from the location specified at the specified Item Path.
+
+The contents of the Kubernetes secret will be key-value pairs in which the keys are the fields of the 1Password item and the values are the corresponding values stored in 1Password. 
+In case of fields that store files, the file's contents will be used as the value.
+
+Within an item, if both a field storing a file and a field of another type have the same name, the file field will be ignored and the other field will take precedence.
 
 Note: Deleting the Deployment that you've created will automatically delete the created Kubernetes Secret only if the deployment is still annotated with `operator.1password.io/item-path` and `operator.1password.io/item-name` and no other deployment is using the secret.
 
@@ -171,7 +175,7 @@ metadata:
   annotations:
     operator.1password.io/auto-restart: "true"
 ```
-If the value is not set, the auto reset settings on the operator will be used. This value can be overwritten by deployment.
+If the value is not set, the auto restart settings on the operator will be used. This value can be overwritten by deployment.
 
 **Per Deployment**
 This method allows for managing auto restarts on a given deployment. Auto restarts can by managed by setting the annotation `operator.1password.io/auto-restart` to either `true` or `false` on the desired deployment. An example of this is shown below:
@@ -184,7 +188,7 @@ metadata:
   annotations:
     operator.1password.io/auto-restart: "true"
 ```
-If the value is not set, the auto reset settings on the namespace will be used.
+If the value is not set, the auto restart settings on the namespace will be used.
 
 **Per OnePasswordItem Custom Resource**
 This method allows for managing auto restarts on a given OnePasswordItem custom resource. Auto restarts can by managed by setting the annotation `operator.1password.io/auto_restart` to either `true` or `false` on the desired OnePasswordItem. An example of this is shown below:
@@ -197,7 +201,7 @@ metadata:
   annotations:
     operator.1password.io/auto-restart: "true"
 ```
-If the value is not set, the auto reset settings on the deployment will be used.
+If the value is not set, the auto restart settings on the deployment will be used.
 
 ## Development
 

@@ -12,6 +12,31 @@
 
 ---
 
+[//]: # (START/v1.3.0)
+# v1.3.0
+
+## Features
+  * Added support for loading secrets from files stored in 1Password. {#47}
+
+---
+
+[//]: # (START/v1.2.0)
+# v1.2.0
+
+## Features
+  * Support secrets provisioned through FromEnv. {#74}
+  * Support configuration of Kubernetes Secret type. {#87}
+  * Improved logging. (#72)
+---
+
+[//]: # (START/v1.1.0)
+# v1.1.0
+
+## Fixes
+ * Fix normalization for keys in a Secret's `data` section to allow upper- and lower-case alphanumeric characters. {#66}
+
+---
+
 [//]: # (START/v1.0.2)
 # v1.0.2
 

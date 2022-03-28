@@ -3,8 +3,9 @@ package onepassword
 import (
 	"context"
 	"fmt"
-	v1 "github.com/1Password/onepassword-operator/pkg/apis/onepassword/v1"
 	"time"
+
+	v1 "github.com/1Password/onepassword-operator/pkg/apis/onepassword/v1"
 
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/utils"
@@ -121,7 +122,8 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 
 		item, err := GetOnePasswordItemByPath(h.opConnectClient, OnePasswordItemPath)
 		if err != nil {
-			return nil, fmt.Errorf("Failed to retrieve item: %v", err)
+			log.Error(err, "failed to retrieve 1Password item at path \"%s\" for secret \"%s\"", secret.Annotations[ItemPathAnnotation], secret.Name)
+			continue
 		}
 
 		itemVersion := fmt.Sprint(item.Version)
@@ -138,7 +140,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 			log.Info(fmt.Sprintf("Updating kubernetes secret '%v'", secret.GetName()))
 			secret.Annotations[VersionAnnotation] = itemVersion
 			secret.Annotations[ItemPathAnnotation] = itemPathString
-			updatedSecret := kubeSecrets.BuildKubernetesSecretFromOnePasswordItem(secret.Name, secret.Namespace, secret.Annotations, secret.Labels, *item)
+			updatedSecret := kubeSecrets.BuildKubernetesSecretFromOnePasswordItem(secret.Name, secret.Namespace, secret.Annotations, secret.Labels, string(secret.Type), *item)
 			log.Info(fmt.Sprintf("New secret path: %v and version: %v", updatedSecret.Annotations[ItemPathAnnotation], updatedSecret.Annotations[VersionAnnotation]))
 			h.client.Update(context.Background(), updatedSecret)
 			if updatedSecrets[secret.Namespace] == nil {

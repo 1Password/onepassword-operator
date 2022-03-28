@@ -192,6 +192,8 @@ func (r *ReconcileDeployment) HandleApplyingDeployment(namespace string, annotat
 
 	secretName := annotations[op.NameAnnotation]
 	secretLabels := map[string]string(nil)
+	secretType := ""
+
 	if len(secretName) == 0 {
 		reqLog.Info("No 'item-name' annotation set. 'item-path' and 'item-name' must be set as annotations to add new secret.")
 		return nil
@@ -202,5 +204,5 @@ func (r *ReconcileDeployment) HandleApplyingDeployment(namespace string, annotat
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, namespace, item, annotations[op.RestartDeploymentsAnnotation], secretLabels, annotations)
+	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, namespace, item, annotations[op.RestartDeploymentsAnnotation], secretLabels, secretType, annotations)
 }

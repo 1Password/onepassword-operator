@@ -35,7 +35,9 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	secretAnnotations := map[string]string{
 		"testAnnotation": "exists",
 	}
-	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretAnnotations)
+	secretType := ""
+
+	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -66,7 +68,10 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	kubeClient := fake.NewFakeClient()
 	secretLabels := map[string]string{}
 	secretAnnotations := map[string]string{}
-	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretAnnotations)
+	secretType := ""
+
+	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations)
+
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -77,7 +82,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	newItem.Version = 456
 	newItem.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
 	newItem.ID = "h46bb3jddvay7nxopfhvlwg35q"
-	err = CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation, secretLabels, secretAnnotations)
+	err = CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -93,7 +98,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 func TestBuildKubernetesSecretData(t *testing.T) {
 	fields := generateFields(5)
 
-	secretData := BuildKubernetesSecretData(fields)
+	secretData := BuildKubernetesSecretData(fields, nil)
 	if len(secretData) != len(fields) {
 		t.Errorf("Unexpected number of secret fields returned. Expected 3, got %v", len(secretData))
 	}
@@ -111,8 +116,9 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	item := onepassword.Item{}
 	item.Fields = generateFields(5)
 	labels := map[string]string{}
+	secretType := ""
 
-	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, item)
+	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, secretType, item)
 	if kubeSecret.Name != strings.ToLower(name) {
 		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
 	}
@@ -134,6 +140,7 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 	}
 	labels := map[string]string{}
 	item := onepassword.Item{}
+	secretType := ""
 
 	item.Fields = []*onepassword.ItemField{
 		{
@@ -146,7 +153,7 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 		},
 	}
 
-	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels,  item)
+	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, secretType, item)
 
 	// Assert Secret's meta.name was fixed
 	if kubeSecret.Name != expectedName {
@@ -161,6 +168,39 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 		if !validLabel(key) {
 			t.Errorf("Expected valid kubernetes label, got %s", key)
 		}
+	}
+}
+
+func TestCreateKubernetesTLSSecretFromOnePasswordItem(t *testing.T) {
+	secretName := "tls-test-secret-name"
+	namespace := "test"
+
+	item := onepassword.Item{}
+	item.Fields = generateFields(5)
+	item.Version = 123
+	item.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
+	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
+
+	kubeClient := fake.NewFakeClient()
+	secretLabels := map[string]string{}
+	secretAnnotations := map[string]string{
+		"testAnnotation": "exists",
+	}
+	secretType := "kubernetes.io/tls"
+
+	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	createdSecret := &corev1.Secret{}
+	err = kubeClient.Get(context.Background(), types.NamespacedName{Name: secretName, Namespace: namespace}, createdSecret)
+
+	if err != nil {
+		t.Errorf("Secret was not created: %v", err)
+	}
+
+	if createdSecret.Type != corev1.SecretTypeTLS {
+		t.Errorf("Expected secretType to be of tyype corev1.SecretTypeTLS, got %s", string(createdSecret.Type))
 	}
 }
 

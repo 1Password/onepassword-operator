@@ -26,6 +26,7 @@ type OnePasswordItemStatus struct {
 type OnePasswordItem struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Type              string `json:"type,omitempty"`
 
 	Spec   OnePasswordItemSpec   `json:"spec,omitempty"`
 	Status OnePasswordItemStatus `json:"status,omitempty"`
