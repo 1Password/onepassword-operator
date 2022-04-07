@@ -35,7 +35,7 @@ var ErrCannotUpdateSecretType = errs.New("Cannot change secret type. Secret type
 
 var log = logf.Log
 
-func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, secretType string, secretAnnotations map[string]string) error {
+func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, secretType string, secretAnnotations map[string]string, ownerRef *metav1.OwnerReference) error {
 
 	itemVersion := fmt.Sprint(item.Version)
 
@@ -57,7 +57,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 	}
 
 	// "Opaque" and "" secret types are treated the same by Kubernetes.
-	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels, secretType, *item)
+	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels, secretType, *item, ownerRef)
 
 	currentSecret := &corev1.Secret{}
 	err := kubeClient.Get(context.Background(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
@@ -87,13 +87,19 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 	return nil
 }
 
-func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, labels map[string]string, secretType string, item onepassword.Item) *corev1.Secret {
+func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, labels map[string]string, secretType string, item onepassword.Item, ownerRef *metav1.OwnerReference) *corev1.Secret {
+	var ownerRefs []metav1.OwnerReference
+	if ownerRef != nil {
+		ownerRefs = []metav1.OwnerReference{*ownerRef}
+	}
+
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        formatSecretName(name),
-			Namespace:   namespace,
-			Annotations: annotations,
-			Labels:      labels,
+			Name:            formatSecretName(name),
+			Namespace:       namespace,
+			Annotations:     annotations,
+			Labels:          labels,
+			OwnerReferences: ownerRefs,
 		},
 		Data: BuildKubernetesSecretData(item.Fields, item.Files),
 		Type: corev1.SecretType(secretType),

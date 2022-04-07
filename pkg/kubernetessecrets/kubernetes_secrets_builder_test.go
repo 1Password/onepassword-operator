@@ -8,6 +8,7 @@ import (
 
 	"github.com/1Password/connect-sdk-go/onepassword"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
@@ -37,7 +38,7 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	}
 	secretType := ""
 
-	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations)
+	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -52,6 +53,54 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 
 	if createdSecret.Annotations["testAnnotation"] != "exists" {
 		t.Errorf("Expected testAnnotation to be merged with existing annotations, but wasn't.")
+	}
+}
+
+func TestKubernetesSecretFromOnePasswordItemOwnerReferences(t *testing.T) {
+	secretName := "test-secret-name"
+	namespace := "test"
+
+	item := onepassword.Item{}
+	item.Fields = generateFields(5)
+	item.Version = 123
+	item.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
+	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
+
+	kubeClient := fake.NewFakeClient()
+	secretLabels := map[string]string{}
+	secretAnnotations := map[string]string{
+		"testAnnotation": "exists",
+	}
+	secretType := ""
+
+	ownerRef := &metav1.OwnerReference{
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
+		Name:       "test-deployment",
+		UID:        types.UID("test-uid"),
+	}
+	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations, ownerRef)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
+	createdSecret := &corev1.Secret{}
+	err = kubeClient.Get(context.Background(), types.NamespacedName{Name: secretName, Namespace: namespace}, createdSecret)
+
+	// Check owner references.
+	gotOwnerRefs := createdSecret.ObjectMeta.OwnerReferences
+	if len(gotOwnerRefs) != 1 {
+		t.Errorf("Expected owner references length: 1 but got: %d", len(gotOwnerRefs))
+	}
+
+	expOwnerRef := metav1.OwnerReference{
+		Kind:       "Deployment",
+		APIVersion: "apps/v1",
+		Name:       "test-deployment",
+		UID:        types.UID("test-uid"),
+	}
+	gotOwnerRef := gotOwnerRefs[0]
+	if gotOwnerRef != expOwnerRef {
+		t.Errorf("Expected owner reference value: %v but got: %v", expOwnerRef, gotOwnerRef)
 	}
 }
 
@@ -70,7 +119,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	secretAnnotations := map[string]string{}
 	secretType := ""
 
-	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations)
+	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations, nil)
 
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -82,7 +131,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	newItem.Version = 456
 	newItem.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
 	newItem.ID = "h46bb3jddvay7nxopfhvlwg35q"
-	err = CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations)
+	err = CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -118,7 +167,7 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	labels := map[string]string{}
 	secretType := ""
 
-	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, secretType, item)
+	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, secretType, item, nil)
 	if kubeSecret.Name != strings.ToLower(name) {
 		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
 	}
@@ -153,7 +202,7 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 		},
 	}
 
-	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, secretType, item)
+	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, secretType, item, nil)
 
 	// Assert Secret's meta.name was fixed
 	if kubeSecret.Name != expectedName {
@@ -188,7 +237,7 @@ func TestCreateKubernetesTLSSecretFromOnePasswordItem(t *testing.T) {
 	}
 	secretType := "kubernetes.io/tls"
 
-	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations)
+	err := CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, secretAnnotations, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}

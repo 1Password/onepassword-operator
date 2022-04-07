@@ -14,9 +14,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -114,7 +116,7 @@ func (r *ReconcileDeployment) Reconcile(request reconcile.Request) (reconcile.Re
 			}
 		}
 		// Handles creation or updating secrets for deployment if needed
-		if err := r.HandleApplyingDeployment(deployment.Namespace, annotations, request); err != nil {
+		if err := r.HandleApplyingDeployment(deployment, deployment.Namespace, annotations, request); err != nil {
 			return reconcile.Result{}, err
 		}
 		return reconcile.Result{}, nil
@@ -187,7 +189,7 @@ func (r *ReconcileDeployment) removeOnePasswordFinalizerFromDeployment(deploymen
 	return r.kubeClient.Update(context.Background(), deployment)
 }
 
-func (r *ReconcileDeployment) HandleApplyingDeployment(namespace string, annotations map[string]string, request reconcile.Request) error {
+func (r *ReconcileDeployment) HandleApplyingDeployment(deployment *appsv1.Deployment, namespace string, annotations map[string]string, request reconcile.Request) error {
 	reqLog := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
 	secretName := annotations[op.NameAnnotation]
@@ -204,5 +206,17 @@ func (r *ReconcileDeployment) HandleApplyingDeployment(namespace string, annotat
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, namespace, item, annotations[op.RestartDeploymentsAnnotation], secretLabels, secretType, annotations)
+	// Create owner reference.
+	gvk, err := apiutil.GVKForObject(deployment, r.scheme)
+	if err != nil {
+		return fmt.Errorf("could not to retrieve group version kind: %v", err)
+	}
+	ownerRef := &metav1.OwnerReference{
+		APIVersion: gvk.GroupVersion().String(),
+		Kind:       gvk.Kind,
+		Name:       deployment.GetName(),
+		UID:        deployment.GetUID(),
+	}
+
+	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, namespace, item, annotations[op.RestartDeploymentsAnnotation], secretLabels, secretType, annotations, ownerRef)
 }

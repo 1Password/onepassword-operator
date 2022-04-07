@@ -14,9 +14,11 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	kubeClient "sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -154,5 +156,17 @@ func (r *ReconcileOnePasswordItem) HandleOnePasswordItem(resource *onepasswordv1
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item, autoRestart, labels, secretType, annotations)
+	// Create owner reference.
+	gvk, err := apiutil.GVKForObject(resource, r.scheme)
+	if err != nil {
+		return fmt.Errorf("could not to retrieve group version kind: %v", err)
+	}
+	ownerRef := &metav1.OwnerReference{
+		APIVersion: gvk.GroupVersion().String(),
+		Kind:       gvk.Kind,
+		Name:       resource.GetName(),
+		UID:        resource.GetUID(),
+	}
+
+	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item, autoRestart, labels, secretType, annotations, ownerRef)
 }
