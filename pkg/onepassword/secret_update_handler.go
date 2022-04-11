@@ -134,7 +134,10 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 				log.Info(fmt.Sprintf("Secret '%v' has been updated in 1Password but is set to be ignored. Updates to an ignored secret will not trigger an update to a kubernetes secret or a rolling restart.", secret.GetName()))
 				secret.Annotations[VersionAnnotation] = itemVersion
 				secret.Annotations[ItemPathAnnotation] = itemPathString
-				h.client.Update(context.Background(), &secret)
+				if err := h.client.Update(context.Background(), &secret); err != nil {
+					log.Error(err, "failed to update secret %s annotations to version %d: %s", secret.Name, itemVersion, err)
+					continue
+				}
 				continue
 			}
 			log.Info(fmt.Sprintf("Updating kubernetes secret '%v'", secret.GetName()))
@@ -142,7 +145,10 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 			secret.Annotations[ItemPathAnnotation] = itemPathString
 			secret.Data = kubeSecrets.BuildKubernetesSecretData(item.Fields, item.Files)
 			log.Info(fmt.Sprintf("New secret path: %v and version: %v", secret.Annotations[ItemPathAnnotation], secret.Annotations[VersionAnnotation]))
-			h.client.Update(context.Background(), &secret)
+			if err := h.client.Update(context.Background(), &secret); err != nil {
+				log.Error(err, "failed to update secret %s to version %d: %s", secret.Name, itemVersion, err)
+				continue
+			}
 			if updatedSecrets[secret.Namespace] == nil {
 				updatedSecrets[secret.Namespace] = make(map[string]*corev1.Secret)
 			}
