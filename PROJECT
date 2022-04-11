@@ -1,0 +1,9 @@
+domain: onepassword.com
+layout:
+- go.kubebuilder.io/v3
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
+projectName: onepassword-operator-new
+repo: github.com/1Password/onepassword-operator
+version: "3"
