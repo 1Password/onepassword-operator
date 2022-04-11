@@ -35,17 +35,12 @@ var ErrCannotUpdateSecretType = errs.New("Cannot change secret type. Secret type
 
 var log = logf.Log
 
-func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, secretType string, secretAnnotations map[string]string, ownerRef *metav1.OwnerReference) error {
-
+func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, secretType string, ownerRef *metav1.OwnerReference) error {
 	itemVersion := fmt.Sprint(item.Version)
-
-	// If secretAnnotations is nil we create an empty map so we can later assign values for the OP Annotations in the map
-	if secretAnnotations == nil {
-		secretAnnotations = map[string]string{}
+	secretAnnotations := map[string]string{
+		VersionAnnotation:  itemVersion,
+		ItemPathAnnotation: fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID),
 	}
-
-	secretAnnotations[VersionAnnotation] = itemVersion
-	secretAnnotations[ItemPathAnnotation] = fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID)
 
 	if autoRestart != "" {
 		_, err := utils.StringToBool(autoRestart)

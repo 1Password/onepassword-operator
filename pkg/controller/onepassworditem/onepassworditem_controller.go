@@ -147,9 +147,8 @@ func (r *ReconcileOnePasswordItem) removeOnePasswordFinalizerFromOnePasswordItem
 func (r *ReconcileOnePasswordItem) HandleOnePasswordItem(resource *onepasswordv1.OnePasswordItem, request reconcile.Request) error {
 	secretName := resource.GetName()
 	labels := resource.Labels
-	annotations := resource.Annotations
 	secretType := resource.Type
-	autoRestart := annotations[op.RestartDeploymentsAnnotation]
+	autoRestart := resource.Annotations[op.RestartDeploymentsAnnotation]
 
 	item, err := onepassword.GetOnePasswordItemByPath(r.opConnectClient, resource.Spec.ItemPath)
 	if err != nil {
@@ -168,5 +167,5 @@ func (r *ReconcileOnePasswordItem) HandleOnePasswordItem(resource *onepasswordv1
 		UID:        resource.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item, autoRestart, labels, secretType, annotations, ownerRef)
+	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item, autoRestart, labels, secretType, ownerRef)
 }

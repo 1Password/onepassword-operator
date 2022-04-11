@@ -8,7 +8,7 @@
 
 ## Fixes
 
-- A user-friendly description of a fix. {issue-number}
+- Annotations from a Deployment or OnePasswordItem are no longer applied to Secrets that are created for it. {#102}
 
 ## Security
 
