@@ -29,7 +29,7 @@ type OnePasswordItemSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// Foo is an example field of OnePasswordItem. Edit onepassworditem_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	ItemPath string `json:"itemPath,omitempty"`
 }
 
 // OnePasswordItemStatus defines the observed state of OnePasswordItem
@@ -45,6 +45,7 @@ type OnePasswordItemStatus struct {
 type OnePasswordItem struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+	Type              string `json:"type,omitempty"`
 
 	Spec   OnePasswordItemSpec   `json:"spec,omitempty"`
 	Status OnePasswordItemStatus `json:"status,omitempty"`
