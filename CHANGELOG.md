@@ -8,7 +8,7 @@
 
 ## Fixes
 
-- A user-friendly description of a fix. {issue-number}
+- OwnerReferences on secrets are now persisted after an item is updated. {#101}
 
 ## Security
 
