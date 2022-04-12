@@ -1,19 +1,25 @@
-[//]: # "START/LATEST"
-
+[//]: # (START/LATEST)
 # Latest
 
 ## Features
+  * A user-friendly description of a new feature. {issue-number}
 
-- A user-friendly description of a new feature. {issue-number}
+## Fixes
+ * A user-friendly description of a fix. {issue-number}
+
+## Security
+ * A user-friendly description of a security fix. {issue-number}
+
+---
+
+[//]: # "START/v1.4.1"
+
+# v1.4.1
 
 ## Fixes
 
 - OwnerReferences on secrets are now persisted after an item is updated. {#101}
 - Annotations from a Deployment or OnePasswordItem are no longer applied to Secrets that are created for it. {#102}
-
-## Security
-
-- A user-friendly description of a security fix. {issue-number}
 
 ---
 
