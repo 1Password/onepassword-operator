@@ -8,6 +8,7 @@
 
 ## Fixes
 
+- OwnerReferences on secrets are now persisted after an item is updated. {#101}
 - Annotations from a Deployment or OnePasswordItem are no longer applied to Secrets that are created for it. {#102}
 
 ## Security
