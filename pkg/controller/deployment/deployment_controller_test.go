@@ -281,7 +281,6 @@ var tests = []testReconcileItem{
 				Annotations: map[string]string{
 					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
-					op.NameAnnotation:     name,
 				},
 			},
 			Data: expectedSecretData,
@@ -294,7 +293,6 @@ var tests = []testReconcileItem{
 				Annotations: map[string]string{
 					op.VersionAnnotation:  fmt.Sprint(version),
 					op.ItemPathAnnotation: itemPath,
-					op.NameAnnotation:     name,
 				},
 				Labels: map[string]string(nil),
 			},
@@ -385,7 +383,7 @@ var tests = []testReconcileItem{
 	},
 }
 
-func TestReconcileDepoyment(t *testing.T) {
+func TestReconcileDeployment(t *testing.T) {
 	for _, testData := range tests {
 		t.Run(testData.testName, func(t *testing.T) {
 
