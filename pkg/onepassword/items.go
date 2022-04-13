@@ -2,7 +2,7 @@ package onepassword
 
 import (
 	"fmt"
-	"strings"
+	"regexp"
 
 	"github.com/1Password/connect-sdk-go/connect"
 	"github.com/1Password/connect-sdk-go/onepassword"
@@ -42,9 +42,11 @@ func GetOnePasswordItemByPath(opConnectClient connect.Client, path string) (*one
 }
 
 func ParseVaultAndItemFromPath(path string) (string, string, error) {
-	splitPath := strings.Split(path, "/")
-	if len(splitPath) == 4 && splitPath[0] == "vaults" && splitPath[2] == "items" {
-		return splitPath[1], splitPath[3], nil
+	r := regexp.MustCompile("vaults/(.*)/items/(.*)")
+	splitPath := r.FindAllStringSubmatch(path, -1)
+
+	if len(splitPath) == 1 && len(splitPath[0]) == 3 {
+		return splitPath[0][1], splitPath[0][2], nil
 	}
 	return "", "", fmt.Errorf("%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`", path)
 }
