@@ -49,9 +49,9 @@ var log = logf.Log.WithName("controller_onepassworditem")
 
 // OnePasswordItemReconciler reconciles a OnePasswordItem object
 type OnePasswordItemReconciler struct {
-	kubeClient      kubeClient.Client
-	scheme          *runtime.Scheme
-	opConnectClient connect.Client
+	Client          kubeClient.Client
+	Scheme          *runtime.Scheme
+	OpConnectClient connect.Client
 }
 
 //+kubebuilder:rbac:groups=onepassword.onepassword.com,resources=onepassworditems,verbs=get;list;watch;create;update;patch;delete
@@ -72,7 +72,7 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, request ctrl.
 	reqLogger.Info("Reconciling OnePasswordItem")
 
 	onepassworditem := &onepasswordv1.OnePasswordItem{}
-	err := r.kubeClient.Get(context.Background(), request.NamespacedName, onepassworditem)
+	err := r.Client.Get(context.Background(), request.NamespacedName, onepassworditem)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return reconcile.Result{}, nil
@@ -86,7 +86,7 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, request ctrl.
 		// This is so we can handle cleanup of associated secrets properly
 		if !utils.ContainsString(onepassworditem.ObjectMeta.Finalizers, finalizer) {
 			onepassworditem.ObjectMeta.Finalizers = append(onepassworditem.ObjectMeta.Finalizers, finalizer)
-			if err := r.kubeClient.Update(context.Background(), onepassworditem); err != nil {
+			if err := r.Client.Update(context.Background(), onepassworditem); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
@@ -135,7 +135,7 @@ func (r *OnePasswordItemReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *OnePasswordItemReconciler) removeFinalizer(onePasswordItem *onepasswordv1.OnePasswordItem) error {
 	onePasswordItem.ObjectMeta.Finalizers = utils.RemoveString(onePasswordItem.ObjectMeta.Finalizers, finalizer)
-	if err := r.kubeClient.Update(context.Background(), onePasswordItem); err != nil {
+	if err := r.Client.Update(context.Background(), onePasswordItem); err != nil {
 		return err
 	}
 	return nil
@@ -146,8 +146,8 @@ func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(onePasswordItem *one
 	kubernetesSecret.ObjectMeta.Name = onePasswordItem.Name
 	kubernetesSecret.ObjectMeta.Namespace = onePasswordItem.Namespace
 
-	r.kubeClient.Delete(context.Background(), kubernetesSecret)
-	if err := r.kubeClient.Delete(context.Background(), kubernetesSecret); err != nil {
+	r.Client.Delete(context.Background(), kubernetesSecret)
+	if err := r.Client.Delete(context.Background(), kubernetesSecret); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
@@ -162,13 +162,13 @@ func (r *OnePasswordItemReconciler) HandleOnePasswordItem(resource *onepasswordv
 	secretType := resource.Type
 	autoRestart := annotations[op.RestartDeploymentsAnnotation]
 
-	item, err := onepassword.GetOnePasswordItemByPath(r.opConnectClient, resource.Spec.ItemPath)
+	item, err := onepassword.GetOnePasswordItemByPath(r.OpConnectClient, resource.Spec.ItemPath)
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}
 
 	// Create owner reference.
-	gvk, err := apiutil.GVKForObject(resource, r.scheme)
+	gvk, err := apiutil.GVKForObject(resource, r.Scheme)
 	if err != nil {
 		return fmt.Errorf("could not to retrieve group version kind: %v", err)
 	}
@@ -179,5 +179,5 @@ func (r *OnePasswordItemReconciler) HandleOnePasswordItem(resource *onepasswordv
 		UID:        resource.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item, autoRestart, labels, secretType, annotations, ownerRef)
+	return kubeSecrets.CreateKubernetesSecretFromItem(r.Client, secretName, resource.Namespace, item, autoRestart, labels, secretType, annotations, ownerRef)
 }
