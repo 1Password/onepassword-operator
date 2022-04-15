@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: onepassword-connect-operator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: onepassword-connect-operator
+  template:
+    metadata:
+      labels:
+        name: onepassword-connect-operator
+    spec:
+      serviceAccountName: onepassword-connect-operator
+      containers:
+        - name: onepassword-connect-operator
+          image: 1password/onepassword-operator
+          command: ["/manager"]
+          env:
+            - name: WATCH_NAMESPACE
+              value: "default"
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "onepassword-connect-operator"
+            - name: OP_CONNECT_HOST
+              value: "http://onepassword-connect:8080"
+            - name: POLLING_INTERVAL
+              value: "10"
+            - name: OP_CONNECT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: onepassword-token
+                  key: token
+            - name: AUTO_RESTART
+              value: "false"
