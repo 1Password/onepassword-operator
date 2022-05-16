@@ -91,9 +91,10 @@ func (h *SecretUpdateHandler) restartDeploymentsWithUpdatedSecrets(updatedSecret
 
 func (h *SecretUpdateHandler) restartDeployment(deployment *appsv1.Deployment) {
 	log.Info(fmt.Sprintf("Deployment %q at namespace %q references an updated secret. Restarting", deployment.GetName(), deployment.Namespace))
-	deployment.Spec.Template.Annotations = map[string]string{
-		RestartAnnotation: time.Now().String(),
+	if deployment.Spec.Template.Annotations == nil {
+		deployment.Spec.Template.Annotations = map[string]string{}
 	}
+	deployment.Spec.Template.Annotations[RestartAnnotation] = time.Now().String()
 	err := h.client.Update(context.Background(), deployment)
 	if err != nil {
 		log.Error(err, "Problem restarting deployment")
