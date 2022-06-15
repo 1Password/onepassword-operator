@@ -96,10 +96,11 @@ func (r *ReconcileOnePasswordItem) Reconcile(request reconcile.Request) (reconci
 		}
 
 		// Handles creation or updating secrets for deployment if needed
-		if err := r.HandleOnePasswordItem(onepassworditem, request); err != nil {
-			return reconcile.Result{}, err
+		err := r.HandleOnePasswordItem(onepassworditem, request)
+		if updateStatusErr := r.updateStatus(onepassworditem, err); updateStatusErr != nil {
+			return reconcile.Result{}, fmt.Errorf("cannot update status: %s", updateStatusErr)
 		}
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, err
 	}
 	// If one password finalizer exists then we must cleanup associated secrets
 	if utils.ContainsString(onepassworditem.ObjectMeta.Finalizers, finalizer) {
@@ -168,4 +169,25 @@ func (r *ReconcileOnePasswordItem) HandleOnePasswordItem(resource *onepasswordv1
 	}
 
 	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item, autoRestart, labels, secretType, ownerRef)
+}
+
+func (r *ReconcileOnePasswordItem) updateStatus(resource *onepasswordv1.OnePasswordItem, err error) error {
+	condition := onepasswordv1.OnePasswordItemCondition{
+		Type:   onepasswordv1.OnePasswordItemReady,
+		Status: metav1.ConditionTrue,
+	}
+	if err != nil {
+		condition.Message = err.Error()
+		condition.Status = metav1.ConditionFalse
+	}
+
+	ready := err == nil
+	if resource.Status.Ready == nil || ready != *resource.Status.Ready {
+		condition.LastTransitionTime = metav1.Now()
+	}
+
+	resource.Status.Ready = &ready
+
+	resource.Status.Conditions = []onepasswordv1.OnePasswordItemCondition{condition}
+	return r.kubeClient.Status().Update(context.Background(), resource)
 }

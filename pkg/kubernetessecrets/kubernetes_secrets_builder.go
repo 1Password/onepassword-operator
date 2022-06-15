@@ -45,8 +45,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 	if autoRestart != "" {
 		_, err := utils.StringToBool(autoRestart)
 		if err != nil {
-			log.Error(err, "Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secretName)
-			return err
+			return fmt.Errorf("Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secretName)
 		}
 		secretAnnotations[RestartDeploymentsAnnotation] = autoRestart
 	}
@@ -75,7 +74,10 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 		currentSecret.ObjectMeta.Annotations = secretAnnotations
 		currentSecret.ObjectMeta.Labels = labels
 		currentSecret.Data = secret.Data
-		return kubeClient.Update(context.Background(), currentSecret)
+		if err := kubeClient.Update(context.Background(), currentSecret); err != nil {
+			return fmt.Errorf("Kubernetes secret update failed: %w", err)
+		}
+		return nil
 	}
 
 	log.Info(fmt.Sprintf("Secret with name %v and version %v already exists", secret.Name, secret.Annotations[VersionAnnotation]))
