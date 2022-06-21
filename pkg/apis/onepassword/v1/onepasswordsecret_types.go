@@ -49,6 +49,8 @@ type OnePasswordItemStatus struct {
 type OnePasswordItem struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	// Kubernetes secret type. More info: https://kubernetes.io/docs/concepts/configuration/secret/#secret-types
 	Type              string `json:"type,omitempty"`
 
 	Spec   OnePasswordItemSpec   `json:"spec,omitempty"`
