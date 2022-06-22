@@ -27,7 +27,6 @@ import (
 const OnepasswordPrefix = "operator.1password.io"
 const NameAnnotation = OnepasswordPrefix + "/item-name"
 const VersionAnnotation = OnepasswordPrefix + "/item-version"
-const restartAnnotation = OnepasswordPrefix + "/last-restarted"
 const ItemPathAnnotation = OnepasswordPrefix + "/item-path"
 const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
 
@@ -62,13 +61,22 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 		return err
 	}
 
-	currentAnnotations := currentSecret.Annotations
-	currentLabels := currentSecret.Labels
+	// Check if the secret types are being changed on the update.
+	// Avoid Opaque and "" are treated as different on check.
+	wantSecretType := secretType
+	if wantSecretType == "" {
+		wantSecretType = string(corev1.SecretTypeOpaque)
+	}
 	currentSecretType := string(currentSecret.Type)
-	if !reflect.DeepEqual(currentSecretType, secretType) {
+	if currentSecretType == "" {
+		currentSecretType = string(corev1.SecretTypeOpaque)
+	}
+	if currentSecretType != wantSecretType {
 		return ErrCannotUpdateSecretType
 	}
 
+	currentAnnotations := currentSecret.Annotations
+	currentLabels := currentSecret.Labels
 	if !reflect.DeepEqual(currentAnnotations, secretAnnotations) || !reflect.DeepEqual(currentLabels, labels) {
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
 		currentSecret.ObjectMeta.Annotations = secretAnnotations

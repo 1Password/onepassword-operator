@@ -122,6 +122,9 @@ var tests = []testUpdateSecretTask{
 			},
 			Spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{"external-annotation": "some-value"},
+					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
@@ -235,6 +238,9 @@ var tests = []testUpdateSecretTask{
 			},
 			Spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{"external-annotation": "some-value"},
+					},
 					Spec: corev1.PodSpec{
 						Volumes: []corev1.Volume{
 							{
@@ -342,6 +348,9 @@ var tests = []testUpdateSecretTask{
 			},
 			Spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{"external-annotation": "some-value"},
+					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
@@ -411,6 +420,9 @@ var tests = []testUpdateSecretTask{
 			},
 			Spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{"external-annotation": "some-value"},
+					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
@@ -482,6 +494,9 @@ var tests = []testUpdateSecretTask{
 			},
 			Spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{"external-annotation": "some-value"},
+					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
@@ -553,6 +568,9 @@ var tests = []testUpdateSecretTask{
 			},
 			Spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{"external-annotation": "some-value"},
+					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
@@ -630,6 +648,9 @@ var tests = []testUpdateSecretTask{
 			},
 			Spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{"external-annotation": "some-value"},
+					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
@@ -703,6 +724,9 @@ var tests = []testUpdateSecretTask{
 			},
 			Spec: appsv1.DeploymentSpec{
 				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{"external-annotation": "some-value"},
+					},
 					Spec: corev1.PodSpec{
 						Containers: []corev1.Container{
 							{
@@ -828,6 +852,16 @@ func TestUpdateSecretHandler(t *testing.T) {
 				assert.True(t, testData.expectedRestart, "Expected deployment to restart but it did not")
 			} else {
 				assert.False(t, testData.expectedRestart, "Deployment was restarted but should not have been.")
+			}
+
+			oldPodTemplateAnnotations := testData.existingDeployment.Spec.Template.ObjectMeta.Annotations
+			newPodTemplateAnnotations := deployment.Spec.Template.Annotations
+			for name, expected := range oldPodTemplateAnnotations {
+				actual, ok := newPodTemplateAnnotations[name]
+				if assert.Truef(t, ok, "Annotation %s was present in original pod template but was dropped after update", name) {
+					assert.Equalf(t, expected, actual, "Annotation value for %s original pod template has changed", name)
+					continue
+				}
 			}
 		})
 	}
