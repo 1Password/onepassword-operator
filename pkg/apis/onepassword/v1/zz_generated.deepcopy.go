@@ -113,11 +113,6 @@ func (in *OnePasswordItemStatus) DeepCopyInto(out *OnePasswordItemStatus) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.Ready != nil {
-		in, out := &in.Ready, &out.Ready
-		*out = new(bool)
-		**out = **in
-	}
 	return
 }
 

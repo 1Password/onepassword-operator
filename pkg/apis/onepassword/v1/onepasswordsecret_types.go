@@ -36,9 +36,6 @@ type OnePasswordItemStatus struct {
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	Conditions []OnePasswordItemCondition `json:"conditions"`
-
-	// True when the Kubernetes secret is ready for use.
-	Ready *bool `json:"ready,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -51,7 +48,7 @@ type OnePasswordItem struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	// Kubernetes secret type. More info: https://kubernetes.io/docs/concepts/configuration/secret/#secret-types
-	Type              string `json:"type,omitempty"`
+	Type string `json:"type,omitempty"`
 
 	Spec   OnePasswordItemSpec   `json:"spec,omitempty"`
 	Status OnePasswordItemStatus `json:"status,omitempty"`

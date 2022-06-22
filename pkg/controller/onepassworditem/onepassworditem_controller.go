@@ -172,22 +172,32 @@ func (r *ReconcileOnePasswordItem) HandleOnePasswordItem(resource *onepasswordv1
 }
 
 func (r *ReconcileOnePasswordItem) updateStatus(resource *onepasswordv1.OnePasswordItem, err error) error {
-	condition := onepasswordv1.OnePasswordItemCondition{
-		Type:   onepasswordv1.OnePasswordItemReady,
-		Status: metav1.ConditionTrue,
-	}
+	existingCondition := findCondition(resource.Status.Conditions, onepasswordv1.OnePasswordItemReady)
+	updatedCondition := existingCondition
 	if err != nil {
-		condition.Message = err.Error()
-		condition.Status = metav1.ConditionFalse
+		updatedCondition.Message = err.Error()
+		updatedCondition.Status = metav1.ConditionFalse
+	} else {
+		updatedCondition.Message = ""
+		updatedCondition.Status = metav1.ConditionTrue
 	}
 
-	ready := err == nil
-	if resource.Status.Ready == nil || ready != *resource.Status.Ready {
-		condition.LastTransitionTime = metav1.Now()
+	if existingCondition.Status != updatedCondition.Status {
+		updatedCondition.LastTransitionTime = metav1.Now()
 	}
 
-	resource.Status.Ready = &ready
-
-	resource.Status.Conditions = []onepasswordv1.OnePasswordItemCondition{condition}
+	resource.Status.Conditions = []onepasswordv1.OnePasswordItemCondition{updatedCondition}
 	return r.kubeClient.Status().Update(context.Background(), resource)
+}
+
+func findCondition(conditions []onepasswordv1.OnePasswordItemCondition, t onepasswordv1.OnePasswordItemConditionType) onepasswordv1.OnePasswordItemCondition {
+	for _, c := range conditions {
+		if c.Type == t {
+			return c
+		}
+	}
+	return onepasswordv1.OnePasswordItemCondition{
+		Type:   t,
+		Status: metav1.ConditionUnknown,
+	}
 }
