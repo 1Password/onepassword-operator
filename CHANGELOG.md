@@ -12,6 +12,18 @@
 
 ---
 
+[//]: # (START/v1.5.0)
+# v1.5.0
+
+## Features
+ * `OnePasswordItem` now contains a `status` which contains the status of creating the kubernetes secret for a OnePasswordItem. {#52}
+
+## Fixes
+ * The operator no longer logs an error about changing the secret type if the secret type is not actally being changed.
+ * Annotations on a deployment are no longer removed when the operator triggers a restart. {#112}
+
+---
+
 [//]: # "START/v1.4.1"
 
 # v1.4.1
