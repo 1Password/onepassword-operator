@@ -19,7 +19,7 @@
  * `OnePasswordItem` now contains a `status` which contains the status of creating the kubernetes secret for a OnePasswordItem. {#52}
 
 ## Fixes
- * The operator no longer logs an error about changing the secret type if the secret type is not actally being changed.
+ * The operator no longer logs an error about changing the secret type if the secret type is not actually being changed.
  * Annotations on a deployment are no longer removed when the operator triggers a restart. {#112}
 
 ---
