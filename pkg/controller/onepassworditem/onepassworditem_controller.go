@@ -96,10 +96,11 @@ func (r *ReconcileOnePasswordItem) Reconcile(request reconcile.Request) (reconci
 		}
 
 		// Handles creation or updating secrets for deployment if needed
-		if err := r.HandleOnePasswordItem(onepassworditem, request); err != nil {
-			return reconcile.Result{}, err
+		err := r.HandleOnePasswordItem(onepassworditem, request)
+		if updateStatusErr := r.updateStatus(onepassworditem, err); updateStatusErr != nil {
+			return reconcile.Result{}, fmt.Errorf("cannot update status: %s", updateStatusErr)
 		}
-		return reconcile.Result{}, nil
+		return reconcile.Result{}, err
 	}
 	// If one password finalizer exists then we must cleanup associated secrets
 	if utils.ContainsString(onepassworditem.ObjectMeta.Finalizers, finalizer) {
@@ -168,4 +169,35 @@ func (r *ReconcileOnePasswordItem) HandleOnePasswordItem(resource *onepasswordv1
 	}
 
 	return kubeSecrets.CreateKubernetesSecretFromItem(r.kubeClient, secretName, resource.Namespace, item, autoRestart, labels, secretType, ownerRef)
+}
+
+func (r *ReconcileOnePasswordItem) updateStatus(resource *onepasswordv1.OnePasswordItem, err error) error {
+	existingCondition := findCondition(resource.Status.Conditions, onepasswordv1.OnePasswordItemReady)
+	updatedCondition := existingCondition
+	if err != nil {
+		updatedCondition.Message = err.Error()
+		updatedCondition.Status = metav1.ConditionFalse
+	} else {
+		updatedCondition.Message = ""
+		updatedCondition.Status = metav1.ConditionTrue
+	}
+
+	if existingCondition.Status != updatedCondition.Status {
+		updatedCondition.LastTransitionTime = metav1.Now()
+	}
+
+	resource.Status.Conditions = []onepasswordv1.OnePasswordItemCondition{updatedCondition}
+	return r.kubeClient.Status().Update(context.Background(), resource)
+}
+
+func findCondition(conditions []onepasswordv1.OnePasswordItemCondition, t onepasswordv1.OnePasswordItemConditionType) onepasswordv1.OnePasswordItemCondition {
+	for _, c := range conditions {
+		if c.Type == t {
+			return c
+		}
+	}
+	return onepasswordv1.OnePasswordItemCondition{
+		Type:   t,
+		Status: metav1.ConditionUnknown,
+	}
 }
