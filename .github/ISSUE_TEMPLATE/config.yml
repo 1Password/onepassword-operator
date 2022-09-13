@@ -1,9 +1,0 @@
-# docs: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
-blank_issues_enabled: true
-contact_links:
-  - name: 1Password Community
-    url: https://1password.community/categories/secrets-automation
-    about: Please ask general Secrets Automation questions here.
-  - name: 1Password Security Bug Bounty
-    url: https://bugcrowd.com/agilebits
-    about: Please report security vulnerabilities here.
