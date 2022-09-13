@@ -13,9 +13,17 @@ RUN go mod download
 COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
+COPY pkg/ pkg/
+COPY version/ version/
+COPY vendor/ vendor/
 
 # Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o manager main.go
+RUN CGO_ENABLED=0 \
+    GOOS=linux GOARCH=amd64 \
+    go build \
+    -ldflags "-X \"github.com/1Password/onepassword-operator/version.Version=$operator_version\"" \
+    -mod vendor \
+    -a -o manager main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
@@ -23,5 +31,6 @@ FROM gcr.io/distroless/static:nonroot
 WORKDIR /
 COPY --from=builder /workspace/manager .
 USER 65532:65532
+COPY config/connect/ config/connect/
 
 ENTRYPOINT ["/manager"]
