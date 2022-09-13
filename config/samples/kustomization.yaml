@@ -1,4 +1,4 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
-- _v1_onepassworditem.yaml
+- onepassword_v1_onepassworditem.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
