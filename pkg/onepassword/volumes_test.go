@@ -8,8 +8,8 @@ import (
 
 func TestAreVolmesUsingSecrets(t *testing.T) {
 	secretNamesToSearch := map[string]*corev1.Secret{
-		"onepassword-database-secret": &corev1.Secret{},
-		"onepassword-api-key":         &corev1.Secret{},
+		"onepassword-database-secret": {},
+		"onepassword-api-key":         {},
 	}
 
 	volumeSecretNames := []string{
@@ -27,8 +27,8 @@ func TestAreVolmesUsingSecrets(t *testing.T) {
 
 func TestAreVolumesNotUsingSecrets(t *testing.T) {
 	secretNamesToSearch := map[string]*corev1.Secret{
-		"onepassword-database-secret": &corev1.Secret{},
-		"onepassword-api-key":         &corev1.Secret{},
+		"onepassword-database-secret": {},
+		"onepassword-api-key":         {},
 	}
 
 	volumeSecretNames := []string{
