@@ -36,14 +36,35 @@ type OnePasswordItemSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of OnePasswordItem. Edit onepassworditem_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	ItemPath string `json:"itemPath,omitempty"`
+}
+
+type OnePasswordItemConditionType string
+
+const (
+	// OnePasswordItemReady means the Kubernetes secret is ready for use.
+	OnePasswordItemReady OnePasswordItemConditionType = "Ready"
+)
+
+type OnePasswordItemCondition struct {
+	// Type of job condition, Completed.
+	Type OnePasswordItemConditionType `json:"type"`
+	// Status of the condition, one of True, False, Unknown.
+	Status metav1.ConditionStatus `json:"status"`
+	// Last time the condition transit from one status to another.
+	// +optional
+	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`
+	// Human-readable message indicating details about last transition.
+	// +optional
+	Message string `json:"message,omitempty"`
 }
 
 // OnePasswordItemStatus defines the observed state of OnePasswordItem
 type OnePasswordItemStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+
+	Conditions []OnePasswordItemCondition `json:"conditions"`
 }
 
 //+kubebuilder:object:root=true
@@ -54,6 +75,8 @@ type OnePasswordItem struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
+	// Kubernetes secret type. More info: https://kubernetes.io/docs/concepts/configuration/secret/#secret-types
+	Type   string                `json:"type,omitempty"`
 	Spec   OnePasswordItemSpec   `json:"spec,omitempty"`
 	Status OnePasswordItemStatus `json:"status,omitempty"`
 }

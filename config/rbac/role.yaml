@@ -1,0 +1,33 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - onepassword.com
+  resources:
+  - onepassworditems
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - onepassword.com
+  resources:
+  - onepassworditems/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - onepassword.com
+  resources:
+  - onepassworditems/status
+  verbs:
+  - get
+  - patch
+  - update
