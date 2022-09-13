@@ -50,9 +50,27 @@ rules:
   - apps
   resources:
   - deployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
   - replicasets
   verbs:
   - get
+- apiGroups:
+  - apps
+  resources:
+  - deployments/finalizers
+  verbs:
+  - update
 - apiGroups:
   - apps
   resourceNames:
@@ -60,6 +78,14 @@ rules:
   resources:
   - deployments/finalizers
   verbs:
+  - update
+- apiGroups:
+  - apps
+  resources:
+  - deployments/status
+  verbs:
+  - get
+  - patch
   - update
 - apiGroups:
   - monitoring.coreos.com

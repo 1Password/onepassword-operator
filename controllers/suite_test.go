@@ -25,14 +25,21 @@ SOFTWARE.
 package controllers
 
 import (
+	"context"
+	"fmt"
 	"path/filepath"
+	"regexp"
 	"testing"
+	"time"
+
+	"github.com/1Password/onepassword-operator/pkg/mocks"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -45,9 +52,49 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var cfg *rest.Config
-var k8sClient client.Client
-var testEnv *envtest.Environment
+var (
+	cfg       *rest.Config
+	k8sClient client.Client
+	testEnv   *envtest.Environment
+	ctx       context.Context
+	cancel    context.CancelFunc
+
+	itemData = map[string]string{
+		"username": username,
+		"password": password,
+	}
+)
+
+const (
+	vaultId  = "hfnjvi6aymbsnfc2xeeoheizda"
+	itemId   = "nwrhuano7bcwddcviubpp4mhfq"
+	username = "test-user"
+	password = "QmHumKc$mUeEem7caHtbaBaJ"
+	version  = 123
+
+	annotationRegExpString = "^operator.1password.io\\/[a-zA-Z\\.]+"
+)
+
+// Define utility constants for object names and testing timeouts/durations and intervals.
+const (
+	namespace = "default"
+	ItemName  = "test-item"
+
+	timeout  = time.Second * 10
+	duration = time.Second * 10
+	interval = time.Millisecond * 250
+)
+
+var (
+	onePasswordItemReconciler *OnePasswordItemReconciler
+	deploymentReconciler      *DeploymentReconciler
+
+	itemPath           = fmt.Sprintf("vaults/%v/items/%v", vaultId, itemId)
+	expectedSecretData = map[string][]byte{
+		"password": []byte(password),
+		"username": []byte(username),
+	}
+)
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -57,6 +104,8 @@ func TestAPIs(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(true)))
+
+	ctx, cancel = context.WithCancel(context.TODO())
 
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
@@ -79,9 +128,41 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
+	k8sManager, err := ctrl.NewManager(cfg, ctrl.Options{
+		Scheme: scheme.Scheme,
+	})
+	Expect(err).ToNot(HaveOccurred())
+
+	opConnectClient := &mocks.TestClient{}
+
+	onePasswordItemReconciler = &OnePasswordItemReconciler{
+		Client:          k8sManager.GetClient(),
+		Scheme:          k8sManager.GetScheme(),
+		OpConnectClient: opConnectClient,
+	}
+	err = (onePasswordItemReconciler).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
+	r, _ := regexp.Compile(annotationRegExpString)
+	deploymentReconciler = &DeploymentReconciler{
+		Client:             k8sManager.GetClient(),
+		Scheme:             k8sManager.GetScheme(),
+		OpConnectClient:    opConnectClient,
+		OpAnnotationRegExp: r,
+	}
+	err = (deploymentReconciler).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
+	go func() {
+		defer GinkgoRecover()
+		err = k8sManager.Start(ctx)
+		Expect(err).ToNot(HaveOccurred(), "failed to run manager")
+	}()
+
 })
 
 var _ = AfterSuite(func() {
+	cancel()
 	By("tearing down the test environment")
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
