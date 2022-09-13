@@ -27,6 +27,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+
 	"github.com/1Password/connect-sdk-go/connect"
 
 	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
