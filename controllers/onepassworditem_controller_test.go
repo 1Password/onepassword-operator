@@ -44,6 +44,13 @@ var _ = Describe("OnePasswordItem controller", func() {
 		}
 	})
 
+	// TODO: Implement the following missing tests:
+	//  - K8s secret is not updated if OnePasswordItem Version or VaultPath has not changed
+	//  - Update type of existing K8s Secret using OnePasswordItem
+	//  - Create a custom K8s Secret type using OnePasswordItem (e.g. .dockerconfigjson)
+	//  - Operator should throw an error if secret type is changed
+	//  - Secret from 1Password item with `-`, `_` and `.`
+
 	Context("Happy path", func() {
 		It("Should handle 1Password Item and secret correctly", func() {
 			ctx := context.Background()

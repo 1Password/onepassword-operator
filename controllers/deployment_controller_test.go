@@ -46,6 +46,12 @@ var _ = Describe("Deployment controller", func() {
 		}
 	})
 
+	// TODO: Implement the following test cases:
+	//  - Updating Existing K8s Secret using Deployment
+	//  - Do not update if Annotations have not changed
+	//  - Delete Deployment where secret is being used in another deployment's container
+	//  - Delete Deployment where secret is being used in another deployment's volumes
+
 	Context("Deployment with secrets from 1Password", func() {
 		It("Should Handle a deployment correctly", func() {
 			ctx := context.Background()
