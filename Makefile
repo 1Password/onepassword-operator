@@ -233,3 +233,31 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+## Release functions =====================
+
+release/prepare: .check_git_clean	## Updates changelog and creates release branch (call with 'release/prepare version=<new_version_number>')
+
+	@test $(version) || (echo "[ERROR] version argument not set."; exit 1)
+	@git fetch --quiet origin $(MAIN_BRANCH)
+
+	@echo $(version) | tr -d '\n' | tee $(versionFile) &>/dev/null
+
+	@NEW_VERSION=$(version) $(SCRIPTS_DIR)/prepare-release.sh
+
+release/tag: .check_git_clean	## Creates git tag
+	@git pull --ff-only
+	@echo "Applying tag 'v$(curVersion)' to HEAD..."
+	@git tag --sign "v$(curVersion)" -m "Release v$(curVersion)"
+	@echo "[OK] Success!"
+	@echo "Remember to call 'git push --tags' to persist the tag."
+
+## Helper functions =====================
+
+.check_git_clean:
+ifneq ($(GIT_BRANCH), $(MAIN_BRANCH))
+	@echo "[ERROR] Please checkout default branch '$(MAIN_BRANCH)' and re-run this command."; exit 1;
+endif
+ifneq ($(WORKTREE_CLEAN), 0)
+	@echo "[ERROR] Uncommitted changes found in worktree. Address them and try again."; exit 1;
+endif
