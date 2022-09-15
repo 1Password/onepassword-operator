@@ -240,5 +240,58 @@ var _ = Describe("OnePasswordItem controller", func() {
 				return k8sClient.Get(ctx, key, f)
 			}, timeout, interval).ShouldNot(Succeed())
 		})
+
+		It("Should not update K8s secret if OnePasswordItem Version or VaultPath has not changed", func() {
+			ctx := context.Background()
+			spec := onepasswordv1.OnePasswordItemSpec{
+				ItemPath: itemPath,
+			}
+
+			key := types.NamespacedName{
+				Name:      "item321",
+				Namespace: namespace,
+			}
+
+			toCreate := &onepasswordv1.OnePasswordItem{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      key.Name,
+					Namespace: key.Namespace,
+				},
+				Spec: spec,
+			}
+
+			By("Creating a new OnePasswordItem successfully")
+			Expect(k8sClient.Create(ctx, toCreate)).Should(Succeed())
+
+			item := &onepasswordv1.OnePasswordItem{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, item)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			By("Creating the K8s secret successfully")
+			createdSecret := &v1.Secret{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, createdSecret)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+			Expect(createdSecret.Data).Should(Equal(expectedSecretData))
+
+			By("Updating OnePasswordItem with the same value")
+			Eventually(func() bool {
+				item.Type = "Opaque"
+				// TODO: test fails cause of this
+				err := k8sClient.Update(ctx, item)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			By("Reading the K8s secret secret once again")
+			createdSecret2 := &v1.Secret{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, createdSecret2)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+			Expect(createdSecret2.Data).Should(Equal(expectedSecretData))
+		})
 	})
 })
