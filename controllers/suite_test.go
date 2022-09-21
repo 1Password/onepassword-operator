@@ -26,7 +26,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -52,35 +51,12 @@ import (
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
-var (
-	cfg       *rest.Config
-	k8sClient client.Client
-	testEnv   *envtest.Environment
-	ctx       context.Context
-	cancel    context.CancelFunc
-
-	itemData = map[string]string{
-		"username": username,
-		"password": password,
-	}
-	itemData2 = map[string]string{
-		"username": username2,
-		"password": password2,
-	}
-)
-
 const (
-	vaultId  = "hfnjvi6aymbsnfc2xeeoheizda"
-	itemId   = "nwrhuano7bcwddcviubpp4mhfq"
 	username = "test-user"
 	password = "QmHumKc$mUeEem7caHtbaBaJ"
-	version  = 123
 
-	vaultId2  = "hfnjvi6aymbsnfc2xeeoheizd2"
-	itemId2   = "nwrhuano7bcwddcviubpp4mhf2"
 	username2 = "test-user2"
 	password2 = "4zotzqDqXKasLFT2jzTs"
-	version2  = 456
 
 	annotationRegExpString = "^operator.1password.io\\/[a-zA-Z\\.]+"
 )
@@ -88,8 +64,6 @@ const (
 // Define utility constants for object names and testing timeouts/durations and intervals.
 const (
 	namespace = "default"
-	ItemName  = "test-item"
-	ItemName2 = "test-item2"
 
 	timeout  = time.Second * 10
 	duration = time.Second * 10
@@ -97,21 +71,50 @@ const (
 )
 
 var (
+	cfg                       *rest.Config
+	k8sClient                 client.Client
+	testEnv                   *envtest.Environment
+	ctx                       context.Context
+	cancel                    context.CancelFunc
 	onePasswordItemReconciler *OnePasswordItemReconciler
 	deploymentReconciler      *DeploymentReconciler
 
-	itemPath           = fmt.Sprintf("vaults/%v/items/%v", vaultId, itemId)
-	expectedSecretData = map[string][]byte{
-		"password": []byte(password),
-		"username": []byte(username),
+	item1 = &TestItem{
+		Name:    "test-item",
+		Version: 123,
+		Path:    "vaults/hfnjvi6aymbsnfc2xeeoheizda/items/nwrhuano7bcwddcviubpp4mhfq",
+		Data: map[string]string{
+			"username": username,
+			"password": password,
+		},
+		SecretData: map[string][]byte{
+			"password": []byte(password),
+			"username": []byte(username),
+		},
 	}
 
-	itemPath2           = fmt.Sprintf("vaults/%v/items/%v", vaultId2, itemId2)
-	expectedSecretData2 = map[string][]byte{
-		"password": []byte(password2),
-		"username": []byte(username2),
+	item2 = &TestItem{
+		Name:    "test-item2",
+		Path:    "vaults/hfnjvi6aymbsnfc2xeeoheizd2/items/nwrhuano7bcwddcviubpp4mhf2",
+		Version: 456,
+		Data: map[string]string{
+			"username": username2,
+			"password": password2,
+		},
+		SecretData: map[string][]byte{
+			"password": []byte(password2),
+			"username": []byte(username2),
+		},
 	}
 )
+
+type TestItem struct {
+	Name       string
+	Version    int
+	Path       string
+	Data       map[string]string
+	SecretData map[string][]byte
+}
 
 func TestAPIs(t *testing.T) {
 	RegisterFailHandler(Fail)

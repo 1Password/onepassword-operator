@@ -32,7 +32,7 @@ var _ = Describe("Deployment controller", func() {
 	var deploymentResource *appsv1.Deployment
 	createdSecret := &v1.Secret{}
 
-	MakeDeployment := func() {
+	makeDeployment := func() {
 		ctx = context.Background()
 
 		deploymentKey = types.NamespacedName{
@@ -41,7 +41,7 @@ var _ = Describe("Deployment controller", func() {
 		}
 
 		secretKey = types.NamespacedName{
-			Name:      ItemName,
+			Name:      item1.Name,
 			Namespace: namespace,
 		}
 
@@ -55,8 +55,8 @@ var _ = Describe("Deployment controller", func() {
 				Name:      deploymentKey.Name,
 				Namespace: deploymentKey.Namespace,
 				Annotations: map[string]string{
-					op.ItemPathAnnotation: itemPath,
-					op.NameAnnotation:     ItemName,
+					op.ItemPathAnnotation: item1.Path,
+					op.NameAnnotation:     item1.Name,
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -90,10 +90,10 @@ var _ = Describe("Deployment controller", func() {
 			}
 			return true
 		}, timeout, interval).Should(BeTrue())
-		Expect(createdSecret.Data).Should(Equal(expectedSecretData))
+		Expect(createdSecret.Data).Should(Equal(item1.SecretData))
 	}
 
-	var CleanK8sResources = func() {
+	cleanK8sResources := func() {
 		// failed test runs that don't clean up leave resources behind.
 		err := k8sClient.DeleteAllOf(context.Background(), &onepasswordv1.OnePasswordItem{}, client.InNamespace(namespace))
 		Expect(err).ToNot(HaveOccurred())
@@ -105,14 +105,14 @@ var _ = Describe("Deployment controller", func() {
 		Expect(err3).ToNot(HaveOccurred())
 	}
 
-	var MockGetItemFunc = func() {
+	mockGetItemFunc := func() {
 		mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
 			item := onepassword.Item{}
 			item.Fields = []*onepassword.ItemField{}
-			for k, v := range itemData {
+			for k, v := range item1.Data {
 				item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
 			}
-			item.Version = version
+			item.Version = item1.Version
 			item.Vault.ID = vaultUUID
 			item.ID = uuid
 			return &item, nil
@@ -120,14 +120,14 @@ var _ = Describe("Deployment controller", func() {
 	}
 
 	BeforeEach(func() {
-		CleanK8sResources()
-		MockGetItemFunc()
+		cleanK8sResources()
+		mockGetItemFunc()
 		time.Sleep(time.Second) // TODO: can we achieve that with ginkgo?
-		MakeDeployment()
+		makeDeployment()
 	})
 
 	Context("Deployment with secrets from 1Password", func() {
-		It("Should Handle a deployment correctly", func() {
+		It("Should delete secret if deployment is deleted", func() {
 			By("Deleting the pod")
 			Eventually(func() error {
 				f := &appsv1.Deployment{}
@@ -154,10 +154,10 @@ var _ = Describe("Deployment controller", func() {
 			mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
 				item := onepassword.Item{}
 				item.Fields = []*onepassword.ItemField{}
-				for k, v := range itemData2 {
+				for k, v := range item2.Data {
 					item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
 				}
-				item.Version = version2
+				item.Version = item2.Version
 				item.Vault.ID = vaultUUID
 				item.ID = uuid
 				return &item, nil
@@ -172,8 +172,8 @@ var _ = Describe("Deployment controller", func() {
 						Name:      deploymentKey.Name,
 						Namespace: deploymentKey.Namespace,
 						Annotations: map[string]string{
-							op.ItemPathAnnotation: itemPath2,
-							op.NameAnnotation:     ItemName,
+							op.ItemPathAnnotation: item2.Path,
+							op.NameAnnotation:     item1.Name,
 						},
 					},
 					Spec: appsv1.DeploymentSpec{
@@ -214,13 +214,10 @@ var _ = Describe("Deployment controller", func() {
 				}
 				return true
 			}, timeout, interval).Should(BeTrue())
-			Expect(updatedSecret.Data).Should(Equal(expectedSecretData2))
+			Expect(updatedSecret.Data).Should(Equal(item2.SecretData))
 		})
 
-		It("Should not update if Annotations have not changed", func() {
-			deployment1 := &appsv1.Deployment{}
-			k8sClient.Get(ctx, deploymentKey, deployment1)
-
+		It("Should not update secret if Annotations have not changed", func() {
 			By("Updating secret without changing annotations")
 			Eventually(func() error {
 				updatedDeployment := &appsv1.Deployment{
@@ -232,8 +229,8 @@ var _ = Describe("Deployment controller", func() {
 						Name:      deploymentKey.Name,
 						Namespace: deploymentKey.Namespace,
 						Annotations: map[string]string{
-							op.ItemPathAnnotation: itemPath,
-							op.NameAnnotation:     ItemName,
+							op.ItemPathAnnotation: item1.Path,
+							op.NameAnnotation:     item1.Name,
 						},
 					},
 					Spec: appsv1.DeploymentSpec{
@@ -263,9 +260,6 @@ var _ = Describe("Deployment controller", func() {
 				return nil
 			}, timeout, interval).Should(Succeed())
 
-			deployment2 := &appsv1.Deployment{}
-			k8sClient.Get(ctx, deploymentKey, deployment2)
-
 			// TODO: can we achieve the same without sleep?
 			time.Sleep(time.Millisecond * 10)
 			By("Reading updated K8s secret")
@@ -277,7 +271,7 @@ var _ = Describe("Deployment controller", func() {
 				}
 				return true
 			}, timeout, interval).Should(BeTrue())
-			Expect(updatedSecret.Data).Should(Equal(expectedSecretData))
+			Expect(updatedSecret.Data).Should(Equal(item1.SecretData))
 		})
 
 		It("Should not delete secret created via deployment if it's used in another container", func() {
