@@ -63,6 +63,10 @@ var (
 		"username": username,
 		"password": password,
 	}
+	itemData2 = map[string]string{
+		"username": username2,
+		"password": password2,
+	}
 )
 
 const (
@@ -72,6 +76,12 @@ const (
 	password = "QmHumKc$mUeEem7caHtbaBaJ"
 	version  = 123
 
+	vaultId2  = "hfnjvi6aymbsnfc2xeeoheizd2"
+	itemId2   = "nwrhuano7bcwddcviubpp4mhf2"
+	username2 = "test-user2"
+	password2 = "4zotzqDqXKasLFT2jzTs"
+	version2  = 456
+
 	annotationRegExpString = "^operator.1password.io\\/[a-zA-Z\\.]+"
 )
 
@@ -79,6 +89,7 @@ const (
 const (
 	namespace = "default"
 	ItemName  = "test-item"
+	ItemName2 = "test-item2"
 
 	timeout  = time.Second * 10
 	duration = time.Second * 10
@@ -93,6 +104,12 @@ var (
 	expectedSecretData = map[string][]byte{
 		"password": []byte(password),
 		"username": []byte(username),
+	}
+
+	itemPath2           = fmt.Sprintf("vaults/%v/items/%v", vaultId2, itemId2)
+	expectedSecretData2 = map[string][]byte{
+		"password": []byte(password2),
+		"username": []byte(username2),
 	}
 )
 
