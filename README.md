@@ -25,9 +25,12 @@ Prerequisites:
 - [1Password Connect deployed to Kubernetes](#quickstart-for-deploying-1password-connect-to-kubernetes). **NOTE**: If customization of the 1Password Connect deployment is not required you can skip this prerequisite.
 
 ## Quickstart for Deploying 1Password Connect to Kubernetes
+
+If 1Password Connect is already running, you can skip this step.
+
 There are options to deploy 1Password Connect:
 - [Deploy with Helm](#deploy-with-helm)
-- [Deploy along with Operator](#deploy-along-with-operator)
+- [Deploy using the Connect Operator](#deploy-using-the-connect-operator)
 
 #### Deploy with Helm
 The 1Password Connect Helm Chart helps to simplify the deployment of 1Password Connect and the 1Password Connect Kubernetes Operator to Kubernetes.
@@ -35,7 +38,7 @@ The 1Password Connect Helm Chart helps to simplify the deployment of 1Password C
 [The 1Password Connect Helm Chart can be found here.](https://github.com/1Password/connect-helm-charts)
 
 #### Deploy using the Connect Operator
-If 1Password Connect is already running, you can skip this step. This guide will provide a quickstart option for deploying a default configuration of 1Password Connect via starting the deploying the 1Password Connect Operator, however it is recommended that you instead deploy your own manifest file if customization of the 1Password Connect deployment is desired.
+This guide will provide a quickstart option for deploying a default configuration of 1Password Connect via starting the deploying the 1Password Connect Operator, however it is recommended that you instead deploy your own manifest file if customization of the 1Password Connect deployment is desired.
 
 Encode the 1password-credentials.json file you generated in the prerequisite steps and save it to a file named op-session:
 
