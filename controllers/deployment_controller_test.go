@@ -98,11 +98,11 @@ var _ = Describe("Deployment controller", func() {
 		err := k8sClient.DeleteAllOf(context.Background(), &onepasswordv1.OnePasswordItem{}, client.InNamespace(namespace))
 		Expect(err).ToNot(HaveOccurred())
 
-		err2 := k8sClient.DeleteAllOf(context.Background(), &v1.Secret{}, client.InNamespace(namespace))
-		Expect(err2).ToNot(HaveOccurred())
+		err = k8sClient.DeleteAllOf(context.Background(), &v1.Secret{}, client.InNamespace(namespace))
+		Expect(err).ToNot(HaveOccurred())
 
-		err3 := k8sClient.DeleteAllOf(context.Background(), &appsv1.Deployment{}, client.InNamespace(namespace))
-		Expect(err3).ToNot(HaveOccurred())
+		err = k8sClient.DeleteAllOf(context.Background(), &appsv1.Deployment{}, client.InNamespace(namespace))
+		Expect(err).ToNot(HaveOccurred())
 	}
 
 	mockGetItemFunc := func() {
@@ -275,7 +275,7 @@ var _ = Describe("Deployment controller", func() {
 		})
 
 		It("Should not delete secret created via deployment if it's used in another container", func() {
-			By("Create another POD with created secret")
+			By("Creating another POD with created secret")
 			anotherDeploymentKey := types.NamespacedName{
 				Name:      "other-deployment",
 				Namespace: namespace,
@@ -347,7 +347,7 @@ var _ = Describe("Deployment controller", func() {
 		})
 
 		It("Should not delete secret created via deployment if it's used in another volume", func() {
-			By("Create another POD with created secret")
+			By("Creating another POD with created secret")
 			anotherDeploymentKey := types.NamespacedName{
 				Name:      "other-deployment",
 				Namespace: namespace,
