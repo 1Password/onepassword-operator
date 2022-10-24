@@ -157,7 +157,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 
 			toCreate := &onepasswordv1.OnePasswordItem{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "my-secret-it3m",
+					Name:      key.Name,
 					Namespace: key.Namespace,
 				},
 				Spec: spec,
@@ -372,7 +372,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			}, timeout, interval).Should(BeFalse())
 		})
 
-		When("OnePasswordItem name contains `_`", func() {
+		When("OnePasswordItem resource name contains `_`", func() {
 			It("Should fail creating a OnePasswordItem resource", func() {
 				ctx := context.Background()
 				spec := onepasswordv1.OnePasswordItemSpec{
@@ -398,7 +398,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			})
 		})
 
-		When("OnePasswordItem name contains capital letters", func() {
+		When("OnePasswordItem resource name contains capital letters", func() {
 			It("Should fail creating a OnePasswordItem resource", func() {
 				ctx := context.Background()
 				spec := onepasswordv1.OnePasswordItemSpec{
