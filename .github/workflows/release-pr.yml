@@ -14,9 +14,10 @@ jobs:
     outputs:
       result: ${{ steps.is_release_branch_without_pr.outputs.result }}
     steps:
-      - id: is_release_branch_without_pr
+      -
+        id: is_release_branch_without_pr
         name: Find matching PR
-        uses: actions/github-script@v3
+        uses: actions/github-script@v6
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -42,7 +43,7 @@ jobs:
     name: Create Release Pull Request
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Parse release version
         id: get_version
