@@ -27,39 +27,33 @@ const (
 var _ = Describe("OnePasswordItem controller", func() {
 	BeforeEach(func() {
 		// failed test runs that don't clean up leave resources behind.
-		k8sClient.DeleteAllOf(context.Background(), &onepasswordv1.OnePasswordItem{}, client.InNamespace(namespace))
-		k8sClient.DeleteAllOf(context.Background(), &v1.Secret{}, client.InNamespace(namespace))
+		err := k8sClient.DeleteAllOf(context.Background(), &onepasswordv1.OnePasswordItem{}, client.InNamespace(namespace))
+		Expect(err).ToNot(HaveOccurred())
+		err = k8sClient.DeleteAllOf(context.Background(), &v1.Secret{}, client.InNamespace(namespace))
+		Expect(err).ToNot(HaveOccurred())
 
 		mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-
 			item := onepassword.Item{}
 			item.Fields = []*onepassword.ItemField{}
-			for k, v := range itemData {
+			for k, v := range item1.Data {
 				item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
 			}
-			item.Version = version
+			item.Version = item1.Version
 			item.Vault.ID = vaultUUID
 			item.ID = uuid
 			return &item, nil
 		}
 	})
 
-	// TODO: Implement the following missing tests:
-	//  - K8s secret is not updated if OnePasswordItem Version or VaultPath has not changed
-	//  - Update type of existing K8s Secret using OnePasswordItem
-	//  - Create a custom K8s Secret type using OnePasswordItem (e.g. .dockerconfigjson)
-	//  - Operator should throw an error if secret type is changed
-	//  - Secret from 1Password item with `-`, `_` and `.`
-
 	Context("Happy path", func() {
 		It("Should handle 1Password Item and secret correctly", func() {
 			ctx := context.Background()
 			spec := onepasswordv1.OnePasswordItemSpec{
-				ItemPath: itemPath,
+				ItemPath: item1.Path,
 			}
 
 			key := types.NamespacedName{
-				Name:      ItemName,
+				Name:      item1.Name,
 				Namespace: namespace,
 			}
 
@@ -92,7 +86,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 				}
 				return true
 			}, timeout, interval).Should(BeTrue())
-			Expect(createdSecret.Data).Should(Equal(expectedSecretData))
+			Expect(createdSecret.Data).Should(Equal(item1.SecretData))
 
 			By("Updating existing secret successfully")
 			newData := map[string]string{
@@ -111,7 +105,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 				for k, v := range newData {
 					item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
 				}
-				item.Version = version + 1
+				item.Version = item1.Version + 1
 				item.Vault.ID = vaultUUID
 				item.ID = uuid
 				return &item, nil
@@ -153,7 +147,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 		It("Should handle 1Password Item with fields and sections that have invalid K8s labels correctly", func() {
 			ctx := context.Background()
 			spec := onepasswordv1.OnePasswordItemSpec{
-				ItemPath: itemPath,
+				ItemPath: item1.Path,
 			}
 
 			key := types.NamespacedName{
@@ -163,7 +157,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 
 			toCreate := &onepasswordv1.OnePasswordItem{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "my-secret-it3m",
+					Name:      key.Name,
 					Namespace: key.Namespace,
 				},
 				Spec: spec,
@@ -191,7 +185,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 				for k, v := range testData {
 					item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
 				}
-				item.Version = version + 1
+				item.Version = item1.Version + 1
 				item.Vault.ID = vaultUUID
 				item.ID = uuid
 				return &item, nil
@@ -239,6 +233,194 @@ var _ = Describe("OnePasswordItem controller", func() {
 				f := &v1.Secret{}
 				return k8sClient.Get(ctx, key, f)
 			}, timeout, interval).ShouldNot(Succeed())
+		})
+
+		It("Should not update K8s secret if OnePasswordItem Version or VaultPath has not changed", func() {
+			ctx := context.Background()
+			spec := onepasswordv1.OnePasswordItemSpec{
+				ItemPath: item1.Path,
+			}
+
+			key := types.NamespacedName{
+				Name:      item1.Name,
+				Namespace: namespace,
+			}
+
+			toCreate := &onepasswordv1.OnePasswordItem{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      key.Name,
+					Namespace: key.Namespace,
+				},
+				Spec: spec,
+			}
+
+			By("Creating a new OnePasswordItem successfully")
+			Expect(k8sClient.Create(ctx, toCreate)).Should(Succeed())
+
+			item := &onepasswordv1.OnePasswordItem{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, item)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			By("Creating the K8s secret successfully")
+			createdSecret := &v1.Secret{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, createdSecret)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+			Expect(createdSecret.Data).Should(Equal(item1.SecretData))
+
+			By("Updating OnePasswordItem type")
+			Eventually(func() bool {
+				err1 := k8sClient.Get(ctx, key, item)
+				if err1 != nil {
+					return false
+				}
+				item.Type = string(v1.SecretTypeOpaque)
+				err := k8sClient.Update(ctx, item)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			By("Reading K8s secret")
+			secret := &v1.Secret{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, secret)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+			Expect(secret.Data).Should(Equal(item1.SecretData))
+		})
+
+		It("Should create custom K8s Secret type using OnePasswordItem", func() {
+			const customType = "CustomType"
+			ctx := context.Background()
+			spec := onepasswordv1.OnePasswordItemSpec{
+				ItemPath: item1.Path,
+			}
+
+			key := types.NamespacedName{
+				Name:      "test6",
+				Namespace: namespace,
+			}
+
+			toCreate := &onepasswordv1.OnePasswordItem{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      key.Name,
+					Namespace: key.Namespace,
+				},
+				Spec: spec,
+				Type: customType,
+			}
+
+			By("Creating a new OnePasswordItem successfully")
+			Expect(k8sClient.Create(ctx, toCreate)).Should(Succeed())
+
+			By("Reading K8s secret")
+			secret := &v1.Secret{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, secret)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+			Expect(secret.Type).Should(Equal(v1.SecretType(customType)))
+		})
+	})
+
+	Context("Unhappy path", func() {
+		It("Should throw an error if K8s Secret type is changed", func() {
+			ctx := context.Background()
+			spec := onepasswordv1.OnePasswordItemSpec{
+				ItemPath: item1.Path,
+			}
+
+			key := types.NamespacedName{
+				Name:      "test7",
+				Namespace: namespace,
+			}
+
+			toCreate := &onepasswordv1.OnePasswordItem{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      key.Name,
+					Namespace: key.Namespace,
+				},
+				Spec: spec,
+			}
+
+			By("Creating a new OnePasswordItem successfully")
+			Expect(k8sClient.Create(ctx, toCreate)).Should(Succeed())
+
+			By("Reading K8s secret")
+			secret := &v1.Secret{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, secret)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeTrue())
+
+			By("Failing to update K8s secret")
+			Eventually(func() bool {
+				secret.Type = v1.SecretTypeBasicAuth
+				err := k8sClient.Update(ctx, secret)
+				if err != nil {
+					return false
+				}
+				return true
+			}, timeout, interval).Should(BeFalse())
+		})
+
+		When("OnePasswordItem resource name contains `_`", func() {
+			It("Should fail creating a OnePasswordItem resource", func() {
+				ctx := context.Background()
+				spec := onepasswordv1.OnePasswordItemSpec{
+					ItemPath: item1.Path,
+				}
+
+				key := types.NamespacedName{
+					Name:      "invalid_name",
+					Namespace: namespace,
+				}
+
+				toCreate := &onepasswordv1.OnePasswordItem{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      key.Name,
+						Namespace: key.Namespace,
+					},
+					Spec: spec,
+				}
+
+				By("Creating a new OnePasswordItem")
+				Expect(k8sClient.Create(ctx, toCreate)).To(HaveOccurred())
+
+			})
+		})
+
+		When("OnePasswordItem resource name contains capital letters", func() {
+			It("Should fail creating a OnePasswordItem resource", func() {
+				ctx := context.Background()
+				spec := onepasswordv1.OnePasswordItemSpec{
+					ItemPath: item1.Path,
+				}
+
+				key := types.NamespacedName{
+					Name:      "invalidName",
+					Namespace: namespace,
+				}
+
+				toCreate := &onepasswordv1.OnePasswordItem{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      key.Name,
+						Namespace: key.Namespace,
+					},
+					Spec: spec,
+				}
+
+				By("Creating a new OnePasswordItem")
+				Expect(k8sClient.Create(ctx, toCreate)).To(HaveOccurred())
+			})
 		})
 	})
 })
