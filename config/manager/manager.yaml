@@ -38,7 +38,7 @@ spec:
         - /manager
         args:
         - --leader-elect
-        image: controller:latest
+        image: 1password/onepassword-operator:latest
         name: manager
         env:
           - name: WATCH_NAMESPACE

@@ -29,15 +29,18 @@ Prerequisites:
 If 1Password Connect is already running, you can skip this step.
 
 There are options to deploy 1Password Connect:
+
 - [Deploy with Helm](#deploy-with-helm)
 - [Deploy using the Connect Operator](#deploy-using-the-connect-operator)
 
 #### Deploy with Helm
+
 The 1Password Connect Helm Chart helps to simplify the deployment of 1Password Connect and the 1Password Connect Kubernetes Operator to Kubernetes.
 
 [The 1Password Connect Helm Chart can be found here.](https://github.com/1Password/connect-helm-charts)
 
 #### Deploy using the Connect Operator
+
 This guide will provide a quickstart option for deploying a default configuration of 1Password Connect via starting the deploying the 1Password Connect Operator, however it is recommended that you instead deploy your own manifest file if customization of the 1Password Connect deployment is desired.
 
 Encode the 1password-credentials.json file you generated in the prerequisite steps and save it to a file named op-session:
@@ -48,15 +51,18 @@ cat 1password-credentials.json | base64 | \
 ```
 
 Create a Kubernetes secret from the op-session file:
+
 ```bash
 kubectl create secret generic op-credentials --from-file=op-session
 ```
 
 Add the following environment variable to the onepassword-connect-operator container in `/config/manager/manager.yaml`:
+
 ```yaml
 - name: MANAGE_CONNECT
   value: "true"
 ```
+
 Adding this environment variable will have the operator automatically deploy a default configuration of 1Password Connect to the current namespace.
 
 ### Kubernetes Operator Deployment
@@ -70,13 +76,9 @@ kubectl create secret generic onepassword-token --from-literal=token=<OP_CONNECT
 ```
 
 If you do not have a token for the operator, you can generate a token and save it to kubernetes with the following command:
+
 ```bash
 kubectl create secret generic onepassword-token --from-literal=token=$(op create connect token <server> op-k8s-operator --vault <vault>)
-```
-
-**Build Operator docker image**
-```
-make docker-build
 ```
 
 **Deploying the Operator**
@@ -98,6 +100,7 @@ make deploy
 ```
 
 **Undeploy Operator**
+
 ```
 make undeploy
 ```
@@ -230,13 +233,7 @@ You’ll need a Kubernetes cluster to run against. You can use [KIND](https://si
 kubectl apply -f config/samples/
 ```
 
-2. Build and push your image to the location specified by `IMG`:
-
-```sh
-make docker-build docker-push IMG=<some-registry>/onepassword-operator:tag
-```
-
-3. Deploy the controller to the cluster with the image specified by `IMG`:
+2. Deploy the controller to the cluster with the image specified by `IMG`:
 
 ```sh
 make deploy IMG=<some-registry>/onepassword-operator:tag
