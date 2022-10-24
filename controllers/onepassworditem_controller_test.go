@@ -328,7 +328,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 		})
 	})
 
-	Context("Unhappy part", func() {
+	Context("Unhappy path", func() {
 		It("Should throw an error if K8s Secret type is changed", func() {
 			ctx := context.Background()
 			spec := onepasswordv1.OnePasswordItemSpec{
