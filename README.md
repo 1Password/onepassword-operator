@@ -6,7 +6,7 @@ The 1Password Connect Kubernetes Operator also allows for Kubernetes Secrets to 
 
 The 1Password Connect Kubernetes Operator will continually check for updates from 1Password for any Kubernetes Secret that it has generated. If a Kubernetes Secret is updated, any Deployment using that secret can be automatically restarted.
 
-- [Setup](#setup)
+- [Prerequisites](#prerequisites)
 - [Quickstart for Deploying 1Password Connect to Kubernetes](#quickstart-for-deploying-1password-connect-to-kubernetes)
 - [Kubernetes Operator Deployment](#kubernetes-operator-deployment)
 - [Usage](#usage)
@@ -14,16 +14,13 @@ The 1Password Connect Kubernetes Operator will continually check for updates fro
 - [Development](#development)
 - [Security](#security)
 
-## Setup
-
-Prerequisites:
+## Prerequisites
 
 - [1Password Command Line Tool Installed](https://1password.com/downloads/command-line/)
-- [kubectl installed](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-- [docker installed](https://docs.docker.com/get-docker/)
+- [`kubectl` installed](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
+- [`docker` installed](https://docs.docker.com/get-docker/)
 - [Generated a 1password-credentials.json file and issued a 1Password Connect API Token for the K8s Operator integration](https://developer.1password.com/docs/connect/get-started/#step-1-set-up-a-secrets-automation-workflow)
-- [1Password Connect deployed to Kubernetes](#quickstart-for-deploying-1password-connect-to-kubernetes). **NOTE**: If customization of the 1Password Connect deployment is not required you can skip this prerequisite.
-
+- [A `1password-credentials.json` file generated and a 1Password Connect API Token issues for the K8s Operator integration](https://developer.1password.com/docs/connect/get-started/#step-1-set-up-a-secrets-automation-workflow)
 ## Quickstart for Deploying 1Password Connect to Kubernetes
 
 If 1Password Connect is already running, you can skip this step.
