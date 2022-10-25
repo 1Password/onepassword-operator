@@ -28,7 +28,7 @@ jobs:
 
             if(!releaseBranchName) { return false }
 
-            const {data: prs} = await github.pulls.list({
+            const {data: prs} = await github.rest.pulls.list({
                 ...context.repo,
                 state: 'open',
                 head: `1Password:${releaseBranchName}`,
