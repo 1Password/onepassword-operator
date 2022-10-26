@@ -2,8 +2,6 @@ package controllers
 
 import (
 	"context"
-	"math/rand"
-	"time"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
 	"github.com/1Password/onepassword-operator/pkg/mocks"
@@ -26,11 +24,6 @@ const (
 	iceCream  = "freezing blue 20%"
 )
 
-func randomInt() int {
-	rand.Seed(time.Now().UnixNano())
-	return rand.Intn(1000)
-}
-
 var _ = Describe("OnePasswordItem controller", func() {
 	BeforeEach(func() {
 		// failed test runs that don't clean up leave resources behind.
@@ -45,7 +38,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			for k, v := range item1.Data {
 				item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
 			}
-			item.Version = randomInt()
+			item.Version = item1.Version
 			item.Vault.ID = vaultUUID
 			item.ID = uuid
 			return &item, nil
@@ -60,7 +53,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			}
 
 			key := types.NamespacedName{
-				Name:      item1.Name,
+				Name:      "item1",
 				Namespace: namespace,
 			}
 
@@ -112,7 +105,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 				for k, v := range newData {
 					item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
 				}
-				item.Version = randomInt()
+				item.Version = item1.Version + 1
 				item.Vault.ID = vaultUUID
 				item.ID = uuid
 				return &item, nil
@@ -192,7 +185,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 				for k, v := range testData {
 					item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
 				}
-				item.Version = randomInt()
+				item.Version = item1.Version + 1
 				item.Vault.ID = vaultUUID
 				item.ID = uuid
 				return &item, nil
@@ -249,7 +242,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			}
 
 			key := types.NamespacedName{
-				Name:      item1.Name,
+				Name:      "item3",
 				Namespace: namespace,
 			}
 
