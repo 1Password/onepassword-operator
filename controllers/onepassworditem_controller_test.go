@@ -53,7 +53,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			}
 
 			key := types.NamespacedName{
-				Name:      item1.Name,
+				Name:      "sample-item",
 				Namespace: namespace,
 			}
 
@@ -242,7 +242,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			}
 
 			key := types.NamespacedName{
-				Name:      item1.Name,
+				Name:      "item-not-updated",
 				Namespace: namespace,
 			}
 
@@ -299,7 +299,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			}
 
 			key := types.NamespacedName{
-				Name:      "test6",
+				Name:      "item-custom-secret-type",
 				Namespace: namespace,
 			}
 
@@ -336,7 +336,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			}
 
 			key := types.NamespacedName{
-				Name:      "test7",
+				Name:      "item-changed-secret-type",
 				Namespace: namespace,
 			}
 
