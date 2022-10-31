@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: controller-manager
+  name: onepassword-connect-operator
   namespace: system
   labels:
-    control-plane: controller-manager
+    control-plane: onepassword-connect-operator
 spec:
   selector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: onepassword-connect-operator
   replicas: 1
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        control-plane: controller-manager
+        control-plane: onepassword-connect-operator
     spec:
       securityContext:
         runAsNonRoot: true
@@ -32,6 +32,7 @@ spec:
         args:
         - --leader-elect
         image: 1password/onepassword-operator:latest
+        imagePullPolicy: Never # TODO: remove
         name: manager
         env:
           - name: WATCH_NAMESPACE
@@ -79,5 +80,5 @@ spec:
           requests:
             cpu: 10m
             memory: 64Mi
-      serviceAccountName: controller-manager
+      serviceAccountName: onepassword-connect-operator
       terminationGracePeriodSeconds: 10

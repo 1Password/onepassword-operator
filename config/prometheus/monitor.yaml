@@ -4,8 +4,8 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   labels:
-    control-plane: controller-manager
-  name: controller-manager-metrics-monitor
+    control-plane: onepassword-connect-operator
+  name: onepassword-connect-operator-metrics-monitor
   namespace: system
 spec:
   endpoints:
@@ -17,4 +17,4 @@ spec:
         insecureSkipVerify: true
   selector:
     matchLabels:
-      control-plane: controller-manager
+      control-plane: onepassword-connect-operator

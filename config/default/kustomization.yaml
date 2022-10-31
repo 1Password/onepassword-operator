@@ -3,7 +3,7 @@
 # "wordpress" becomes "alices-wordpress".
 # Note that it should also match with the prefix (text before '-') of the namespace
 # field above.
-namePrefix: onepassword-operator-
+# namePrefix: onepassword-connect-
 
 # Labels to add to all resources and selectors.
 #labels:
