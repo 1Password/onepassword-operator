@@ -4,18 +4,18 @@ metadata:
   name: onepassword-connect-operator
   namespace: system
   labels:
-    control-plane: onepassword-connect-operator
+    name: onepassword-connect-operator
 spec:
   selector:
     matchLabels:
-      control-plane: onepassword-connect-operator
+      name: onepassword-connect-operator
   replicas: 1
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
       labels:
-        control-plane: onepassword-connect-operator
+        name: onepassword-connect-operator
     spec:
       securityContext:
         runAsNonRoot: true
