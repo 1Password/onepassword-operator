@@ -9,8 +9,8 @@ import (
 
 func TestIsDeploymentUsingSecretsUsingVolumes(t *testing.T) {
 	secretNamesToSearch := map[string]*corev1.Secret{
-		"onepassword-database-secret": &corev1.Secret{},
-		"onepassword-api-key":         &corev1.Secret{},
+		"onepassword-database-secret": {},
+		"onepassword-api-key":         {},
 	}
 
 	volumeSecretNames := []string{
@@ -28,8 +28,8 @@ func TestIsDeploymentUsingSecretsUsingVolumes(t *testing.T) {
 
 func TestIsDeploymentUsingSecretsUsingContainers(t *testing.T) {
 	secretNamesToSearch := map[string]*corev1.Secret{
-		"onepassword-database-secret": &corev1.Secret{},
-		"onepassword-api-key":         &corev1.Secret{},
+		"onepassword-database-secret": {},
+		"onepassword-api-key":         {},
 	}
 
 	containerSecretNames := []string{
@@ -47,8 +47,8 @@ func TestIsDeploymentUsingSecretsUsingContainers(t *testing.T) {
 
 func TestIsDeploymentNotUSingSecrets(t *testing.T) {
 	secretNamesToSearch := map[string]*corev1.Secret{
-		"onepassword-database-secret": &corev1.Secret{},
-		"onepassword-api-key":         &corev1.Secret{},
+		"onepassword-database-secret": {},
+		"onepassword-api-key":         {},
 	}
 
 	deployment := &appsv1.Deployment{}

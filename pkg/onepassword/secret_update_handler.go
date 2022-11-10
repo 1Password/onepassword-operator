@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	v1 "github.com/1Password/onepassword-operator/pkg/apis/onepassword/v1"
-
+	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
@@ -194,7 +193,7 @@ func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap() (map[string
 }
 
 func (h *SecretUpdateHandler) getPathFromOnePasswordItem(secret corev1.Secret) string {
-	onePasswordItem := &v1.OnePasswordItem{}
+	onePasswordItem := &onepasswordv1.OnePasswordItem{}
 
 	// Search for our original OnePasswordItem if it exists
 	err := h.client.Get(context.TODO(), client.ObjectKey{

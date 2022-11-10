@@ -19,6 +19,9 @@ package resourcelock
 import (
 	"context"
 	"fmt"
+	clientset "k8s.io/client-go/kubernetes"
+	restclient "k8s.io/client-go/rest"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -28,11 +31,77 @@ import (
 
 const (
 	LeaderElectionRecordAnnotationKey = "control-plane.alpha.kubernetes.io/leader"
-	EndpointsResourceLock             = "endpoints"
-	ConfigMapsResourceLock            = "configmaps"
+	endpointsResourceLock             = "endpoints"
+	configMapsResourceLock            = "configmaps"
 	LeasesResourceLock                = "leases"
-	EndpointsLeasesResourceLock       = "endpointsleases"
-	ConfigMapsLeasesResourceLock      = "configmapsleases"
+	// When using EndpointsLeasesResourceLock, you need to ensure that
+	// API Priority & Fairness is configured with non-default flow-schema
+	// that will catch the necessary operations on leader-election related
+	// endpoint objects.
+	//
+	// The example of such flow scheme could look like this:
+	//   apiVersion: flowcontrol.apiserver.k8s.io/v1beta2
+	//   kind: FlowSchema
+	//   metadata:
+	//     name: my-leader-election
+	//   spec:
+	//     distinguisherMethod:
+	//       type: ByUser
+	//     matchingPrecedence: 200
+	//     priorityLevelConfiguration:
+	//       name: leader-election   # reference the <leader-election> PL
+	//     rules:
+	//     - resourceRules:
+	//       - apiGroups:
+	//         - ""
+	//         namespaces:
+	//         - '*'
+	//         resources:
+	//         - endpoints
+	//         verbs:
+	//         - get
+	//         - create
+	//         - update
+	//       subjects:
+	//       - kind: ServiceAccount
+	//         serviceAccount:
+	//           name: '*'
+	//           namespace: kube-system
+	EndpointsLeasesResourceLock = "endpointsleases"
+	// When using EndpointsLeasesResourceLock, you need to ensure that
+	// API Priority & Fairness is configured with non-default flow-schema
+	// that will catch the necessary operations on leader-election related
+	// configmap objects.
+	//
+	// The example of such flow scheme could look like this:
+	//   apiVersion: flowcontrol.apiserver.k8s.io/v1beta2
+	//   kind: FlowSchema
+	//   metadata:
+	//     name: my-leader-election
+	//   spec:
+	//     distinguisherMethod:
+	//       type: ByUser
+	//     matchingPrecedence: 200
+	//     priorityLevelConfiguration:
+	//       name: leader-election   # reference the <leader-election> PL
+	//     rules:
+	//     - resourceRules:
+	//       - apiGroups:
+	//         - ""
+	//         namespaces:
+	//         - '*'
+	//         resources:
+	//         - configmaps
+	//         verbs:
+	//         - get
+	//         - create
+	//         - update
+	//       subjects:
+	//       - kind: ServiceAccount
+	//         serviceAccount:
+	//           name: '*'
+	//           namespace: kube-system
+	ConfigMapsLeasesResourceLock = "configmapsleases"
 )
 
 // LeaderElectionRecord is the record that is stored in the leader election annotation.
@@ -95,7 +164,7 @@ type Interface interface {
 
 // Manufacture will create a lock of a given type according to the input parameters
 func New(lockType string, ns string, name string, coreClient corev1.CoreV1Interface, coordinationClient coordinationv1.CoordinationV1Interface, rlc ResourceLockConfig) (Interface, error) {
-	endpointsLock := &EndpointsLock{
+	endpointsLock := &endpointsLock{
 		EndpointsMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      name,
@@ -103,7 +172,7 @@ func New(lockType string, ns string, name string, coreClient corev1.CoreV1Interf
 		Client:     coreClient,
 		LockConfig: rlc,
 	}
-	configmapLock := &ConfigMapLock{
+	configmapLock := &configMapLock{
 		ConfigMapMeta: metav1.ObjectMeta{
 			Namespace: ns,
 			Name:      name,
@@ -120,10 +189,10 @@ func New(lockType string, ns string, name string, coreClient corev1.CoreV1Interf
 		LockConfig: rlc,
 	}
 	switch lockType {
-	case EndpointsResourceLock:
-		return endpointsLock, nil
-	case ConfigMapsResourceLock:
-		return configmapLock, nil
+	case endpointsResourceLock:
+		return nil, fmt.Errorf("endpoints lock is removed, migrate to %s", EndpointsLeasesResourceLock)
+	case configMapsResourceLock:
+		return nil, fmt.Errorf("configmaps lock is removed, migrate to %s", ConfigMapsLeasesResourceLock)
 	case LeasesResourceLock:
 		return leaseLock, nil
 	case EndpointsLeasesResourceLock:
@@ -139,4 +208,20 @@ func New(lockType string, ns string, name string, coreClient corev1.CoreV1Interf
 	default:
 		return nil, fmt.Errorf("Invalid lock-type %s", lockType)
 	}
+}
+
+// NewFromKubeconfig will create a lock of a given type according to the input parameters.
+// Timeout set for a client used to contact to Kubernetes should be lower than
+// RenewDeadline to keep a single hung request from forcing a leader loss.
+// Setting it to max(time.Second, RenewDeadline/2) as a reasonable heuristic.
+func NewFromKubeconfig(lockType string, ns string, name string, rlc ResourceLockConfig, kubeconfig *restclient.Config, renewDeadline time.Duration) (Interface, error) {
+	// shallow copy, do not modify the kubeconfig
+	config := *kubeconfig
+	timeout := renewDeadline / 2
+	if timeout < time.Second {
+		timeout = time.Second
+	}
+	config.Timeout = timeout
+	leaderElectionClient := clientset.NewForConfigOrDie(restclient.AddUserAgent(&config, "leader-election"))
+	return New(lockType, ns, name, leaderElectionClient.CoreV1(), leaderElectionClient.CoordinationV1(), rlc)
 }

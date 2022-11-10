@@ -27,7 +27,7 @@ import (
 	corev1client "k8s.io/client-go/kubernetes/typed/core/v1"
 )
 
-type EndpointsLock struct {
+type endpointsLock struct {
 	// EndpointsMeta should contain a Name and a Namespace of an
 	// Endpoints object that the LeaderElector will attempt to lead.
 	EndpointsMeta metav1.ObjectMeta
@@ -37,7 +37,7 @@ type EndpointsLock struct {
 }
 
 // Get returns the election record from a Endpoints Annotation
-func (el *EndpointsLock) Get(ctx context.Context) (*LeaderElectionRecord, []byte, error) {
+func (el *endpointsLock) Get(ctx context.Context) (*LeaderElectionRecord, []byte, error) {
 	var record LeaderElectionRecord
 	var err error
 	el.e, err = el.Client.Endpoints(el.EndpointsMeta.Namespace).Get(ctx, el.EndpointsMeta.Name, metav1.GetOptions{})
@@ -47,17 +47,18 @@ func (el *EndpointsLock) Get(ctx context.Context) (*LeaderElectionRecord, []byte
 	if el.e.Annotations == nil {
 		el.e.Annotations = make(map[string]string)
 	}
-	recordBytes, found := el.e.Annotations[LeaderElectionRecordAnnotationKey]
+	recordStr, found := el.e.Annotations[LeaderElectionRecordAnnotationKey]
+	recordBytes := []byte(recordStr)
 	if found {
-		if err := json.Unmarshal([]byte(recordBytes), &record); err != nil {
+		if err := json.Unmarshal(recordBytes, &record); err != nil {
 			return nil, nil, err
 		}
 	}
-	return &record, []byte(recordBytes), nil
+	return &record, recordBytes, nil
 }
 
 // Create attempts to create a LeaderElectionRecord annotation
-func (el *EndpointsLock) Create(ctx context.Context, ler LeaderElectionRecord) error {
+func (el *endpointsLock) Create(ctx context.Context, ler LeaderElectionRecord) error {
 	recordBytes, err := json.Marshal(ler)
 	if err != nil {
 		return err
@@ -75,7 +76,7 @@ func (el *EndpointsLock) Create(ctx context.Context, ler LeaderElectionRecord) e
 }
 
 // Update will update and existing annotation on a given resource.
-func (el *EndpointsLock) Update(ctx context.Context, ler LeaderElectionRecord) error {
+func (el *endpointsLock) Update(ctx context.Context, ler LeaderElectionRecord) error {
 	if el.e == nil {
 		return errors.New("endpoint not initialized, call get or create first")
 	}
@@ -87,26 +88,34 @@ func (el *EndpointsLock) Update(ctx context.Context, ler LeaderElectionRecord) e
 		el.e.Annotations = make(map[string]string)
 	}
 	el.e.Annotations[LeaderElectionRecordAnnotationKey] = string(recordBytes)
-	el.e, err = el.Client.Endpoints(el.EndpointsMeta.Namespace).Update(ctx, el.e, metav1.UpdateOptions{})
-	return err
+	e, err := el.Client.Endpoints(el.EndpointsMeta.Namespace).Update(ctx, el.e, metav1.UpdateOptions{})
+	if err != nil {
+		return err
+	}
+	el.e = e
+	return nil
 }
 
 // RecordEvent in leader election while adding meta-data
-func (el *EndpointsLock) RecordEvent(s string) {
+func (el *endpointsLock) RecordEvent(s string) {
 	if el.LockConfig.EventRecorder == nil {
 		return
 	}
 	events := fmt.Sprintf("%v %v", el.LockConfig.Identity, s)
-	el.LockConfig.EventRecorder.Eventf(&v1.Endpoints{ObjectMeta: el.e.ObjectMeta}, v1.EventTypeNormal, "LeaderElection", events)
+	subject := &v1.Endpoints{ObjectMeta: el.e.ObjectMeta}
+	// Populate the type meta, so we don't have to get it from the schema
+	subject.Kind = "Endpoints"
+	subject.APIVersion = v1.SchemeGroupVersion.String()
+	el.LockConfig.EventRecorder.Eventf(subject, v1.EventTypeNormal, "LeaderElection", events)
 }
 
 // Describe is used to convert details on current resource lock
 // into a string
-func (el *EndpointsLock) Describe() string {
+func (el *endpointsLock) Describe() string {
 	return fmt.Sprintf("%v/%v", el.EndpointsMeta.Namespace, el.EndpointsMeta.Name)
 }
 
 // Identity returns the Identity of the lock
-func (el *EndpointsLock) Identity() string {
+func (el *endpointsLock) Identity() string {
 	return el.LockConfig.Identity
 }

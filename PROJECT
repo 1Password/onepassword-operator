@@ -1,0 +1,18 @@
+domain: onepassword.com
+layout:
+- go.kubebuilder.io/v4-alpha
+plugins:
+  manifests.sdk.operatorframework.io/v2: {}
+  scorecard.sdk.operatorframework.io/v2: {}
+projectName: onepassword-operator
+repo: github.com/1Password/onepassword-operator
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: onepassword.com
+  kind: OnePasswordItem
+  path: github.com/1Password/onepassword-operator/api/v1
+  version: v1
+version: "3"

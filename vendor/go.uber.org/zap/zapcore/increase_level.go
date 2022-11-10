@@ -23,10 +23,14 @@ package zapcore
 import "fmt"
 
 type levelFilterCore struct {
-	Core
-
+	core  Core
 	level LevelEnabler
 }
+
+var (
+	_ Core           = (*levelFilterCore)(nil)
+	_ leveledEnabler = (*levelFilterCore)(nil)
+)
 
 // NewIncreaseLevelCore creates a core that can be used to increase the level of
 // an existing Core. It cannot be used to decrease the logging level, as it acts
@@ -46,10 +50,26 @@ func (c *levelFilterCore) Enabled(lvl Level) bool {
 	return c.level.Enabled(lvl)
 }
 
+func (c *levelFilterCore) Level() Level {
+	return LevelOf(c.level)
+}
+
+func (c *levelFilterCore) With(fields []Field) Core {
+	return &levelFilterCore{c.core.With(fields), c.level}
+}
+
 func (c *levelFilterCore) Check(ent Entry, ce *CheckedEntry) *CheckedEntry {
 	if !c.Enabled(ent.Level) {
 		return ce
 	}
 
-	return c.Core.Check(ent, ce)
+	return c.core.Check(ent, ce)
+}
+
+func (c *levelFilterCore) Write(ent Entry, fields []Field) error {
+	return c.core.Write(ent, fields)
+}
+
+func (c *levelFilterCore) Sync() error {
+	return c.core.Sync()
 }

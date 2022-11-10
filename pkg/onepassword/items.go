@@ -6,6 +6,7 @@ import (
 
 	"github.com/1Password/connect-sdk-go/connect"
 	"github.com/1Password/connect-sdk-go/onepassword"
+
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 

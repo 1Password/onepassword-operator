@@ -2,12 +2,12 @@ package onepassword
 
 import (
 	"context"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"os"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
-	errors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -15,8 +15,8 @@ import (
 )
 
 var logConnectSetup = logf.Log.WithName("ConnectSetup")
-var deploymentPath = "deploy/connect/deployment.yaml"
-var servicePath = "deploy/connect/service.yaml"
+var deploymentPath = "config/connect/deployment.yaml"
+var servicePath = "config/connect/service.yaml"
 
 func SetupConnect(kubeClient client.Client, deploymentNamespace string) error {
 	err := setupService(kubeClient, servicePath, deploymentNamespace)

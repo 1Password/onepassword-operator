@@ -1,4 +1,204 @@
 # Changelog
+All notable changes to this project will be documented in this file.
+
+This project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
+
+## 1.23.0 (24 Aug 2022)
+
+Enhancements:
+* [#1147][]: Add a `zapcore.LevelOf` function to determine the level of a
+  `LevelEnabler` or `Core`.
+* [#1155][]: Add `zap.Stringers` field constructor to log arrays of objects
+  that implement `String() string`.
+
+[#1147]: https://github.com/uber-go/zap/pull/1147
+[#1155]: https://github.com/uber-go/zap/pull/1155
+
+
+## 1.22.0 (8 Aug 2022)
+
+Enhancements:
+* [#1071][]: Add `zap.Objects` and `zap.ObjectValues` field constructors to log
+  arrays of objects. With these two constructors, you don't need to implement
+  `zapcore.ArrayMarshaler` for use with `zap.Array` if those objects implement
+  `zapcore.ObjectMarshaler`.
+* [#1079][]: Add `SugaredLogger.WithOptions` to build a copy of an existing
+  `SugaredLogger` with the provided options applied.
+* [#1080][]: Add `*ln` variants to `SugaredLogger` for each log level.
+  These functions provide a string joining behavior similar to `fmt.Println`.
+* [#1088][]: Add `zap.WithFatalHook` option to control the behavior of the
+  logger for `Fatal`-level log entries. This defaults to exiting the program.
+* [#1108][]: Add a `zap.Must` function that you can use with `NewProduction` or
+  `NewDevelopment` to panic if the system was unable to build the logger.
+* [#1118][]: Add a `Logger.Log` method that allows specifying the log level for
+  a statement dynamically.
+
+Thanks to @cardil, @craigpastro, @sashamelentyev, @shota3506, and @zhupeijun
+for their contributions to this release.
+
+[#1071]: https://github.com/uber-go/zap/pull/1071
+[#1079]: https://github.com/uber-go/zap/pull/1079
+[#1080]: https://github.com/uber-go/zap/pull/1080
+[#1088]: https://github.com/uber-go/zap/pull/1088
+[#1108]: https://github.com/uber-go/zap/pull/1108
+[#1118]: https://github.com/uber-go/zap/pull/1118
+
+## 1.21.0 (7 Feb 2022)
+
+Enhancements:
+*  [#1047][]: Add `zapcore.ParseLevel` to parse a `Level` from a string.
+*  [#1048][]: Add `zap.ParseAtomicLevel` to parse an `AtomicLevel` from a
+   string.
+
+Bugfixes:
+* [#1058][]: Fix panic in JSON encoder when `EncodeLevel` is unset.
+
+Other changes:
+* [#1052][]: Improve encoding performance when the `AddCaller` and
+  `AddStacktrace` options are used together.
+
+[#1047]: https://github.com/uber-go/zap/pull/1047
+[#1048]: https://github.com/uber-go/zap/pull/1048
+[#1052]: https://github.com/uber-go/zap/pull/1052
+[#1058]: https://github.com/uber-go/zap/pull/1058
+
+Thanks to @aerosol and @Techassi for their contributions to this release.
+
+## 1.20.0 (4 Jan 2022)
+
+Enhancements:
+* [#989][]: Add `EncoderConfig.SkipLineEnding` flag to disable adding newline
+  characters between log statements.
+* [#1039][]: Add `EncoderConfig.NewReflectedEncoder` field to customize JSON
+  encoding of reflected log fields.
+
+Bugfixes:
+* [#1011][]: Fix inaccurate precision when encoding complex64 as JSON.
+* [#554][], [#1017][]: Close JSON namespaces opened in `MarshalLogObject`
+  methods when the methods return.
+* [#1033][]: Avoid panicking in Sampler core if `thereafter` is zero.
+
+Other changes:
+* [#1028][]: Drop support for Go < 1.15.
+
+[#554]: https://github.com/uber-go/zap/pull/554
+[#989]: https://github.com/uber-go/zap/pull/989
+[#1011]: https://github.com/uber-go/zap/pull/1011
+[#1017]: https://github.com/uber-go/zap/pull/1017
+[#1028]: https://github.com/uber-go/zap/pull/1028
+[#1033]: https://github.com/uber-go/zap/pull/1033
+[#1039]: https://github.com/uber-go/zap/pull/1039
+
+Thanks to @psrajat, @lruggieri, @sammyrnycreal for their contributions to this release.
+
+## 1.19.1 (8 Sep 2021)
+
+Bugfixes:
+* [#1001][]: JSON: Fix complex number encoding with negative imaginary part. Thanks to @hemantjadon.
+* [#1003][]: JSON: Fix inaccurate precision when encoding float32.
+
+[#1001]: https://github.com/uber-go/zap/pull/1001
+[#1003]: https://github.com/uber-go/zap/pull/1003
+
+## 1.19.0 (9 Aug 2021)
+
+Enhancements:
+* [#975][]: Avoid panicking in Sampler core if the level is out of bounds.
+* [#984][]: Reduce the size of BufferedWriteSyncer by aligning the fields
+  better.
+
+[#975]: https://github.com/uber-go/zap/pull/975
+[#984]: https://github.com/uber-go/zap/pull/984
+
+Thanks to @lancoLiu and @thockin for their contributions to this release.
+
+## 1.18.1 (28 Jun 2021)
+
+Bugfixes:
+* [#974][]: Fix nil dereference in logger constructed by `zap.NewNop`.
+
+[#974]: https://github.com/uber-go/zap/pull/974
+
+## 1.18.0 (28 Jun 2021)
+
+Enhancements:
+* [#961][]: Add `zapcore.BufferedWriteSyncer`, a new `WriteSyncer` that buffers
+  messages in-memory and flushes them periodically.
+* [#971][]: Add `zapio.Writer` to use a Zap logger as an `io.Writer`.
+* [#897][]: Add `zap.WithClock` option to control the source of time via the
+  new `zapcore.Clock` interface.
+* [#949][]: Avoid panicking in `zap.SugaredLogger` when arguments of `*w`
+  methods don't match expectations.
+* [#943][]: Add support for filtering by level or arbitrary matcher function to
+  `zaptest/observer`.
+* [#691][]: Comply with `io.StringWriter` and `io.ByteWriter` in Zap's
+  `buffer.Buffer`.
+
+Thanks to @atrn0, @ernado, @heyanfu, @hnlq715, @zchee
+for their contributions to this release.
+
+[#691]: https://github.com/uber-go/zap/pull/691
+[#897]: https://github.com/uber-go/zap/pull/897
+[#943]: https://github.com/uber-go/zap/pull/943
+[#949]: https://github.com/uber-go/zap/pull/949
+[#961]: https://github.com/uber-go/zap/pull/961
+[#971]: https://github.com/uber-go/zap/pull/971
+
+## 1.17.0 (25 May 2021)
+
+Bugfixes:
+* [#867][]: Encode `<nil>` for nil `error` instead of a panic.
+* [#931][], [#936][]: Update minimum version constraints to address
+  vulnerabilities in dependencies.
+
+Enhancements:
+* [#865][]: Improve alignment of fields of the Logger struct, reducing its
+  size from 96 to 80 bytes.
+* [#881][]: Support `grpclog.LoggerV2` in zapgrpc.
+* [#903][]: Support URL-encoded POST requests to the AtomicLevel HTTP handler
+  with the `application/x-www-form-urlencoded` content type.
+* [#912][]: Support multi-field encoding with `zap.Inline`.
+* [#913][]: Speed up SugaredLogger for calls with a single string.
+* [#928][]: Add support for filtering by field name to `zaptest/observer`.
+
+Thanks to @ash2k, @FMLS, @jimmystewpot, @Oncilla, @tsoslow, @tylitianrui, @withshubh, and @wziww for their contributions to this release.
+
+## 1.16.0 (1 Sep 2020)
+
+Bugfixes:
+* [#828][]: Fix missing newline in IncreaseLevel error messages.
+* [#835][]: Fix panic in JSON encoder when encoding times or durations
+  without specifying a time or duration encoder.
+* [#843][]: Honor CallerSkip when taking stack traces.
+* [#862][]: Fix the default file permissions to use `0666` and rely on the umask instead.
+* [#854][]: Encode `<nil>` for nil `Stringer` instead of a panic error log.
+
+Enhancements:
+* [#629][]: Added `zapcore.TimeEncoderOfLayout` to easily create time encoders
+  for custom layouts.
+* [#697][]: Added support for a configurable delimiter in the console encoder.
+* [#852][]: Optimize console encoder by pooling the underlying JSON encoder.
+* [#844][]: Add ability to include the calling function as part of logs.
+* [#843][]: Add `StackSkip` for including truncated stacks as a field.
+* [#861][]: Add options to customize Fatal behaviour for better testability.
+
+Thanks to @SteelPhase, @tmshn, @lixingwang, @wyxloading, @moul, @segevfiner, @andy-retailnext and @jcorbin for their contributions to this release.
+
+## 1.15.0 (23 Apr 2020)
+
+Bugfixes:
+* [#804][]: Fix handling of `Time` values out of `UnixNano` range.
+* [#812][]: Fix `IncreaseLevel` being reset after a call to `With`.
+
+Enhancements:
+* [#806][]: Add `WithCaller` option to supersede the `AddCaller` option. This
+  allows disabling annotation of log entries with caller information if
+  previously enabled with `AddCaller`.
+* [#813][]: Deprecate `NewSampler` constructor in favor of
+  `NewSamplerWithOptions` which supports a `SamplerHook` option. This option
+   adds support for monitoring sampling decisions through a hook.
+
+Thanks to @danielbprice for their contributions to this release.
 
 ## 1.14.1 (14 Mar 2020)
 
@@ -379,3 +579,26 @@ upgrade to the upcoming stable release.
 [#791]: https://github.com/uber-go/zap/pull/791
 [#795]: https://github.com/uber-go/zap/pull/795
 [#799]: https://github.com/uber-go/zap/pull/799
+[#804]: https://github.com/uber-go/zap/pull/804
+[#812]: https://github.com/uber-go/zap/pull/812
+[#806]: https://github.com/uber-go/zap/pull/806
+[#813]: https://github.com/uber-go/zap/pull/813
+[#629]: https://github.com/uber-go/zap/pull/629
+[#697]: https://github.com/uber-go/zap/pull/697
+[#828]: https://github.com/uber-go/zap/pull/828
+[#835]: https://github.com/uber-go/zap/pull/835
+[#843]: https://github.com/uber-go/zap/pull/843
+[#844]: https://github.com/uber-go/zap/pull/844
+[#852]: https://github.com/uber-go/zap/pull/852
+[#854]: https://github.com/uber-go/zap/pull/854
+[#861]: https://github.com/uber-go/zap/pull/861
+[#862]: https://github.com/uber-go/zap/pull/862
+[#865]: https://github.com/uber-go/zap/pull/865
+[#867]: https://github.com/uber-go/zap/pull/867
+[#881]: https://github.com/uber-go/zap/pull/881
+[#903]: https://github.com/uber-go/zap/pull/903
+[#912]: https://github.com/uber-go/zap/pull/912
+[#913]: https://github.com/uber-go/zap/pull/913
+[#928]: https://github.com/uber-go/zap/pull/928
+[#931]: https://github.com/uber-go/zap/pull/931
+[#936]: https://github.com/uber-go/zap/pull/936

@@ -800,10 +800,10 @@ func TestUpdateSecretHandler(t *testing.T) {
 			}
 
 			// Create a fake client to mock API calls.
-			cl := fake.NewFakeClientWithScheme(s, objs...)
+			cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
 			opConnectClient := &mocks.TestClient{}
-			mocks.GetGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
+			mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
 
 				item := onepassword.Item{}
 				item.Fields = generateFields(testData.opItem["username"], testData.opItem["password"])
@@ -871,7 +871,7 @@ func TestIsUpdatedSecret(t *testing.T) {
 
 	secretName := "test-secret"
 	updatedSecrets := map[string]*corev1.Secret{
-		"some_secret": &corev1.Secret{},
+		"some_secret": {},
 	}
 	assert.False(t, isUpdatedSecret(secretName, updatedSecrets))
 

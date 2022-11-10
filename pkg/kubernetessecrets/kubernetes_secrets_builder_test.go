@@ -7,19 +7,15 @@ import (
 	"testing"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
-	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 const restartDeploymentAnnotation = "false"
-
-type k8s struct {
-	clientset kubernetes.Interface
-}
 
 func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	secretName := "test-secret-name"
@@ -31,7 +27,7 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	item.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
-	kubeClient := fake.NewFakeClient()
+	kubeClient := fake.NewClientBuilder().Build()
 	secretLabels := map[string]string{}
 	secretType := ""
 
@@ -59,7 +55,7 @@ func TestKubernetesSecretFromOnePasswordItemOwnerReferences(t *testing.T) {
 	item.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
-	kubeClient := fake.NewFakeClient()
+	kubeClient := fake.NewClientBuilder().Build()
 	secretLabels := map[string]string{}
 	secretType := ""
 
@@ -104,7 +100,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	item.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
-	kubeClient := fake.NewFakeClient()
+	kubeClient := fake.NewClientBuilder().Build()
 	secretLabels := map[string]string{}
 	secretType := ""
 
@@ -219,7 +215,7 @@ func TestCreateKubernetesTLSSecretFromOnePasswordItem(t *testing.T) {
 	item.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
-	kubeClient := fake.NewFakeClient()
+	kubeClient := fake.NewClientBuilder().Build()
 	secretLabels := map[string]string{}
 	secretType := "kubernetes.io/tls"
 
