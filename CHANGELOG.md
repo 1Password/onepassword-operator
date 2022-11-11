@@ -24,7 +24,7 @@ This migration enables us to use the new project structure, as well as updated p
 the team (as well as the contributors) to develop the operator more effective.
 
 ## Features
-  * Migrate the operator to use the latest `operator-sdk` {#124, #126, #133, #135, #138, #139}
+  * Migrate the operator to use the latest `operator-sdk` {#124}
 
 ---
 
