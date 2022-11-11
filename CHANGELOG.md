@@ -12,6 +12,22 @@
 
 ---
 
+[//]: # (START/v1.6.0)
+# v1.6.0
+
+This version of the operator highlights the migration of the operator 
+to use the latest version of the `operator-sdk` (`1.25.0` at the time of this release).
+
+For the users, this shouldn't affect the functionality of the operator. 
+
+This migration enables us to use the new project structure, as well as updated packages that enables
+the team (as well as the contributors) to develop the operator more effective.
+
+## Features
+  * Migrate the operator to use the latest `operator-sdk` {#124, #126, #133, #135, #138, #139}
+
+---
+
 [//]: # (START/v1.5.0)
 # v1.5.0
 
