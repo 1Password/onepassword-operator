@@ -1,3 +1,5 @@
+export MAIN_BRANCH ?= main
+
 # VERSION defines the project version for the bundle.
 # Update this value when you upgrade the version of your project.
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
@@ -259,6 +261,12 @@ catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
 
 ## Release functions =====================
+GIT_BRANCH := $(shell git symbolic-ref --short HEAD)
+WORKTREE_CLEAN := $(shell git status --porcelain 1>/dev/null 2>&1; echo $$?)
+SCRIPTS_DIR := $(CURDIR)/scripts
+
+versionFile = $(CURDIR)/.VERSION
+curVersion := $(shell cat $(versionFile) | sed 's/^v//')
 
 release/prepare: .check_git_clean	## Updates changelog and creates release branch (call with 'release/prepare version=<new_version_number>')
 
