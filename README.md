@@ -38,9 +38,9 @@ The 1Password Connect Helm Chart helps to simplify the deployment of 1Password C
 
 #### Deploy using the Connect Operator
 
-This guide will provide a quickstart option for deploying a default configuration of 1Password Connect via starting the deploying the 1Password Connect Operator, however it is recommended that you instead deploy your own manifest file if customization of the 1Password Connect deployment is desired.
+This guide will provide a quickstart option for deploying a default configuration of 1Password Connect via starting the deploying the 1Password Connect Operator, however, it is recommended that you instead deploy your own manifest file if customization of the 1Password Connect deployment is desired.
 
-Encode the 1password-credentials.json file you generated in the prerequisite steps and save it to a file named op-session:
+Encode the `1password-credentials.json` file you generated in the prerequisite steps and save it to a file named `op-session`:
 
 ```bash
 cat 1password-credentials.json | base64 | \
@@ -66,13 +66,13 @@ Adding this environment variable will have the operator automatically deploy a d
 
 **Create Kubernetes Secret for OP_CONNECT_TOKEN**
 
-"Create a Connect token for the operator and save it as a Kubernetes Secret:
+Create a Connect token for the operator and save it as a Kubernetes Secret:
 
 ```bash
 kubectl create secret generic onepassword-token --from-literal=token=<OP_CONNECT_TOKEN>"
 ```
 
-If you do not have a token for the operator, you can generate a token and save it to kubernetes with the following command:
+If you do not have a token for the operator, you can generate a token and save it to Kubernetes with the following command:
 
 ```bash
 kubectl create secret generic onepassword-token --from-literal=token=$(op create connect token <server> op-k8s-operator --vault <vault>)
@@ -82,12 +82,12 @@ kubectl create secret generic onepassword-token --from-literal=token=$(op create
 
 An sample Deployment yaml can be found at `/config/manager/manager.yaml`.
 
-To further configure the 1Password Kubernetes Operator the Following Environment variables can be set in the operator yaml:
+To further configure the 1Password Kubernetes Operator the following Environment variables can be set in the operator yaml:
 
-- **OP_CONNECT_HOST** (required): Specifies the host name within Kubernetes in which to access the 1Password Connect.
-- **WATCH_NAMESPACE:** (default: watch all namespaces): Comma separated list of what Namespaces to watch for changes.
-- **POLLING_INTERVAL** (default: 600): The number of seconds the 1Password Kubernetes Operator will wait before checking for updates from 1Password Connect.
-- **MANAGE_CONNECT** (default: false): If set to true, on deployment of the operator, a default configuration of the OnePassword Connect Service will be deployed to the current namespace.
+- **OP_CONNECT_HOST** *(required)*: Specifies the host name within Kubernetes in which to access the 1Password Connect.
+- **WATCH_NAMESPACE:** *(default: watch all namespaces)*: Comma separated list of what Namespaces to watch for changes.
+- **POLLING_INTERVAL** *(default: 600)*: The number of seconds the 1Password Kubernetes Operator will wait before checking for updates from 1Password Connect.
+- **MANAGE_CONNECT** *(default: false)*: If set to true, on deployment of the operator, a default configuration of the OnePassword Connect Service will be deployed to the current namespace.
 - **AUTO_RESTART** (default: false): If set to true, the operator will restart any deployment using a secret from 1Password Connect. This can be overwritten by namespace, deployment, or individual secret. More details on AUTO_RESTART can be found in the ["Configuring Automatic Rolling Restarts of Deployments"](#configuring-automatic-rolling-restarts-of-deployments) section.
 
 To deploy the operator, simply run the following command:
@@ -127,7 +127,7 @@ To test that the Kubernetes Secret check that the following command returns a se
 kubectl get secret <secret_name>
 ```
 
-Note: Deleting the `OnePasswordItem` that you've created will automatically delete the created Kubernetes Secret.
+**Note:** Deleting the `OnePasswordItem` that you've created will automatically delete the created Kubernetes Secret.
 
 To create a single Kubernetes Secret for a deployment, add the following annotations to the deployment metadata:
 
@@ -148,7 +148,7 @@ In case of fields that store files, the file's contents will be used as the valu
 
 Within an item, if both a field storing a file and a field of another type have the same name, the file field will be ignored and the other field will take precedence.
 
-Note: Deleting the Deployment that you've created will automatically delete the created Kubernetes Secret only if the deployment is still annotated with `operator.1password.io/item-path` and `operator.1password.io/item-name` and no other deployment is using the secret.
+**Note:** Deleting the Deployment that you've created will automatically delete the created Kubernetes Secret only if the deployment is still annotated with `operator.1password.io/item-path` and `operator.1password.io/item-name` and no other deployment is using the secret.
 
 If a 1Password Item that is linked to a Kubernetes Secret is updated within the POLLING_INTERVAL the associated Kubernetes Secret will be updated. However, if you do not want a specific secret to be updated you can add the tag `operator.1password.io:ignore-secret` to the item stored in 1Password. While this tag is in place, any updates made to an item will not trigger an update to the associated secret in Kubernetes.
 
@@ -170,9 +170,12 @@ Titles and field names that include white space and other characters that are no
 
 If a 1Password Item that is linked to a Kubernetes Secret is updated, any deployments configured to `auto-restart` AND are using that secret will be given a rolling restart the next time 1Password Connect is polled for updates.
 
-There are many levels of granularity on which to configure auto restarts on deployments: at the operator level, per-namespace, or per-deployment.
+There are many levels of granularity on which to configure auto restarts on deployments:
+- Operator level
+- Per-namespace
+- Per-deployment
 
-**On the operator**: This method allows for managing auto restarts on all deployments within the namespaces watched by operator. Auto restarts can be enabled by setting the environemnt variable `AUTO_RESTART` to true. If the value is not set, the operator will default this value to false.
+**Operator Level**: This method allows for managing auto restarts on all deployments within the namespaces watched by operator. Auto restarts can be enabled by setting the environment variable `AUTO_RESTART` to true. If the value is not set, the operator will default this value to false.
 
 **Per Namespace**: This method allows for managing auto restarts on all deployments within a namespace. Auto restarts can by managed by setting the annotation `operator.1password.io/auto-restart` to either `true` or `false` on the desired namespace. An example of this is shown below:
 
@@ -258,7 +261,7 @@ make undeploy
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 
 It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/)
-which provides a reconcile function responsible for synchronizing resources untile the desired state is reached on the cluster
+which provides a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster
 
 ### Test It Out
 
