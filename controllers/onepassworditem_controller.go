@@ -143,7 +143,6 @@ func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(onePasswordItem *one
 	kubernetesSecret.ObjectMeta.Name = onePasswordItem.Name
 	kubernetesSecret.ObjectMeta.Namespace = onePasswordItem.Namespace
 
-	r.Delete(context.Background(), kubernetesSecret)
 	if err := r.Delete(context.Background(), kubernetesSecret); err != nil {
 		if !errors.IsNotFound(err) {
 			return err

@@ -110,7 +110,9 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if utils.ContainsString(deployment.ObjectMeta.Finalizers, finalizer) {
 
 		secretName := annotations[op.NameAnnotation]
-		r.cleanupKubernetesSecretForDeployment(secretName, deployment)
+		if err = r.cleanupKubernetesSecretForDeployment(secretName, deployment); err != nil {
+			return ctrl.Result{}, err
+		}
 
 		// Remove the finalizer from the deployment so deletion of deployment can be completed
 		if err := r.removeOnePasswordFinalizerFromDeployment(deployment); err != nil {
