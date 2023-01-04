@@ -114,10 +114,8 @@ func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotation
 func BuildKubernetesSecretData(fields []*onepassword.ItemField, files []*onepassword.File) map[string][]byte {
 	secretData := map[string][]byte{}
 	for i := 0; i < len(fields); i++ {
-		if fields[i].Value != "" {
-			key := formatSecretDataName(fields[i].Label)
-			secretData[key] = []byte(fields[i].Value)
-		}
+		key := formatSecretDataName(fields[i].Label)
+		secretData[key] = []byte(fields[i].Value)
 	}
 
 	// populate unpopulated fields from files
