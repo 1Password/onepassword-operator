@@ -95,12 +95,12 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// This is so we can handle cleanup of associated secrets properly
 		if !utils.ContainsString(deployment.ObjectMeta.Finalizers, finalizer) {
 			deployment.ObjectMeta.Finalizers = append(deployment.ObjectMeta.Finalizers, finalizer)
-			if err := r.Update(context.Background(), deployment); err != nil {
+			if err = r.Update(context.Background(), deployment); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
 		// Handles creation or updating secrets for deployment if needed
-		if err := r.handleApplyingDeployment(deployment, deployment.Namespace, annotations, req); err != nil {
+		if err = r.handleApplyingDeployment(deployment, deployment.Namespace, annotations, req); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -110,10 +110,12 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if utils.ContainsString(deployment.ObjectMeta.Finalizers, finalizer) {
 
 		secretName := annotations[op.NameAnnotation]
-		r.cleanupKubernetesSecretForDeployment(secretName, deployment)
+		if err = r.cleanupKubernetesSecretForDeployment(secretName, deployment); err != nil {
+			return ctrl.Result{}, err
+		}
 
 		// Remove the finalizer from the deployment so deletion of deployment can be completed
-		if err := r.removeOnePasswordFinalizerFromDeployment(deployment); err != nil {
+		if err = r.removeOnePasswordFinalizerFromDeployment(deployment); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -144,7 +146,7 @@ func (r *DeploymentReconciler) cleanupKubernetesSecretForDeployment(secretName s
 
 	// Only delete the associated kubernetes secret if it is not being used by other deployments
 	if !multipleDeploymentsUsingSecret {
-		if err := r.Delete(context.Background(), kubernetesSecret); err != nil {
+		if err = r.Delete(context.Background(), kubernetesSecret); err != nil {
 			if !errors.IsNotFound(err) {
 				return err
 			}

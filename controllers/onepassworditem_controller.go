@@ -95,13 +95,13 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		// This is so we can handle cleanup of associated secrets properly
 		if !utils.ContainsString(onepassworditem.ObjectMeta.Finalizers, finalizer) {
 			onepassworditem.ObjectMeta.Finalizers = append(onepassworditem.ObjectMeta.Finalizers, finalizer)
-			if err := r.Update(context.Background(), onepassworditem); err != nil {
+			if err = r.Update(context.Background(), onepassworditem); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 
 		// Handles creation or updating secrets for deployment if needed
-		err := r.handleOnePasswordItem(onepassworditem, req)
+		err = r.handleOnePasswordItem(onepassworditem, req)
 		if updateStatusErr := r.updateStatus(onepassworditem, err); updateStatusErr != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot update status: %s", updateStatusErr)
 		}
@@ -116,7 +116,7 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 
 		// Remove finalizer now that cleanup is complete
-		if err := r.removeFinalizer(onepassworditem); err != nil {
+		if err = r.removeFinalizer(onepassworditem); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -143,7 +143,6 @@ func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(onePasswordItem *one
 	kubernetesSecret.ObjectMeta.Name = onePasswordItem.Name
 	kubernetesSecret.ObjectMeta.Namespace = onePasswordItem.Namespace
 
-	r.Delete(context.Background(), kubernetesSecret)
 	if err := r.Delete(context.Background(), kubernetesSecret); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
