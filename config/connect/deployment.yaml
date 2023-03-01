@@ -12,6 +12,8 @@ spec:
         app: onepassword-connect
         version: "1.0.0"
     spec:
+      securityContext:
+        runAsNonRoot: true
       volumes:
         - name: shared-data
           emptyDir: {}
@@ -32,6 +34,8 @@ spec:
       containers:
         - name: connect-api
           image: 1password/connect-api:latest
+          securityContext:
+            allowPrivilegeEscalation: false
           resources:
             limits:
               memory: "128Mi"
@@ -49,6 +53,8 @@ spec:
               name: shared-data
         - name: connect-sync
           image: 1password/connect-sync:latest
+          securityContext:
+            allowPrivilegeEscalation: false
           resources:
             limits:
               memory: "128Mi"
