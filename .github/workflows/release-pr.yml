@@ -47,7 +47,7 @@ jobs:
 
       - name: Parse release version
         id: get_version
-        run: echo "::set-output name=version::$(echo $GITHUB_REF | sed 's|^refs/heads/release/v?*||g')"
+        run: echo "version=$(echo "$GITHUB_REF" | sed 's|^refs/heads/release/v?*||g')" >> $GITHUB_OUTPUT
 
       - name: Prepare Pull Request
         id: prep_pr
@@ -71,7 +71,7 @@ jobs:
           PR_BODY="${PR_BODY//'%'/'%25'}"
           PR_BODY="${PR_BODY//$'\n'/'%0A'}"
           PR_BODY="${PR_BODY//$'\r'/'%0D'}"
-          echo "::set-output name=pr_body::$(echo "$PR_BODY")"
+          echo "pr_body=$(echo "$PR_BODY")" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request via API
         id: post_pr
