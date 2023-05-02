@@ -58,7 +58,7 @@ const (
 	username2 = "test-user2"
 	password2 = "4zotzqDqXKasLFT2jzTs"
 
-	annotationRegExpString = "^operator.1password.io\\/[a-zA-Z\\.]+"
+	annotationRegExpString = "^operator\.1password\.io\\/[a-zA-Z\\.]+"
 )
 
 // Define utility constants for object names and testing timeouts/durations and intervals.
