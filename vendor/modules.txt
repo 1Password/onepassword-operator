@@ -1,5 +1,5 @@
-# github.com/1Password/connect-sdk-go v1.5.0
-## explicit; go 1.15
+# github.com/1Password/connect-sdk-go v1.5.1
+## explicit; go 1.20
 github.com/1Password/connect-sdk-go/connect
 github.com/1Password/connect-sdk-go/onepassword
 # github.com/beorn7/perks v1.0.1

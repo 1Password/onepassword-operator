@@ -1,9 +1,9 @@
 module github.com/1Password/onepassword-operator
 
-go 1.19
+go 1.20
 
 require (
-	github.com/1Password/connect-sdk-go v1.5.0
+	github.com/1Password/connect-sdk-go v1.5.1
 	github.com/onsi/ginkgo/v2 v2.9.2
 	github.com/onsi/gomega v1.27.5
 	github.com/stretchr/testify v1.8.2
