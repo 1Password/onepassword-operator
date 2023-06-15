@@ -845,11 +845,16 @@ func readResponseBody(resp *http.Response, expectedStatusCode int) ([]byte, erro
 		return nil, err
 	}
 	if resp.StatusCode != expectedStatusCode {
-		var errResp *onepassword.Error
-		if err := json.Unmarshal(body, &errResp); err != nil {
-			return nil, fmt.Errorf("decoding error response: %s", err)
+		var errResp onepassword.Error
+		if json.Valid(body) {
+			if err := json.Unmarshal(body, &errResp); err != nil {
+				return nil, fmt.Errorf("decoding error response: %s", err)
+			}
+		} else {
+			errResp.StatusCode = resp.StatusCode
+			errResp.Message = http.StatusText(resp.StatusCode)
 		}
-		return nil, errResp
+		return nil, &errResp
 	}
 	return body, nil
 }
