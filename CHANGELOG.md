@@ -12,6 +12,18 @@
 
 ---
 
+[//]: # (START/v1.7.0)
+# v1.7.0
+
+## Features
+  * Upgraded operator to version 1.29.0. {#162}
+  * Upgraded Golang version to 1.20. {#161}
+  * Upgraded 1Password Connect version to 1.5.1. {#161}
+  * Added runAsNonRoot and allowPrivalegeEscalation to specs. {#151}
+  * Added code quality improvements. {#146}
+
+---
+
 [//]: # (START/v1.6.0)
 # v1.6.0
 
