@@ -30,7 +30,7 @@ kind: OnePasswordItem
 metadata:
   name: <item_name> #this name will also be used for naming the generated kubernetes secret
 spec:
-  itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>"```
+  itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>"
 ```
 Deploy the OnePasswordItem to Kubernetes:
 ```
