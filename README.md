@@ -3,7 +3,7 @@
 
 <div align="center">
   <h1>1Password Connect Kubernetes Operator</h1>
-  <p>Integrate 1Password Connect with your Kubernetes Infrastructure</p>
+  <p>Integrate <a href="https://developer.1password.com/docs/connect">1Password Connect</a> with your Kubernetes Infrastructure</p>
   <a href="https://github.com/1Password/onepassword-operator#getstarted">
     <img alt="Get started" src="https://user-images.githubusercontent.com/45081667/226940040-16d3684b-60f4-4d95-adb2-5757a8f1bc15.png" height="37"/>
   </a>
@@ -15,7 +15,7 @@ The 1Password Connect Kubernetes Operator provides the ability to integrate Kube
 
 ## ✨ Get started
 
-<h3>🚀 Quickstart</h3>
+## 🚀 Quickstart
 
 1. Add the [1Passsword Helm Chart](https://github.com/1Password/connect-helm-charts) to your repository.
 
@@ -42,8 +42,8 @@ Check that the Kubernetes Secret has been generated:
 kubectl get secret <secret_name>
 ```
 
-<h3>📄 Usage</h3>
-Refer to the [Usage Guide](https://github.com/1Password/onepassword-operator/blob/main/USAGEGUIDE.md) for documentation on how to deploy and use the 1Password Operator.
+### 📄 Usage
+Refer to the [Usage Guide](USAGEGUIDE.md) for documentation on how to deploy and use the 1Password Operator.
 
 ## 💙 Community & Support
 

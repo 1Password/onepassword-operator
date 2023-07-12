@@ -2,7 +2,8 @@
 <div align="center">
   <h1>Usage Guide</h1>
 </div>
-<h2>Table of Contents</h2>
+
+## Table of Contents
 
 - [Prerequisites](#prerequisites)
 - [Quickstart for Deploying 1Password Connect to Kubernetes](#quickstart-for-deploying-1password-connect-to-kubernetes)
@@ -12,7 +13,7 @@
 - [Development](#development)
 - [Security](#security)
 
-<h2> Prerequisites </h2>
+## Prerequisites
 
 - [1Password Command Line Tool Installed](https://1password.com/downloads/command-line/)
 - [`kubectl` installed](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
@@ -20,7 +21,7 @@
 - [Generated a 1password-credentials.json file and issued a 1Password Connect API Token for the K8s Operator integration](https://developer.1password.com/docs/connect/get-started/#step-1-set-up-a-secrets-automation-workflow)
 - [A `1password-credentials.json` file generated and a 1Password Connect API Token issues for the K8s Operator integration](https://developer.1password.com/docs/connect/get-started/#step-1-set-up-a-secrets-automation-workflow)
 
-<h3>Deploying 1Password Connect to Kubernetes </h3>
+## Deploying 1Password Connect to Kubernetes
 
 If 1Password Connect is already running, you can skip this step.
 
@@ -29,13 +30,13 @@ There are options to deploy 1Password Connect:
 - [Deploy with Helm](#deploy-with-helm)
 - [Deploy using the Connect Operator](#deploy-using-the-connect-operator)
 
-<h4> Deploy with Helm </h4>
+### Deploy with Helm
 
 The 1Password Connect Helm Chart helps to simplify the deployment of 1Password Connect and the 1Password Connect Kubernetes Operator to Kubernetes.
 
 [The 1Password Connect Helm Chart can be found here.](https://github.com/1Password/connect-helm-charts)
 
-<h4> Deploy using the Connect Operator </h4>
+### Deploy using the Connect Operator
 
 This guide will provide a quickstart option for deploying a default configuration of 1Password Connect via starting the deploying the 1Password Connect Operator, however, it is recommended that you instead deploy your own manifest file if customization of the 1Password Connect deployment is desired.
 
@@ -61,9 +62,9 @@ Add the following environment variable to the onepassword-connect-operator conta
 
 Adding this environment variable will have the operator automatically deploy a default configuration of 1Password Connect to the current namespace.
 
-<h3> Kubernetes Operator Deployment </h3>
+### Kubernetes Operator Deployment
 
-<h4>Create Kubernetes Secret for OP_CONNECT_TOKEN </h4>
+#### Create Kubernetes Secret for OP_CONNECT_TOKEN ####
 
 Create a Connect token for the operator and save it as a Kubernetes Secret:
 
@@ -165,7 +166,7 @@ Titles and field names that include white space and other characters that are no
 
 ---
 
-<h2>Configuring Automatic Rolling Restarts of Deployments </h2>
+## Configuring Automatic Rolling Restarts of Deployments
 
 If a 1Password Item that is linked to a Kubernetes Secret is updated, any deployments configured to `auto-restart` AND are using that secret will be given a rolling restart the next time 1Password Connect is polled for updates.
 
@@ -255,14 +256,14 @@ make undeploy
 
 ## Development
 
-<h3> How it works </h3>
+### How it works
 
 This project aims to follow the Kubernetes [Operator pattern](https://kubernetes.io/docs/concepts/extend-kubernetes/operator/)
 
 It uses [Controllers](https://kubernetes.io/docs/concepts/architecture/controller/)
 which provides a reconcile function responsible for synchronizing resources until the desired state is reached on the cluster
 
-<h3> Test It Out </h3>
+### Test It Out
 
 1. Install the CRDs into the cluster:
 
@@ -278,7 +279,7 @@ make run
 
 **NOTE:** You can also run this in one step by running: `make install run`
 
-<h3> Modifying the API definitions</h3>
+### Modifying the API definitions
 
 If you are editing the API definitions, generate the manifests such as CRs or CRDs using:
 
