@@ -6,12 +6,11 @@
 ## Table of Contents
 
 - [Prerequisites](#prerequisites)
-- [Quickstart for Deploying 1Password Connect to Kubernetes](#quickstart-for-deploying-1password-connect-to-kubernetes)
+- [Deploying 1Password Connect to Kubernetes](#deploying-1password-connect-to-kubernetes)
 - [Kubernetes Operator Deployment](#kubernetes-operator-deployment)
 - [Usage](#usage)
 - [Configuring Automatic Rolling Restarts of Deployments](#configuring-automatic-rolling-restarts-of-deployments)
 - [Development](#development)
-- [Security](#security)
 
 ## Prerequisites
 
@@ -69,7 +68,7 @@ Adding this environment variable will have the operator automatically deploy a d
 Create a Connect token for the operator and save it as a Kubernetes Secret:
 
 ```bash
-kubectl create secret generic onepassword-token --from-literal=token=<OP_CONNECT_TOKEN>"
+kubectl create secret generic onepassword-token --from-literal=token="<OP_CONNECT_TOKEN>"
 ```
 
 If you do not have a token for the operator, you can generate a token and save it to Kubernetes with the following command:
