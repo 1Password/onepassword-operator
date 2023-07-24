@@ -17,8 +17,7 @@
 - [1Password Command Line Tool Installed](https://1password.com/downloads/command-line/)
 - [`kubectl` installed](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 - [`docker` installed](https://docs.docker.com/get-docker/)
-- [Generated a 1password-credentials.json file and issued a 1Password Connect API Token for the K8s Operator integration](https://developer.1password.com/docs/connect/get-started/#step-1-set-up-a-secrets-automation-workflow)
-- [A `1password-credentials.json` file generated and a 1Password Connect API Token issues for the K8s Operator integration](https://developer.1password.com/docs/connect/get-started/#step-1-set-up-a-secrets-automation-workflow)
+- [A `1password-credentials.json` file generated and a 1Password Connect API Token issued for the K8s Operator integration](https://developer.1password.com/docs/connect/get-started/#step-1-set-up-a-secrets-automation-workflow)
 
 ## Deploying 1Password Connect to Kubernetes
 
