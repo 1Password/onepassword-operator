@@ -78,7 +78,7 @@ type OnePasswordItemReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/reconcile
 func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := logOnePasswordItem.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
-	reqLogger.Info("Reconciling OnePasswordItem")
+	reqLogger.V(1).Info("Reconciling OnePasswordItem")
 
 	onepassworditem := &onepasswordv1.OnePasswordItem{}
 	err := r.Get(context.Background(), req.NamespacedName, onepassworditem)

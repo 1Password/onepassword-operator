@@ -123,6 +123,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	setupLog.V(1).Info("this should be debug")
+	setupLog.V(0).Info("this should be info")
+	setupLog.V(-1).Info("this should be level 1")
+
+	setupLog.V(-2).Info("this is level 2")
+	setupLog.V(-3).Info("this is level 3 ")
+	setupLog.Info("this should be be here by default")
+	setupLog.Error(nil, "errorrr")
+
 	options := ctrl.Options{
 		Scheme:                 scheme,
 		Namespace:              watchNamespace,
