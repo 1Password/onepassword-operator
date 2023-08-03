@@ -88,7 +88,7 @@ To further configure the 1Password Kubernetes Operator the following Environment
 - **MANAGE_CONNECT** *(default: false)*: If set to true, on deployment of the operator, a default configuration of the OnePassword Connect Service will be deployed to the current namespace.
 - **AUTO_RESTART** (default: false): If set to true, the operator will restart any deployment using a secret from 1Password Connect. This can be overwritten by namespace, deployment, or individual secret. More details on AUTO_RESTART can be found in the ["Configuring Automatic Rolling Restarts of Deployments"](#configuring-automatic-rolling-restarts-of-deployments) section.
 
-You can also set the logging level by setting `--zap-log-level` as an arg on the containers to either `debug`, `info` or `error`.
+You can also set the logging level by setting `--zap-log-level` as an arg on the containers to either `debug`, `info` or `error`. (Note: the default value is `debug`.)
 
 Example:
 ```
