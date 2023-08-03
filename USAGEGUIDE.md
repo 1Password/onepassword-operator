@@ -91,7 +91,7 @@ To further configure the 1Password Kubernetes Operator the following Environment
 You can also set the logging level by setting `--zap-log-level` as an arg on the containers to either `debug`, `info` or `error`. (Note: the default value is `debug`.)
 
 Example:
-```
+```yaml
 .
 .
 .
