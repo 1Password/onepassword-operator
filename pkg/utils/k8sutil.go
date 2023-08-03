@@ -19,6 +19,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/1Password/onepassword-operator/pkg/logs"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -54,7 +55,7 @@ func GetOperatorNamespace() (string, error) {
 		return "", err
 	}
 	ns := strings.TrimSpace(string(nsBytes))
-	log.V(1).Info("Found namespace", "Namespace", ns)
+	log.V(int(logs.DebugLevel)).Info("Found namespace", "Namespace", ns)
 	return ns, nil
 }
 

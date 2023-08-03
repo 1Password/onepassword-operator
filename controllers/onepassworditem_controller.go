@@ -32,6 +32,7 @@ import (
 
 	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
+	"github.com/1Password/onepassword-operator/pkg/logs"
 	op "github.com/1Password/onepassword-operator/pkg/onepassword"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
@@ -78,7 +79,7 @@ type OnePasswordItemReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/reconcile
 func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := logOnePasswordItem.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
-	reqLogger.V(1).Info("Reconciling OnePasswordItem")
+	reqLogger.V(int(logs.DebugLevel)).Info("Reconciling OnePasswordItem")
 
 	onepassworditem := &onepasswordv1.OnePasswordItem{}
 	err := r.Get(context.Background(), req.NamespacedName, onepassworditem)
