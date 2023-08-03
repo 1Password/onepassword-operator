@@ -28,11 +28,13 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/1Password/connect-sdk-go/connect"
 
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
+	"github.com/1Password/onepassword-operator/pkg/logs"
 	op "github.com/1Password/onepassword-operator/pkg/onepassword"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
@@ -72,7 +74,7 @@ type DeploymentReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime/pkg/reconcile
 func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	reqLogger := logDeployment.WithValues("Request.Namespace", req.Namespace, "Request.Name", req.Name)
-	reqLogger.Info("Reconciling Deployment")
+	reqLogger.V(logs.DebugLevel).Info("Reconciling Deployment")
 
 	deployment := &appsv1.Deployment{}
 	err := r.Get(context.Background(), req.NamespacedName, deployment)
@@ -85,7 +87,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 
 	annotations, annotationsFound := op.GetAnnotationsForDeployment(deployment, r.OpAnnotationRegExp)
 	if !annotationsFound {
-		reqLogger.Info("No 1Password Annotations found")
+		reqLogger.V(logs.DebugLevel).Info("No 1Password Annotations found")
 		return ctrl.Result{}, nil
 	}
 
