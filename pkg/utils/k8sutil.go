@@ -55,7 +55,7 @@ func GetOperatorNamespace() (string, error) {
 		return "", err
 	}
 	ns := strings.TrimSpace(string(nsBytes))
-	log.V(int(logs.DebugLevel)).Info("Found namespace", "Namespace", ns)
+	log.V(logs.DebugLevel).Info("Found namespace", "Namespace", ns)
 	return ns, nil
 }
 
