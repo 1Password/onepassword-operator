@@ -9,18 +9,30 @@ import (
 
 func TestIsDeploymentUsingSecretsUsingVolumes(t *testing.T) {
 	secretNamesToSearch := map[string]*corev1.Secret{
-		"onepassword-database-secret": {},
-		"onepassword-api-key":         {},
+		"onepassword-database-secret":  {},
+		"onepassword-api-key":          {},
+		"onepassword-app-token":        {},
+		"onepassword-user-credentials": {},
 	}
 
 	volumeSecretNames := []string{
 		"onepassword-database-secret",
 		"onepassword-api-key",
-		"some_other_key",
 	}
 
+	volumes := generateVolumes(volumeSecretNames)
+
+	volumeProjectedSecretNames := []string{
+		"onepassword-app-token",
+		"onepassword-user-credentials",
+	}
+
+	volumeProjected := generateVolumesProjected(volumeProjectedSecretNames)
+
+	volumes = append(volumes, volumeProjected)
+
 	deployment := &appsv1.Deployment{}
-	deployment.Spec.Template.Spec.Volumes = generateVolumes(volumeSecretNames)
+	deployment.Spec.Template.Spec.Volumes = volumes
 	if !IsDeploymentUsingSecrets(deployment, secretNamesToSearch) {
 		t.Errorf("Expected that deployment was using secrets but they were not detected.")
 	}
