@@ -12,6 +12,14 @@
 
 ---
 
+[//]: # (START/v1.8.0)
+# v1.8.0
+
+## Features
+  * Added volume projected detection. Credit to @mmorejon. {#168}
+
+---
+
 [//]: # (START/v1.7.1)
 # v1.7.1
 
