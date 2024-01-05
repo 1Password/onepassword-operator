@@ -12,9 +12,9 @@ COPY go.sum go.sum
 RUN go mod download
 
 # Copy the go source
-COPY main.go main.go
+COPY cmd/main.go cmd/main.go
 COPY api/ api/
-COPY controllers/ controllers/
+COPY internal/controller/ internal/controller/
 COPY pkg/ pkg/
 COPY version/ version/
 COPY vendor/ vendor/
@@ -29,7 +29,7 @@ RUN CGO_ENABLED=0 \
     go build \
     -ldflags "-X \"github.com/1Password/onepassword-operator/version.Version=$operator_version\"" \
     -mod vendor \
-    -a -o manager main.go
+    -a -o manager cmd/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
