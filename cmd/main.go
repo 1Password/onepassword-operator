@@ -50,7 +50,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	onepasswordcomv1 "github.com/1Password/onepassword-operator/api/v1"
-	"github.com/1Password/onepassword-operator/controllers"
+	"github.com/1Password/onepassword-operator/internal/controller"
 	op "github.com/1Password/onepassword-operator/pkg/onepassword"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	"github.com/1Password/onepassword-operator/version"
@@ -154,7 +154,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.OnePasswordItemReconciler{
+	if err = (&controller.OnePasswordItemReconciler{
 		Client:          mgr.GetClient(),
 		Scheme:          mgr.GetScheme(),
 		OpConnectClient: opConnectClient,
@@ -164,7 +164,7 @@ func main() {
 	}
 
 	r, _ := regexp.Compile(annotationRegExpString)
-	if err = (&controllers.DeploymentReconciler{
+	if err = (&controller.DeploymentReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
 		OpConnectClient:    opConnectClient,
