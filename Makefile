@@ -55,7 +55,7 @@ OPERATOR_SDK_VERSION ?= v1.33.0
 # Image URL to use all building/pushing image targets
 IMG ?= 1password/onepassword-operator:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.28.0
+ENVTEST_K8S_VERSION = 1.28.3
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -192,7 +192,7 @@ CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v5.2.1
+KUSTOMIZE_VERSION ?= v5.3.0
 CONTROLLER_TOOLS_VERSION ?= v0.13.0
 
 .PHONY: kustomize
