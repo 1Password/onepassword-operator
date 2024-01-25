@@ -12,6 +12,14 @@
 
 ---
 
+[//]: # (START/v1.8.1)
+# v1.8.1
+
+## Fixes
+ * Upgrade operator to use Operator SDK v1.33.0. {#180}
+
+---
+
 [//]: # (START/v1.8.0)
 # v1.8.0
 
