@@ -246,10 +246,14 @@ func (rs *restClient) GetItem(itemQuery string, vaultQuery string) (*onepassword
 	if itemQuery == "" {
 		return nil, fmt.Errorf("Please provide either the item name or its ID.")
 	}
-	if !isValidUUID(itemQuery) {
-		return rs.GetItemByTitle(itemQuery, vaultQuery)
+
+	if isValidUUID(itemQuery) {
+		item, err := rs.GetItemByUUID(itemQuery, vaultQuery)
+		if item != nil {
+			return item, err
+		}
 	}
-	return rs.GetItemByUUID(itemQuery, vaultQuery)
+	return rs.GetItemByTitle(itemQuery, vaultQuery)
 }
 
 // GetItemByUUID Get a specific Item from the 1Password Connect API by its UUID

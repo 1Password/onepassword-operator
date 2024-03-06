@@ -3,6 +3,13 @@ kind: Service
 metadata:
   labels:
     name: onepassword-connect-operator
+    control-plane: onepassword-connect-operator
+    app.kubernetes.io/name: service
+    app.kubernetes.io/instance: controller-manager-metrics-service
+    app.kubernetes.io/component: kube-rbac-proxy
+    app.kubernetes.io/created-by: onepassword-connect-operator
+    app.kubernetes.io/part-of: onepassword-connect-operator
+    app.kubernetes.io/managed-by: kustomize
   name: onepassword-connect-operator-metrics-service
   namespace: system
 spec:
@@ -13,3 +20,4 @@ spec:
     targetPort: https
   selector:
     name: onepassword-connect-operator
+    control-plane: onepassword-connect-operator

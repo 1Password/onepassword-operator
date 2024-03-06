@@ -1,10 +1,16 @@
-
 # Prometheus Monitor Service (Metrics)
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   labels:
     name: onepassword-connect-operator
+    control-plane: onepassword-connect-operator
+    app.kubernetes.io/name: servicemonitor
+    app.kubernetes.io/instance: controller-manager-metrics-monitor
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/created-by: onepassword-connect-operator
+    app.kubernetes.io/part-of: onepassword-connect-operator
+    app.kubernetes.io/managed-by: kustomize
   name: onepassword-connect-operator-metrics-monitor
   namespace: system
 spec:
@@ -18,3 +24,4 @@ spec:
   selector:
     matchLabels:
       name: onepassword-connect-operator
+      control-plane: onepassword-connect-operator

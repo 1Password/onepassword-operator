@@ -15,8 +15,8 @@ import (
 )
 
 var logConnectSetup = logf.Log.WithName("ConnectSetup")
-var deploymentPath = "config/connect/deployment.yaml"
-var servicePath = "config/connect/service.yaml"
+var deploymentPath = "../config/connect/deployment.yaml"
+var servicePath = "../config/connect/service.yaml"
 
 func SetupConnect(kubeClient client.Client, deploymentNamespace string) error {
 	err := setupService(kubeClient, servicePath, deploymentNamespace)
