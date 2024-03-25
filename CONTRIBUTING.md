@@ -47,11 +47,11 @@ If applicable, update the [USAGEGUIDE.md](./USAGEGUIDE.md) and [README.md](./REA
 
 ## Sign your commits
 
-To get your PR merged, we require you to sign your commits.
+To get your PR merged, we require you to sign your commits. There are three options you can choose from.
 
 ### Sign commits with 1Password
 
-You can also sign commits using 1Password, which lets you sign commits with biometrics without the signing key leaving the local 1Password process.
+You can sign commits using 1Password, which lets you sign commits with biometrics without the signing key leaving the local 1Password process.
 
 Learn how to use [1Password to sign your commits](https://developer.1password.com/docs/ssh/git-commit-signing/).
 
