@@ -17,7 +17,7 @@ The 1Password Connect Kubernetes Operator provides the ability to integrate Kube
 
 ### 🚀 Quickstart
 
-1. Add the [1Passsword Helm Chart](https://github.com/1Password/connect-helm-charts) to your repository.
+1. Add the [1Password Helm Chart](https://github.com/1Password/connect-helm-charts) to your repository.
 
 2. Run the following command to install Connect and the 1Password Kubernetes Operator in your infrastructure:
 ```
