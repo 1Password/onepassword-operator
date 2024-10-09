@@ -60,7 +60,7 @@ spec:
             limits:
               memory: "128Mi"
             requests:
-              cpu: "0.2m"
+              cpu: "0.2"
           ports:
             - containerPort: 8081
           env:
