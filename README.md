@@ -20,11 +20,13 @@ The 1Password Connect Kubernetes Operator provides the ability to integrate Kube
 1. Add the [1Password Helm Chart](https://github.com/1Password/connect-helm-charts) to your repository.
 
 2. Run the following command to install Connect and the 1Password Kubernetes Operator in your infrastructure:
+
 ```
 helm install connect 1password/connect --set-file connect.credentials=1password-credentials-demo.json --set operator.create=true --set operator.token.value = <your connect token>
 ```
 
 3. Create a Kubernetes Secret from a 1Password item:
+
 ```apiVersion: onepassword.com/v1
 kind: OnePasswordItem
 metadata:
@@ -32,10 +34,13 @@ metadata:
 spec:
   itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>"
 ```
+
 Deploy the OnePasswordItem to Kubernetes:
+
 ```
 kubectl apply -f <your_item>.yaml
 ```
+
 Check that the Kubernetes Secret has been generated:
 
 ```
@@ -43,6 +48,7 @@ kubectl get secret <secret_name>
 ```
 
 ### 📄 Usage
+
 Refer to the [Usage Guide](USAGEGUIDE.md) for documentation on how to deploy and use the 1Password Operator.
 
 ## 💙 Community & Support
@@ -55,6 +61,4 @@ Refer to the [Usage Guide](USAGEGUIDE.md) for documentation on how to deploy and
 
 1Password requests you practice responsible disclosure if you discover a vulnerability.
 
-Please file requests via [**BugCrowd**](https://bugcrowd.com/agilebits).
-
-For information about security practices, please visit the [1Password Bug Bounty Program](https://bugcrowd.com/agilebits).
+Please file requests by sending an email to bugbounty@agilebits.com.
