@@ -3,6 +3,7 @@ package onepassword
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"time"
 
 	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
@@ -52,15 +53,8 @@ func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(updatedSecretsB
 		return nil
 	}
 
-	deployments := &appsv1.DeploymentList{}
-	err := h.client.List(context.Background(), deployments)
-	if err != nil {
-		log.Error(err, "Failed to list kubernetes deployments")
-		return err
-	}
-
-	if len(deployments.Items) == 0 {
-		return nil
+	workloadTypes := []client.ObjectList{
+		&appsv1.DeploymentList{},
 	}
 
 	setForAutoRestartByNamespaceMap, err := h.getIsSetForAutoRestartByNamespaceMap()
@@ -68,24 +62,52 @@ func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(updatedSecretsB
 		return err
 	}
 
-	for i := 0; i < len(deployments.Items); i++ {
-		deployment := &deployments.Items[i]
-		updatedSecrets := updatedSecretsByNamespace[deployment.Namespace]
-
-		updatedDeploymentSecrets := GetUpdatedSecretsForDeployment(deployment, updatedSecrets)
-		if len(updatedDeploymentSecrets) == 0 {
-			continue
+	for _, list := range workloadTypes {
+		if err := h.client.List(context.Background(), list); err != nil {
+			log.Error(err, "Failed to list workloads", "type", fmt.Sprintf("%T", list))
+			return err
 		}
-		for _, secret := range updatedDeploymentSecrets {
-			if isSecretSetForAutoRestart(secret, deployment, setForAutoRestartByNamespaceMap) {
-				h.restartWorkload(deployment)
+
+		items, err := meta.ExtractList(list)
+		if err != nil {
+			log.Error(err, "Failed to extract list items", "type", fmt.Sprintf("%T", list))
+			return err
+		}
+
+		for _, obj := range items {
+			workload, ok := obj.(client.Object)
+			if !ok {
+				log.Error(fmt.Errorf("unexpected type %T", obj), "Skipping non-client.Object")
 				continue
 			}
+
+			podTemplate, err := GetPodTemplate(workload)
+			if err != nil {
+				log.Error(err, "Failed to get pod template", "workload", workload.GetName())
+				continue
+			}
+
+			updatedSecrets := updatedSecretsByNamespace[workload.GetNamespace()]
+			if len(updatedSecrets) == 0 {
+				continue
+			}
+
+			matchedSecrets := GetUpdatedSecretsForPodTemplate(workload.GetAnnotations(), podTemplate, updatedSecrets)
+			if len(matchedSecrets) == 0 {
+				continue
+			}
+
+			for _, secret := range matchedSecrets {
+				if isSecretSetForAutoRestart(secret, workload, setForAutoRestartByNamespaceMap) {
+					h.restartWorkload(workload)
+					break
+				}
+			}
+
+			log.V(logs.DebugLevel).Info(fmt.Sprintf("%q %q at namespace %q is up to date", workload.GetObjectKind().GroupVersionKind().Kind, workload.GetName(), workload.GetNamespace()))
 		}
-
-		log.V(logs.DebugLevel).Info(fmt.Sprintf("Deployment %q at namespace %q is up to date", deployment.GetName(), deployment.Namespace))
-
 	}
+
 	return nil
 }
 
@@ -268,4 +290,30 @@ func (h *SecretUpdateHandler) isNamespaceSetToAutoRestart(namespace *corev1.Name
 		return false
 	}
 	return restartWorkloadBool
+}
+
+func GetPodTemplate(obj client.Object) (*corev1.PodTemplateSpec, error) {
+	switch o := obj.(type) {
+	case *appsv1.Deployment:
+		return &o.Spec.Template, nil
+	default:
+		return nil, fmt.Errorf("unsupported type %T", obj)
+	}
+}
+
+func GetUpdatedSecretsForPodTemplate(annotations map[string]string, podTemplate *corev1.PodTemplateSpec, secrets map[string]*corev1.Secret) map[string]*corev1.Secret {
+	if podTemplate == nil {
+		return nil
+	}
+
+	volumes := podTemplate.Spec.Volumes
+	containers := append([]corev1.Container{}, podTemplate.Spec.Containers...)
+	containers = append(containers, podTemplate.Spec.InitContainers...)
+
+	updatedSecrets := map[string]*corev1.Secret{}
+	AppendAnnotationUpdatedSecret(annotations, secrets, updatedSecrets)
+	AppendUpdatedContainerSecrets(containers, secrets, updatedSecrets)
+	AppendUpdatedVolumeSecrets(volumes, secrets, updatedSecrets)
+
+	return updatedSecrets
 }
