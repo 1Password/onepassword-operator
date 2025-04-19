@@ -23,18 +23,18 @@ const lockTag = "operator.1password.io:ignore-secret"
 
 var log = logf.Log.WithName("update_op_kubernetes_secrets_task")
 
-func NewManager(kubernetesClient client.Client, opConnectClient connect.Client, shouldAutoRestartDeploymentsGlobal bool) *SecretUpdateHandler {
+func NewManager(kubernetesClient client.Client, opConnectClient connect.Client, autoRestartWorkloadsGlobally bool) *SecretUpdateHandler {
 	return &SecretUpdateHandler{
-		client:                             kubernetesClient,
-		opConnectClient:                    opConnectClient,
-		shouldAutoRestartDeploymentsGlobal: shouldAutoRestartDeploymentsGlobal,
+		client:                       kubernetesClient,
+		opConnectClient:              opConnectClient,
+		autoRestartWorkloadsGlobally: autoRestartWorkloadsGlobally,
 	}
 }
 
 type SecretUpdateHandler struct {
-	client                             client.Client
-	opConnectClient                    connect.Client
-	shouldAutoRestartDeploymentsGlobal bool
+	client                       client.Client
+	opConnectClient              connect.Client
+	autoRestartWorkloadsGlobally bool
 }
 
 func (h *SecretUpdateHandler) UpdateKubernetesSecretsTask() error {
@@ -43,10 +43,10 @@ func (h *SecretUpdateHandler) UpdateKubernetesSecretsTask() error {
 		return err
 	}
 
-	return h.restartDeploymentsWithUpdatedSecrets(updatedKubernetesSecrets)
+	return h.restartWorkloadsWithUpdatedSecrets(updatedKubernetesSecrets)
 }
 
-func (h *SecretUpdateHandler) restartDeploymentsWithUpdatedSecrets(updatedSecretsByNamespace map[string]map[string]*corev1.Secret) error {
+func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(updatedSecretsByNamespace map[string]map[string]*corev1.Secret) error {
 	// No secrets to update. Exit
 	if len(updatedSecretsByNamespace) == 0 || updatedSecretsByNamespace == nil {
 		return nil
@@ -210,7 +210,7 @@ func (h *SecretUpdateHandler) getPathFromOnePasswordItem(secret corev1.Secret) s
 }
 
 func isSecretSetForAutoRestart(secret *corev1.Secret, deployment *appsv1.Deployment, setForAutoRestartByNamespace map[string]bool) bool {
-	restartDeployment := secret.Annotations[RestartDeploymentsAnnotation]
+	restartDeployment := secret.Annotations[AutoRestartWorkloadAnnotation]
 	//If annotation for auto restarts for deployment is not set. Check for the annotation on its namepsace
 	if restartDeployment == "" {
 		return isDeploymentSetForAutoRestart(deployment, setForAutoRestartByNamespace)
@@ -218,14 +218,14 @@ func isSecretSetForAutoRestart(secret *corev1.Secret, deployment *appsv1.Deploym
 
 	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
 	if err != nil {
-		log.Error(err, "Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secret.Name)
+		log.Error(err, "Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", AutoRestartWorkloadAnnotation, secret.Name)
 		return false
 	}
 	return restartDeploymentBool
 }
 
 func isDeploymentSetForAutoRestart(deployment *appsv1.Deployment, setForAutoRestartByNamespace map[string]bool) bool {
-	restartDeployment := deployment.Annotations[RestartDeploymentsAnnotation]
+	restartDeployment := deployment.Annotations[AutoRestartWorkloadAnnotation]
 	//If annotation for auto restarts for deployment is not set. Check for the annotation on its namepsace
 	if restartDeployment == "" {
 		return setForAutoRestartByNamespace[deployment.Namespace]
@@ -233,23 +233,23 @@ func isDeploymentSetForAutoRestart(deployment *appsv1.Deployment, setForAutoRest
 
 	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
 	if err != nil {
-		log.Error(err, "Error parsing %v annotation on Deployment %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, deployment.Name)
+		log.Error(err, "Error parsing %v annotation on Deployment %v. Must be true or false. Defaulting to false.", AutoRestartWorkloadAnnotation, deployment.Name)
 		return false
 	}
 	return restartDeploymentBool
 }
 
 func (h *SecretUpdateHandler) isNamespaceSetToAutoRestart(namespace *corev1.Namespace) bool {
-	restartDeployment := namespace.Annotations[RestartDeploymentsAnnotation]
+	restartWorkload := namespace.Annotations[AutoRestartWorkloadAnnotation]
 	//If annotation for auto restarts for deployment is not set. Check environment variable set on the operator
-	if restartDeployment == "" {
-		return h.shouldAutoRestartDeploymentsGlobal
+	if restartWorkload == "" {
+		return h.autoRestartWorkloadsGlobally
 	}
 
-	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
+	restartWorkloadBool, err := utils.StringToBool(restartWorkload)
 	if err != nil {
-		log.Error(err, "Error parsing %v annotation on Namespace %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, namespace.Name)
+		log.Error(err, "Error parsing %v annotation on Namespace %v. Must be true or false. Defaulting to false.", AutoRestartWorkloadAnnotation, namespace.Name)
 		return false
 	}
-	return restartDeploymentBool
+	return restartWorkloadBool
 }

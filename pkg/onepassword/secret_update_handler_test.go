@@ -415,7 +415,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "false",
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -450,9 +450,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            "old version",
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "true",
+					VersionAnnotation:             "old version",
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Data: expectedSecretData,
@@ -463,9 +463,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            fmt.Sprint(itemVersion),
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "true",
+					VersionAnnotation:             fmt.Sprint(itemVersion),
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Data: expectedSecretData,
@@ -489,7 +489,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -524,9 +524,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            "old version",
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "false",
+					VersionAnnotation:             "old version",
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Data: expectedSecretData,
@@ -537,9 +537,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            fmt.Sprint(itemVersion),
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "false",
+					VersionAnnotation:             fmt.Sprint(itemVersion),
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Data: expectedSecretData,
@@ -563,7 +563,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -630,7 +630,7 @@ var tests = []testUpdateSecretTask{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 		},
@@ -643,7 +643,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "false",
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -709,7 +709,7 @@ var tests = []testUpdateSecretTask{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 		},
@@ -813,9 +813,9 @@ func TestUpdateSecretHandler(t *testing.T) {
 				return &item, nil
 			}
 			h := &SecretUpdateHandler{
-				client:                             cl,
-				opConnectClient:                    opConnectClient,
-				shouldAutoRestartDeploymentsGlobal: testData.globalAutoRestartEnabled,
+				client:                       cl,
+				opConnectClient:              opConnectClient,
+				autoRestartWorkloadsGlobally: testData.globalAutoRestartEnabled,
 			}
 
 			err := h.UpdateKubernetesSecretsTask()

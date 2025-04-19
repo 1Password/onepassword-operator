@@ -162,7 +162,7 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(resource *onepasswordv
 	secretName := resource.GetName()
 	labels := resource.Labels
 	secretType := resource.Type
-	autoRestart := resource.Annotations[op.RestartDeploymentsAnnotation]
+	autoRestart := resource.Annotations[op.AutoRestartWorkloadAnnotation]
 
 	item, err := op.GetOnePasswordItemByPath(r.OpConnectClient, resource.Spec.ItemPath)
 	if err != nil {
