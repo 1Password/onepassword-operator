@@ -78,7 +78,7 @@ func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(updatedSecretsB
 		}
 		for _, secret := range updatedDeploymentSecrets {
 			if isSecretSetForAutoRestart(secret, deployment, setForAutoRestartByNamespaceMap) {
-				h.restartDeployment(deployment)
+				h.restartWorkload(deployment)
 				continue
 			}
 		}
@@ -89,15 +89,27 @@ func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(updatedSecretsB
 	return nil
 }
 
-func (h *SecretUpdateHandler) restartDeployment(deployment *appsv1.Deployment) {
-	log.Info(fmt.Sprintf("Deployment %q at namespace %q references an updated secret. Restarting", deployment.GetName(), deployment.Namespace))
-	if deployment.Spec.Template.Annotations == nil {
-		deployment.Spec.Template.Annotations = map[string]string{}
+func (h *SecretUpdateHandler) restartWorkload(workload client.Object) {
+	var podTemplate *corev1.PodTemplateSpec
+
+	switch obj := workload.(type) {
+	case *appsv1.Deployment:
+		podTemplate = &obj.Spec.Template
+	default:
+		log.Info("Unsupported workload type for restart", "type", fmt.Sprintf("%T", obj))
+		return
 	}
-	deployment.Spec.Template.Annotations[RestartAnnotation] = time.Now().String()
-	err := h.client.Update(context.Background(), deployment)
+
+	log.Info(fmt.Sprintf("%T %q in namespace %q references an updated secret. Restarting", workload, workload.GetName(), workload.GetNamespace()))
+
+	if podTemplate.Annotations == nil {
+		podTemplate.Annotations = map[string]string{}
+	}
+	podTemplate.Annotations[RestartAnnotation] = time.Now().Format(time.RFC3339)
+
+	err := h.client.Update(context.Background(), workload)
 	if err != nil {
-		log.Error(err, "Problem restarting deployment")
+		log.Error(err, "Problem restarting workload", "name", workload.GetName())
 	}
 }
 
@@ -209,34 +221,38 @@ func (h *SecretUpdateHandler) getPathFromOnePasswordItem(secret corev1.Secret) s
 	return secret.Annotations[ItemPathAnnotation]
 }
 
-func isSecretSetForAutoRestart(secret *corev1.Secret, deployment *appsv1.Deployment, setForAutoRestartByNamespace map[string]bool) bool {
-	restartDeployment := secret.Annotations[AutoRestartWorkloadAnnotation]
-	//If annotation for auto restarts for deployment is not set. Check for the annotation on its namepsace
-	if restartDeployment == "" {
-		return isDeploymentSetForAutoRestart(deployment, setForAutoRestartByNamespace)
+func isSecretSetForAutoRestart(secret *corev1.Secret, workload client.Object, setForAutoRestartByNamespace map[string]bool) bool {
+	restartAnnotation := secret.Annotations[AutoRestartWorkloadAnnotation]
+	if restartAnnotation == "" {
+		return isWorkloadSetForAutoRestart(workload, setForAutoRestartByNamespace)
 	}
 
-	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
+	restartBool, err := utils.StringToBool(restartAnnotation)
 	if err != nil {
 		log.Error(err, "Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", AutoRestartWorkloadAnnotation, secret.Name)
 		return false
 	}
-	return restartDeploymentBool
+
+	return restartBool
 }
 
-func isDeploymentSetForAutoRestart(deployment *appsv1.Deployment, setForAutoRestartByNamespace map[string]bool) bool {
-	restartDeployment := deployment.Annotations[AutoRestartWorkloadAnnotation]
-	//If annotation for auto restarts for deployment is not set. Check for the annotation on its namepsace
-	if restartDeployment == "" {
-		return setForAutoRestartByNamespace[deployment.Namespace]
+func isWorkloadSetForAutoRestart(obj client.Object, setForAutoRestartByNamespace map[string]bool) bool {
+	annotations := obj.GetAnnotations()
+	namespace := obj.GetNamespace()
+	name := obj.GetName()
+
+	restartAnnotation := annotations[AutoRestartWorkloadAnnotation]
+	if restartAnnotation == "" {
+		return setForAutoRestartByNamespace[namespace]
 	}
 
-	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
+	restartBool, err := utils.StringToBool(restartAnnotation)
 	if err != nil {
-		log.Error(err, "Error parsing %v annotation on Deployment %v. Must be true or false. Defaulting to false.", AutoRestartWorkloadAnnotation, deployment.Name)
+		log.Error(err, "Error parsing %v annotation on %T %v. Must be true or false. Defaulting to false.", AutoRestartWorkloadAnnotation, obj, name)
 		return false
 	}
-	return restartDeploymentBool
+
+	return restartBool
 }
 
 func (h *SecretUpdateHandler) isNamespaceSetToAutoRestart(namespace *corev1.Namespace) bool {
