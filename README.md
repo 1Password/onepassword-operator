@@ -27,7 +27,8 @@ helm install connect 1password/connect --set-file connect.credentials=1password-
 
 3. Create a Kubernetes Secret from a 1Password item:
 
-```apiVersion: onepassword.com/v1
+```
+apiVersion: onepassword.com/v1
 kind: OnePasswordItem
 metadata:
   name: <item_name> #this name will also be used for naming the generated kubernetes secret
