@@ -213,5 +213,5 @@ func (r *DeploymentReconciler) handleApplyingDeployment(deployment *appsv1.Deplo
 		UID:        deployment.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.Client, secretName, namespace, item, annotations[op.RestartDeploymentsAnnotation], secretLabels, secretType, ownerRef)
+	return kubeSecrets.CreateKubernetesSecretFromItem(r.Client, secretName, namespace, item, annotations[op.AutoRestartWorkloadAnnotation], secretLabels, secretType, ownerRef)
 }
