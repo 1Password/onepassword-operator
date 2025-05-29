@@ -28,12 +28,11 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/1Password/connect-sdk-go/connect"
-
 	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/logs"
 	op "github.com/1Password/onepassword-operator/pkg/onepassword"
+	opclient "github.com/1Password/onepassword-operator/pkg/onepassword/client"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
 	corev1 "k8s.io/api/core/v1"
@@ -52,8 +51,8 @@ var finalizer = "onepassword.com/finalizer.secret"
 // OnePasswordItemReconciler reconciles a OnePasswordItem object
 type OnePasswordItemReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	OpConnectClient connect.Client
+	Scheme   *runtime.Scheme
+	OpClient opclient.Client
 }
 
 //+kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems,verbs=get;list;watch;create;update;patch;delete
@@ -164,7 +163,7 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(resource *onepasswordv
 	secretType := resource.Type
 	autoRestart := resource.Annotations[op.RestartDeploymentsAnnotation]
 
-	item, err := op.GetOnePasswordItemByPath(r.OpConnectClient, resource.Spec.ItemPath)
+	item, err := op.GetOnePasswordItemByPath(r.OpClient, resource.Spec.ItemPath)
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}

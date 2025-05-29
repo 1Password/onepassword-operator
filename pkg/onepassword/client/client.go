@@ -2,6 +2,7 @@ package client
 
 import (
 	"errors"
+	"os"
 
 	"github.com/1Password/onepassword-operator/pkg/onepassword/client/connect"
 	"github.com/1Password/onepassword-operator/pkg/onepassword/client/sdk"
@@ -16,29 +17,24 @@ type Client interface {
 	GetVaultsByTitle(title string) ([]model.Vault, error)
 }
 
-// Config holds the configuration for creating a new 1Password client.
-type Config struct {
-	ConnectHost         string
-	ConnectToken        string
-	UserAgent           string
-	ServiceAccountToken string
-	IntegrationName     string
-	IntegrationVersion  string
-}
-
 // NewClient creates a new 1Password client based on the provided configuration.
-func NewClient(config Config) (Client, error) {
-	if config.ServiceAccountToken != "" {
+func NewClient(integrationVersion string) (Client, error) {
+	connectHost, _ := os.LookupEnv("OP_CONNECT_HOST")
+	connectToken, _ := os.LookupEnv("OP_CONNECT_TOKEN")
+	serviceAccountToken, _ := os.LookupEnv("OP_SERVICE_ACCOUNT_TOKEN")
+
+	if serviceAccountToken != "" {
 		return sdk.NewClient(sdk.Config{
-			ServiceAccountToken: config.ServiceAccountToken,
-			IntegrationName:     config.IntegrationName,
-			IntegrationVersion:  config.IntegrationVersion,
+			ServiceAccountToken: serviceAccountToken,
+			IntegrationName:     "1password-operator",
+			IntegrationVersion:  integrationVersion,
 		})
-	} else if config.ConnectHost != "" && config.ConnectToken != "" {
+	} else if connectHost != "" && connectToken != "" {
 		return connect.NewClient(connect.Config{
-			ConnectHost:  config.ConnectHost,
-			ConnectToken: config.ConnectToken,
+			ConnectHost:  connectHost,
+			ConnectToken: connectToken,
 		}), nil
 	}
-	return nil, errors.New("invalid configuration. Either Connect or Service Account credentials should be set")
+
+	return nil, errors.New("invalid configuration. Connect or Service Account credentials should be set")
 }

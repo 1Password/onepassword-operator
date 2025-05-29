@@ -20,9 +20,10 @@ type Connect struct {
 	client connect.Client
 }
 
+// NewClient creates a new Connect client using provided configuration.
 func NewClient(config Config) *Connect {
 	return &Connect{
-		client: connect.NewClientWithUserAgent(config.ConnectHost, config.ConnectToken, config.UserAgent),
+		client: connect.NewClient(config.ConnectHost, config.ConnectToken),
 	}
 }
 

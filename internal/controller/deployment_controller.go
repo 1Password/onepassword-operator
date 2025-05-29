@@ -31,11 +31,10 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/1Password/connect-sdk-go/connect"
-
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/logs"
 	op "github.com/1Password/onepassword-operator/pkg/onepassword"
+	opclient "github.com/1Password/onepassword-operator/pkg/onepassword/client"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -55,7 +54,7 @@ var logDeployment = logf.Log.WithName("controller_deployment")
 type DeploymentReconciler struct {
 	client.Client
 	Scheme             *runtime.Scheme
-	OpConnectClient    connect.Client
+	OpClient           opclient.Client
 	OpAnnotationRegExp *regexp.Regexp
 }
 
@@ -196,7 +195,7 @@ func (r *DeploymentReconciler) handleApplyingDeployment(deployment *appsv1.Deplo
 		return nil
 	}
 
-	item, err := op.GetOnePasswordItemByPath(r.OpConnectClient, annotations[op.ItemPathAnnotation])
+	item, err := op.GetOnePasswordItemByPath(r.OpClient, annotations[op.ItemPathAnnotation])
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}
