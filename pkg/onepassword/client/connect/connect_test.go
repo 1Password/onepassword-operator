@@ -7,14 +7,15 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/1Password/connect-sdk-go/onepassword"
-	"github.com/1Password/onepassword-operator/pkg/onepassword/client/mock"
+	clienttesting "github.com/1Password/onepassword-operator/pkg/onepassword/client/testing"
+	"github.com/1Password/onepassword-operator/pkg/onepassword/client/testing/mock"
 	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 )
 
 const VaultTitleEmployee = "Employee"
 
 func TestConnect_GetItemByID(t *testing.T) {
-	connectItem := createItem()
+	connectItem := clienttesting.CreateConnectItem()
 
 	testCases := map[string]struct {
 		mockClient func() *mock.ConnectClientMock
@@ -28,7 +29,7 @@ func TestConnect_GetItemByID(t *testing.T) {
 			},
 			check: func(t *testing.T, item *model.Item, err error) {
 				require.NoError(t, err)
-				checkItem(t, connectItem, item)
+				clienttesting.CheckConnectItemMapping(t, connectItem, item)
 			},
 		},
 		"should return an error": {
@@ -54,8 +55,8 @@ func TestConnect_GetItemByID(t *testing.T) {
 }
 
 func TestConnect_GetItemsByTitle(t *testing.T) {
-	connectItem1 := createItem()
-	connectItem2 := createItem()
+	connectItem1 := clienttesting.CreateConnectItem()
+	connectItem2 := clienttesting.CreateConnectItem()
 
 	testCases := map[string]struct {
 		mockClient func() *mock.ConnectClientMock
@@ -89,8 +90,8 @@ func TestConnect_GetItemsByTitle(t *testing.T) {
 			check: func(t *testing.T, items []model.Item, err error) {
 				require.NoError(t, err)
 				require.Len(t, items, 2)
-				checkItem(t, connectItem1, &items[0])
-				checkItem(t, connectItem2, &items[1])
+				clienttesting.CheckConnectItemMapping(t, connectItem1, &items[0])
+				clienttesting.CheckConnectItemMapping(t, connectItem2, &items[1])
 			},
 		},
 		"should return an error": {
@@ -227,43 +228,4 @@ func TestConnect_GetVaultsByTitle(t *testing.T) {
 			tc.check(t, vault, err)
 		})
 	}
-}
-
-func createItem() *onepassword.Item {
-	return &onepassword.Item{
-		ID:      "test-id",
-		Vault:   onepassword.ItemVault{ID: "test-vault-id"},
-		Version: 1,
-		Tags:    []string{"tag1", "tag2"},
-		Fields: []*onepassword.ItemField{
-			{Label: "label1", Value: "value1"},
-			{Label: "label2", Value: "value2"},
-		},
-		Files: []*onepassword.File{
-			{ID: "file-id-1", Name: "file1.txt", Size: 1234},
-			{ID: "file-id-2", Name: "file2.txt", Size: 1234},
-		},
-	}
-}
-
-func checkItem(t *testing.T, expected *onepassword.Item, actual *model.Item) {
-	t.Helper()
-
-	require.Equal(t, expected.ID, actual.ID)
-	require.Equal(t, expected.Vault.ID, actual.VaultID)
-	require.Equal(t, expected.Version, actual.Version)
-	require.ElementsMatch(t, expected.Tags, actual.Tags)
-
-	for i, field := range expected.Fields {
-		require.Equal(t, field.Label, actual.Fields[i].Label)
-		require.Equal(t, field.Value, actual.Fields[i].Value)
-	}
-
-	for i, file := range expected.Files {
-		require.Equal(t, file.ID, actual.Files[i].ID)
-		require.Equal(t, file.Name, actual.Files[i].Name)
-		require.Equal(t, file.Size, actual.Files[i].Size)
-	}
-
-	require.Equal(t, expected.CreatedAt, actual.CreatedAt)
 }
