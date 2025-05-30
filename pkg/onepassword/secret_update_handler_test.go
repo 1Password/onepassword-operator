@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/1Password/onepassword-operator/pkg/mocks"
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 
-	"github.com/1Password/connect-sdk-go/onepassword"
-	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
@@ -802,19 +805,20 @@ func TestUpdateSecretHandler(t *testing.T) {
 			// Create a fake client to mock API calls.
 			cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
-			opConnectClient := &mocks.TestClient{}
-			mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-
-				item := onepassword.Item{}
-				item.Fields = generateFields(testData.opItem["username"], testData.opItem["password"])
-				item.Version = itemVersion
-				item.Vault.ID = vaultUUID
-				item.ID = uuid
-				return &item, nil
-			}
+			mockOpClient := &mocks.TestClient{}
+			mockOpClient.On("GetItemByID", mock.Anything, mock.Anything).Return(createItem(), nil)
+			//mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
+			//
+			//	item := onepassword.Item{}
+			//	item.Fields = generateFields(testData.opItem["username"], testData.opItem["password"])
+			//	item.Version = itemVersion
+			//	item.Vault.ID = vaultUUID
+			//	item.ID = uuid
+			//	return &item, nil
+			//}
 			h := &SecretUpdateHandler{
 				client:                             cl,
-				opConnectClient:                    opConnectClient,
+				opClient:                           mockOpClient,
 				shouldAutoRestartDeploymentsGlobal: testData.globalAutoRestartEnabled,
 			}
 
@@ -879,16 +883,23 @@ func TestIsUpdatedSecret(t *testing.T) {
 	assert.True(t, isUpdatedSecret(secretName, updatedSecrets))
 }
 
-func generateFields(username, password string) []*onepassword.ItemField {
-	fields := []*onepassword.ItemField{
-		{
-			Label: "username",
-			Value: username,
+func createItem() *model.Item {
+	return &model.Item{
+		ID:      itemId,
+		VaultID: vaultId,
+		Version: itemVersion,
+		Tags:    []string{"tag1", "tag2"},
+		Fields: []model.ItemField{
+			{
+				Label: "username",
+				Value: username,
+			},
+			{
+				Label: "password",
+				Value: password,
+			},
 		},
-		{
-			Label: "password",
-			Value: password,
-		},
+		Files:     []model.File{},
+		CreatedAt: time.Now(),
 	}
-	return fields
 }
