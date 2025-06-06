@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 	sdk "github.com/1password/onepassword-sdk-go"
@@ -25,7 +26,7 @@ func NewClient(config Config) (*SDK, error) {
 		sdk.WithIntegrationInfo(config.IntegrationName, config.IntegrationVersion),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("1password sdk error: %w", err)
 	}
 
 	return &SDK{
@@ -36,7 +37,7 @@ func NewClient(config Config) (*SDK, error) {
 func (s *SDK) GetItemByID(vaultID, itemID string) (*model.Item, error) {
 	sdkItem, err := s.client.Items().Get(context.Background(), vaultID, itemID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("1password sdk error: %w", err)
 	}
 
 	var item model.Item
@@ -48,7 +49,7 @@ func (s *SDK) GetItemsByTitle(vaultID, itemTitle string) ([]model.Item, error) {
 	// Get all items in the vault
 	sdkItems, err := s.client.Items().List(context.Background(), vaultID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("1password sdk error: %w", err)
 	}
 
 	// Filter items by title
@@ -65,16 +66,21 @@ func (s *SDK) GetItemsByTitle(vaultID, itemTitle string) ([]model.Item, error) {
 }
 
 func (s *SDK) GetFileContent(vaultID, itemID, fileID string) ([]byte, error) {
-	return s.client.Items().Files().Read(context.Background(), vaultID, itemID, sdk.FileAttributes{
+	bytes, err := s.client.Items().Files().Read(context.Background(), vaultID, itemID, sdk.FileAttributes{
 		ID: fileID,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("1password sdk error: %w", err)
+	}
+
+	return bytes, nil
 }
 
 func (s *SDK) GetVaultsByTitle(title string) ([]model.Vault, error) {
 	// List all vaults
 	sdkVaults, err := s.client.Vaults().List(context.Background())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("1password sdk error: %w", err)
 	}
 
 	// Filter vaults by title

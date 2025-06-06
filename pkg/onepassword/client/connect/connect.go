@@ -30,7 +30,7 @@ func NewClient(config Config) *Connect {
 func (c *Connect) GetItemByID(vaultID, itemID string) (*model.Item, error) {
 	connectItem, err := c.client.GetItemByUUID(itemID, vaultID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("1password Connect error: %w", err)
 	}
 
 	var item model.Item
@@ -42,7 +42,7 @@ func (c *Connect) GetItemsByTitle(vaultID, itemTitle string) ([]model.Item, erro
 	// Get all items in the vault with the specified title
 	connectItems, err := c.client.GetItemsByTitle(itemTitle, vaultID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("1password Connect error: %w", err)
 	}
 
 	var items []model.Item
@@ -56,15 +56,20 @@ func (c *Connect) GetItemsByTitle(vaultID, itemTitle string) ([]model.Item, erro
 }
 
 func (c *Connect) GetFileContent(vaultID, itemID, fileID string) ([]byte, error) {
-	return c.client.GetFileContent(&onepassword.File{
+	bytes, err := c.client.GetFileContent(&onepassword.File{
 		ContentPath: fmt.Sprintf("/v1/vaults/%s/items/%s/files/%s/content", vaultID, itemID, fileID),
 	})
+	if err != nil {
+		return nil, fmt.Errorf("1password Connect error: %w", err)
+	}
+
+	return bytes, nil
 }
 
 func (c *Connect) GetVaultsByTitle(vaultQuery string) ([]model.Vault, error) {
 	connectVaults, err := c.client.GetVaultsByTitle(vaultQuery)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("1password Connect error: %w", err)
 	}
 
 	var vaults []model.Vault
