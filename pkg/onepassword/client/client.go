@@ -23,13 +23,19 @@ func NewClient(integrationVersion string) (Client, error) {
 	connectToken, _ := os.LookupEnv("OP_CONNECT_TOKEN")
 	serviceAccountToken, _ := os.LookupEnv("OP_SERVICE_ACCOUNT_TOKEN")
 
+	if connectHost != "" && connectToken != "" && serviceAccountToken != "" {
+		return nil, errors.New("invalid configuration. Either Connect or Service Account credentials should be set, not both")
+	}
+
 	if serviceAccountToken != "" {
 		return sdk.NewClient(sdk.Config{
 			ServiceAccountToken: serviceAccountToken,
 			IntegrationName:     "1password-operator",
 			IntegrationVersion:  integrationVersion,
 		})
-	} else if connectHost != "" && connectToken != "" {
+	}
+
+	if connectHost != "" && connectToken != "" {
 		return connect.NewClient(connect.Config{
 			ConnectHost:  connectHost,
 			ConnectToken: connectToken,
