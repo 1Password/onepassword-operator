@@ -2,6 +2,7 @@ package client
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/1Password/onepassword-operator/pkg/onepassword/client/connect"
@@ -28,6 +29,7 @@ func NewClient(integrationVersion string) (Client, error) {
 	}
 
 	if serviceAccountToken != "" {
+		fmt.Printf("Using Service Account Token")
 		return sdk.NewClient(sdk.Config{
 			ServiceAccountToken: serviceAccountToken,
 			IntegrationName:     "1password-operator",
@@ -36,6 +38,7 @@ func NewClient(integrationVersion string) (Client, error) {
 	}
 
 	if connectHost != "" && connectToken != "" {
+		fmt.Printf("Using Connect")
 		return connect.NewClient(connect.Config{
 			ConnectHost:  connectHost,
 			ConnectToken: connectToken,

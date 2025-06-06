@@ -19,17 +19,17 @@ func GetOnePasswordItemByPath(opClient opclient.Client, path string) (*model.Ite
 	}
 	vaultID, err := getVaultID(opClient, vaultIdentifier)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to 'getVaultID' for vaultIdentifier='%s': %w", vaultIdentifier, err)
 	}
 
 	itemID, err := getItemID(opClient, vaultID, itemIdentifier)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("faild to 'getItemID' for vaultID='%s' and itemIdentifier='%s': %w", vaultID, itemIdentifier, err)
 	}
 
-	item, err := opClient.GetItemByID(itemID, vaultID)
+	item, err := opClient.GetItemByID(vaultID, itemID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("faield to 'GetItemByID' for vaultID='%s' and itemID='%s': %w", vaultID, itemID, err)
 	}
 
 	for _, file := range item.Files {
@@ -77,7 +77,7 @@ func getVaultID(client opclient.Client, vaultIdentifier string) (string, error) 
 
 func getItemID(client opclient.Client, vaultId, itemIdentifier string) (string, error) {
 	if !IsValidClientUUID(itemIdentifier) {
-		items, err := client.GetItemsByTitle(itemIdentifier, vaultId)
+		items, err := client.GetItemsByTitle(vaultId, itemIdentifier)
 		if err != nil {
 			return "", err
 		}
