@@ -4,36 +4,36 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/1Password/connect-sdk-go/connect"
-	"github.com/1Password/connect-sdk-go/onepassword"
-
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+
+	opclient "github.com/1Password/onepassword-operator/pkg/onepassword/client"
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 )
 
 var logger = logf.Log.WithName("retrieve_item")
 
-func GetOnePasswordItemByPath(opConnectClient connect.Client, path string) (*onepassword.Item, error) {
-	vaultValue, itemValue, err := ParseVaultAndItemFromPath(path)
+func GetOnePasswordItemByPath(opClient opclient.Client, path string) (*model.Item, error) {
+	vaultIdentifier, itemIdentifier, err := ParseVaultAndItemFromPath(path)
 	if err != nil {
 		return nil, err
 	}
-	vaultId, err := getVaultId(opConnectClient, vaultValue)
+	vaultID, err := getVaultID(opClient, vaultIdentifier)
 	if err != nil {
-		return nil, err
-	}
-
-	itemId, err := getItemId(opConnectClient, itemValue, vaultId)
-	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to 'getVaultID' for vaultIdentifier='%s': %w", vaultIdentifier, err)
 	}
 
-	item, err := opConnectClient.GetItem(itemId, vaultId)
+	itemID, err := getItemID(opClient, vaultID, itemIdentifier)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("faild to 'getItemID' for vaultID='%s' and itemIdentifier='%s': %w", vaultID, itemIdentifier, err)
+	}
+
+	item, err := opClient.GetItemByID(vaultID, itemID)
+	if err != nil {
+		return nil, fmt.Errorf("faield to 'GetItemByID' for vaultID='%s' and itemID='%s': %w", vaultID, itemID, err)
 	}
 
 	for _, file := range item.Files {
-		_, err := opConnectClient.GetFileContent(file)
+		_, err := opClient.GetFileContent(vaultID, itemID, file.ID)
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +50,7 @@ func ParseVaultAndItemFromPath(path string) (string, string, error) {
 	return "", "", fmt.Errorf("%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`", path)
 }
 
-func getVaultId(client connect.Client, vaultIdentifier string) (string, error) {
+func getVaultID(client opclient.Client, vaultIdentifier string) (string, error) {
 	if !IsValidClientUUID(vaultIdentifier) {
 		vaults, err := client.GetVaultsByTitle(vaultIdentifier)
 		if err != nil {
@@ -75,9 +75,9 @@ func getVaultId(client connect.Client, vaultIdentifier string) (string, error) {
 	return vaultIdentifier, nil
 }
 
-func getItemId(client connect.Client, itemIdentifier string, vaultId string) (string, error) {
+func getItemID(client opclient.Client, vaultId, itemIdentifier string) (string, error) {
 	if !IsValidClientUUID(itemIdentifier) {
-		items, err := client.GetItemsByTitle(itemIdentifier, vaultId)
+		items, err := client.GetItemsByTitle(vaultId, itemIdentifier)
 		if err != nil {
 			return "", err
 		}
