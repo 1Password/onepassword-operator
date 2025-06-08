@@ -20,8 +20,8 @@ type SDK struct {
 	client *sdk.Client
 }
 
-func NewClient(config Config) (*SDK, error) {
-	client, err := sdk.NewClient(context.Background(),
+func NewClient(ctx context.Context, config Config) (*SDK, error) {
+	client, err := sdk.NewClient(ctx,
 		sdk.WithServiceAccountToken(config.ServiceAccountToken),
 		sdk.WithIntegrationInfo(config.IntegrationName, config.IntegrationVersion),
 	)
@@ -34,8 +34,8 @@ func NewClient(config Config) (*SDK, error) {
 	}, nil
 }
 
-func (s *SDK) GetItemByID(vaultID, itemID string) (*model.Item, error) {
-	sdkItem, err := s.client.Items().Get(context.Background(), vaultID, itemID)
+func (s *SDK) GetItemByID(ctx context.Context, vaultID, itemID string) (*model.Item, error) {
+	sdkItem, err := s.client.Items().Get(ctx, vaultID, itemID)
 	if err != nil {
 		return nil, fmt.Errorf("1password sdk error: %w", err)
 	}
@@ -45,9 +45,9 @@ func (s *SDK) GetItemByID(vaultID, itemID string) (*model.Item, error) {
 	return &item, nil
 }
 
-func (s *SDK) GetItemsByTitle(vaultID, itemTitle string) ([]model.Item, error) {
+func (s *SDK) GetItemsByTitle(ctx context.Context, vaultID, itemTitle string) ([]model.Item, error) {
 	// Get all items in the vault
-	sdkItems, err := s.client.Items().List(context.Background(), vaultID)
+	sdkItems, err := s.client.Items().List(ctx, vaultID)
 	if err != nil {
 		return nil, fmt.Errorf("1password sdk error: %w", err)
 	}
@@ -65,8 +65,8 @@ func (s *SDK) GetItemsByTitle(vaultID, itemTitle string) ([]model.Item, error) {
 	return items, nil
 }
 
-func (s *SDK) GetFileContent(vaultID, itemID, fileID string) ([]byte, error) {
-	bytes, err := s.client.Items().Files().Read(context.Background(), vaultID, itemID, sdk.FileAttributes{
+func (s *SDK) GetFileContent(ctx context.Context, vaultID, itemID, fileID string) ([]byte, error) {
+	bytes, err := s.client.Items().Files().Read(ctx, vaultID, itemID, sdk.FileAttributes{
 		ID: fileID,
 	})
 	if err != nil {
@@ -76,9 +76,9 @@ func (s *SDK) GetFileContent(vaultID, itemID, fileID string) ([]byte, error) {
 	return bytes, nil
 }
 
-func (s *SDK) GetVaultsByTitle(title string) ([]model.Vault, error) {
+func (s *SDK) GetVaultsByTitle(ctx context.Context, title string) ([]model.Vault, error) {
 	// List all vaults
-	sdkVaults, err := s.client.Vaults().List(context.Background())
+	sdkVaults, err := s.client.Vaults().List(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("1password sdk error: %w", err)
 	}

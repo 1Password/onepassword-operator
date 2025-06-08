@@ -82,7 +82,7 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	reqLogger.V(logs.DebugLevel).Info("Reconciling OnePasswordItem")
 
 	onepassworditem := &onepasswordv1.OnePasswordItem{}
-	err := r.Get(context.Background(), req.NamespacedName, onepassworditem)
+	err := r.Get(ctx, req.NamespacedName, onepassworditem)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -96,14 +96,14 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		// This is so we can handle cleanup of associated secrets properly
 		if !utils.ContainsString(onepassworditem.ObjectMeta.Finalizers, finalizer) {
 			onepassworditem.ObjectMeta.Finalizers = append(onepassworditem.ObjectMeta.Finalizers, finalizer)
-			if err = r.Update(context.Background(), onepassworditem); err != nil {
+			if err = r.Update(ctx, onepassworditem); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 
 		// Handles creation or updating secrets for deployment if needed
-		err = r.handleOnePasswordItem(onepassworditem, req)
-		if updateStatusErr := r.updateStatus(onepassworditem, err); updateStatusErr != nil {
+		err = r.handleOnePasswordItem(ctx, onepassworditem, req)
+		if updateStatusErr := r.updateStatus(ctx, onepassworditem, err); updateStatusErr != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot update status: %s", updateStatusErr)
 		}
 		return ctrl.Result{}, err
@@ -112,12 +112,12 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	if utils.ContainsString(onepassworditem.ObjectMeta.Finalizers, finalizer) {
 
 		// Delete associated kubernetes secret
-		if err = r.cleanupKubernetesSecret(onepassworditem); err != nil {
+		if err = r.cleanupKubernetesSecret(ctx, onepassworditem); err != nil {
 			return ctrl.Result{}, err
 		}
 
 		// Remove finalizer now that cleanup is complete
-		if err = r.removeFinalizer(onepassworditem); err != nil {
+		if err = r.removeFinalizer(ctx, onepassworditem); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -131,20 +131,20 @@ func (r *OnePasswordItemReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *OnePasswordItemReconciler) removeFinalizer(onePasswordItem *onepasswordv1.OnePasswordItem) error {
+func (r *OnePasswordItemReconciler) removeFinalizer(ctx context.Context, onePasswordItem *onepasswordv1.OnePasswordItem) error {
 	onePasswordItem.ObjectMeta.Finalizers = utils.RemoveString(onePasswordItem.ObjectMeta.Finalizers, finalizer)
-	if err := r.Update(context.Background(), onePasswordItem); err != nil {
+	if err := r.Update(ctx, onePasswordItem); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(onePasswordItem *onepasswordv1.OnePasswordItem) error {
+func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(ctx context.Context, onePasswordItem *onepasswordv1.OnePasswordItem) error {
 	kubernetesSecret := &corev1.Secret{}
 	kubernetesSecret.ObjectMeta.Name = onePasswordItem.Name
 	kubernetesSecret.ObjectMeta.Namespace = onePasswordItem.Namespace
 
-	if err := r.Delete(context.Background(), kubernetesSecret); err != nil {
+	if err := r.Delete(ctx, kubernetesSecret); err != nil {
 		if !errors.IsNotFound(err) {
 			return err
 		}
@@ -152,18 +152,18 @@ func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(onePasswordItem *one
 	return nil
 }
 
-func (r *OnePasswordItemReconciler) removeOnePasswordFinalizerFromOnePasswordItem(opSecret *onepasswordv1.OnePasswordItem) error {
+func (r *OnePasswordItemReconciler) removeOnePasswordFinalizerFromOnePasswordItem(ctx context.Context, opSecret *onepasswordv1.OnePasswordItem) error {
 	opSecret.ObjectMeta.Finalizers = utils.RemoveString(opSecret.ObjectMeta.Finalizers, finalizer)
-	return r.Update(context.Background(), opSecret)
+	return r.Update(ctx, opSecret)
 }
 
-func (r *OnePasswordItemReconciler) handleOnePasswordItem(resource *onepasswordv1.OnePasswordItem, req ctrl.Request) error {
+func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, resource *onepasswordv1.OnePasswordItem, req ctrl.Request) error {
 	secretName := resource.GetName()
 	labels := resource.Labels
 	secretType := resource.Type
 	autoRestart := resource.Annotations[op.RestartDeploymentsAnnotation]
 
-	item, err := op.GetOnePasswordItemByPath(r.OpClient, resource.Spec.ItemPath)
+	item, err := op.GetOnePasswordItemByPath(ctx, r.OpClient, resource.Spec.ItemPath)
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}
@@ -180,10 +180,10 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(resource *onepasswordv
 		UID:        resource.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.Client, secretName, resource.Namespace, item, autoRestart, labels, secretType, ownerRef)
+	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, resource.Namespace, item, autoRestart, labels, secretType, ownerRef)
 }
 
-func (r *OnePasswordItemReconciler) updateStatus(resource *onepasswordv1.OnePasswordItem, err error) error {
+func (r *OnePasswordItemReconciler) updateStatus(ctx context.Context, resource *onepasswordv1.OnePasswordItem, err error) error {
 	existingCondition := findCondition(resource.Status.Conditions, onepasswordv1.OnePasswordItemReady)
 	updatedCondition := existingCondition
 	if err != nil {
@@ -199,7 +199,7 @@ func (r *OnePasswordItemReconciler) updateStatus(resource *onepasswordv1.OnePass
 	}
 
 	resource.Status.Conditions = []onepasswordv1.OnePasswordItemCondition{updatedCondition}
-	return r.Status().Update(context.Background(), resource)
+	return r.Status().Update(ctx, resource)
 }
 
 func findCondition(conditions []onepasswordv1.OnePasswordItemCondition, t onepasswordv1.OnePasswordItemConditionType) onepasswordv1.OnePasswordItemCondition {

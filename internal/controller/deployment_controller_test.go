@@ -24,14 +24,13 @@ const (
 )
 
 var _ = Describe("Deployment controller", func() {
-	var ctx context.Context
+	ctx := context.Background()
 	var deploymentKey types.NamespacedName
 	var secretKey types.NamespacedName
 	var deploymentResource *appsv1.Deployment
 	createdSecret := &v1.Secret{}
 
 	makeDeployment := func() {
-		ctx = context.Background()
 
 		deploymentKey = types.NamespacedName{
 			Name:      deploymentName,
@@ -93,13 +92,13 @@ var _ = Describe("Deployment controller", func() {
 
 	cleanK8sResources := func() {
 		// failed test runs that don't clean up leave resources behind.
-		err := k8sClient.DeleteAllOf(context.Background(), &onepasswordv1.OnePasswordItem{}, client.InNamespace(namespace))
+		err := k8sClient.DeleteAllOf(ctx, &onepasswordv1.OnePasswordItem{}, client.InNamespace(namespace))
 		Expect(err).ToNot(HaveOccurred())
 
-		err = k8sClient.DeleteAllOf(context.Background(), &v1.Secret{}, client.InNamespace(namespace))
+		err = k8sClient.DeleteAllOf(ctx, &v1.Secret{}, client.InNamespace(namespace))
 		Expect(err).ToNot(HaveOccurred())
 
-		err = k8sClient.DeleteAllOf(context.Background(), &appsv1.Deployment{}, client.InNamespace(namespace))
+		err = k8sClient.DeleteAllOf(ctx, &appsv1.Deployment{}, client.InNamespace(namespace))
 		Expect(err).ToNot(HaveOccurred())
 	}
 

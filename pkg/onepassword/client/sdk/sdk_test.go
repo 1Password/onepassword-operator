@@ -54,7 +54,7 @@ func TestSDK_GetItemByID(t *testing.T) {
 					ItemsAPI: tc.mockItemAPI(),
 				},
 			}
-			item, err := client.GetItemByID("vault-id", "item-id")
+			item, err := client.GetItemByID(context.Background(), "vault-id", "item-id")
 			tc.check(t, item, err)
 		})
 	}
@@ -123,7 +123,7 @@ func TestSDK_GetItemsByTitle(t *testing.T) {
 					ItemsAPI: tc.mockItemAPI(),
 				},
 			}
-			items, err := client.GetItemsByTitle("vault-id", "item-title")
+			items, err := client.GetItemsByTitle(context.Background(), "vault-id", "item-title")
 			tc.check(t, items, err)
 		})
 	}
@@ -185,7 +185,7 @@ func TestSDK_GetFileContent(t *testing.T) {
 					ItemsAPI: tc.mockItemAPI(),
 				},
 			}
-			content, err := client.GetFileContent("vault-id", "item-id", "file-id")
+			content, err := client.GetFileContent(context.Background(), "vault-id", "item-id", "file-id")
 			tc.check(t, content, err)
 		})
 	}
@@ -262,7 +262,7 @@ func TestSDK_GetVaultsByTitle(t *testing.T) {
 					VaultsAPI: tc.mockVaultAPI(),
 				},
 			}
-			vault, err := client.GetVaultsByTitle(VaultTitleEmployee)
+			vault, err := client.GetVaultsByTitle(context.Background(), VaultTitleEmployee)
 			tc.check(t, vault, err)
 		})
 	}
