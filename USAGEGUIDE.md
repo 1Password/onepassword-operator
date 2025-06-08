@@ -5,9 +5,11 @@
 
 ## Table of Contents
 
+- [Configuration Options](#configuration-options)
 - [Prerequisites](#prerequisites)
 - [Deploying 1Password Connect to Kubernetes](#deploying-1password-connect-to-kubernetes)
-- [Kubernetes Operator Deployment](#kubernetes-operator-deployment)
+- [Kubernetes Operator Deployment With Connect](#kubernetes-operator-deployment-with-connect)
+- [Kubernetes Operator Deployment With Service Account](#kubernetes-operator-deployment-with-service-account)
 - [Usage](#usage)
 - [Configuring Automatic Rolling Restarts of Deployments](#configuring-automatic-rolling-restarts-of-deployments)
 - [Development](#development)
@@ -18,6 +20,11 @@
 - [`kubectl` installed](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
 - [`docker` installed](https://docs.docker.com/get-docker/)
 - [A `1password-credentials.json` file generated and a 1Password Connect API Token issued for the K8s Operator integration](https://developer.1password.com/docs/connect/get-started/#step-1-set-up-a-secrets-automation-workflow)
+
+## Configuration options
+There are 2 ways 1Password Operator can talk to 1Password servers:
+- **Connect**: It uses the 1Password Connect API to access items in 1Password.
+- **Service Account**: It uses [1Password SDK](https://developer.1password.com/docs/sdks/) and [Service Account](https://developer.1password.com/docs/service-accounts) to access items in 1Password.
 
 ## Deploying 1Password Connect to Kubernetes
 
@@ -60,7 +67,7 @@ Add the following environment variable to the onepassword-connect-operator conta
 
 Adding this environment variable will have the operator automatically deploy a default configuration of 1Password Connect to the current namespace.
 
-### Kubernetes Operator Deployment
+## Kubernetes Operator Deployment with Connect
 
 #### Create Kubernetes Secret for OP_CONNECT_TOKEN ####
 
@@ -87,6 +94,64 @@ To further configure the 1Password Kubernetes Operator the following Environment
 - **POLLING_INTERVAL** *(default: 600)*: The number of seconds the 1Password Kubernetes Operator will wait before checking for updates from 1Password Connect.
 - **MANAGE_CONNECT** *(default: false)*: If set to true, on deployment of the operator, a default configuration of the OnePassword Connect Service will be deployed to the current namespace.
 - **AUTO_RESTART** (default: false): If set to true, the operator will restart any deployment using a secret from 1Password Connect. This can be overwritten by namespace, deployment, or individual secret. More details on AUTO_RESTART can be found in the ["Configuring Automatic Rolling Restarts of Deployments"](#configuring-automatic-rolling-restarts-of-deployments) section.
+
+You can also set the logging level by setting `--zap-log-level` as an arg on the containers to either `debug`, `info` or `error`. (Note: the default value is `debug`.)
+
+Example:
+```yaml
+.
+.
+.
+containers:
+      - command:
+        - /manager
+        args:
+        - --leader-elect
+        - --zap-log-level=info
+        image: 1password/onepassword-operator:latest
+.
+.
+.
+```
+To deploy the operator, simply run the following command:
+
+```shell
+make deploy
+```
+
+**Undeploy Operator**
+
+```
+make undeploy
+```
+
+## Kubernetes Operator Deployment with Service Account
+
+#### Create Kubernetes Secret for OP_SERVICE_ACCOUNT_TOKEN ####
+
+Create a Service Account token for the operator and save it as a Kubernetes Secret:
+
+```bash
+kubectl create secret generic onepassword-service-account-token --from-literal=token="$OP_SERVICE_ACCOUNT_TOKEN"
+```
+
+If you do not have a token for the operator, you can generate a token and save it to Kubernetes with the following command:
+
+```bash
+kubectl create secret generic onepassword-service-account-token --from-literal=token=$(op service-account create my-service-account --vault Dev:read_items --vault Test:read_items,write_items)
+```
+
+**Deploying the Operator**
+
+An sample Deployment yaml can be found at `/config/manager/manager.yaml`.
+To use Operator with Service Account, you need to set the `OP_SERVICE_ACCOUNT_TOKEN` environment variable in the `/config/manager/manager.yaml`. And remove `OP_CONNECT_TOKEN` and `OP_CONNECT_HOST` environment variables.
+
+To further configure the 1Password Kubernetes Operator the following Environment variables can be set in the operator yaml:
+
+- **OP_SERVICE_ACCOUNT_TOKEN** *(required)*: Specifies Service Account token within Kubernetes to access the 1Password items.
+- **WATCH_NAMESPACE:** *(default: watch all namespaces)*: Comma separated list of what Namespaces to watch for changes.
+- **POLLING_INTERVAL** *(default: 600)*: The number of seconds the 1Password Kubernetes Operator will wait before checking for updates from 1Password.
+- **AUTO_RESTART** (default: false): If set to true, the operator will restart any deployment using a secret from 1Password. This can be overwritten by namespace, deployment, or individual secret. More details on AUTO_RESTART can be found in the ["Configuring Automatic Rolling Restarts of Deployments"](#configuring-automatic-rolling-restarts-of-deployments) section.
 
 You can also set the logging level by setting `--zap-log-level` as an arg on the containers to either `debug`, `info` or `error`. (Note: the default value is `debug`.)
 
