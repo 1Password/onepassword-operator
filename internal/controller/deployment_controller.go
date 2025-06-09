@@ -104,8 +104,8 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// Handles creation or updating secrets for deployment if needed
 		if err = r.handleApplyingDeployment(deployment, deployment.Namespace, annotations, req); err != nil {
 			if strings.Contains(err.Error(), "rate limit") {
-				reqLogger.V(logs.InfoLevel).Info("1Password rate limit hit. Requeuing after 1 minute.")
-				return ctrl.Result{RequeueAfter: time.Minute}, nil
+				reqLogger.V(logs.InfoLevel).Info("1Password rate limit hit. Requeuing after 15 minutes.")
+				return ctrl.Result{RequeueAfter: 15 * time.Minute}, nil
 			} else {
 				return ctrl.Result{}, err
 			}
