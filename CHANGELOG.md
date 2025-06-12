@@ -12,6 +12,14 @@
 
 ---
 
+[//]: # (START/v1.9.0)
+# v1.9.0
+
+## Features
+ * Support Service Accounts. {#160}
+
+---
+
 [//]: # (START/v1.8.1)
 # v1.8.1
 

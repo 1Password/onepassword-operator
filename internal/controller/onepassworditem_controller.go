@@ -27,13 +27,14 @@ package controller
 import (
 	"context"
 	"fmt"
-
-	"github.com/1Password/connect-sdk-go/connect"
+	"strings"
+	"time"
 
 	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/logs"
 	op "github.com/1Password/onepassword-operator/pkg/onepassword"
+	opclient "github.com/1Password/onepassword-operator/pkg/onepassword/client"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
 	corev1 "k8s.io/api/core/v1"
@@ -52,8 +53,8 @@ var finalizer = "onepassword.com/finalizer.secret"
 // OnePasswordItemReconciler reconciles a OnePasswordItem object
 type OnePasswordItemReconciler struct {
 	client.Client
-	Scheme          *runtime.Scheme
-	OpConnectClient connect.Client
+	Scheme   *runtime.Scheme
+	OpClient opclient.Client
 }
 
 //+kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems,verbs=get;list;watch;create;update;patch;delete
@@ -104,6 +105,12 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 		// Handles creation or updating secrets for deployment if needed
 		err = r.handleOnePasswordItem(onepassworditem, req)
+		if err != nil {
+			if strings.Contains(err.Error(), "rate limit") {
+				reqLogger.V(logs.InfoLevel).Info("1Password rate limit hit. Requeuing after 15 minutes.")
+				return ctrl.Result{RequeueAfter: 15 * time.Minute}, nil
+			}
+		}
 		if updateStatusErr := r.updateStatus(onepassworditem, err); updateStatusErr != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot update status: %s", updateStatusErr)
 		}
@@ -164,7 +171,7 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(resource *onepasswordv
 	secretType := resource.Type
 	autoRestart := resource.Annotations[op.RestartDeploymentsAnnotation]
 
-	item, err := op.GetOnePasswordItemByPath(r.OpConnectClient, resource.Spec.ItemPath)
+	item, err := op.GetOnePasswordItemByPath(r.OpClient, resource.Spec.ItemPath)
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}

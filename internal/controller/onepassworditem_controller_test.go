@@ -2,10 +2,6 @@ package controller
 
 import (
 	"context"
-
-	"github.com/1Password/connect-sdk-go/onepassword"
-	"github.com/1Password/onepassword-operator/pkg/mocks"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -16,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 )
 
 const (
@@ -32,17 +29,8 @@ var _ = Describe("OnePasswordItem controller", func() {
 		err = k8sClient.DeleteAllOf(context.Background(), &v1.Secret{}, client.InNamespace(namespace))
 		Expect(err).ToNot(HaveOccurred())
 
-		mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-			item := onepassword.Item{}
-			item.Fields = []*onepassword.ItemField{}
-			for k, v := range item1.Data {
-				item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
-			}
-			item.Version = item1.Version
-			item.Vault.ID = vaultUUID
-			item.ID = uuid
-			return &item, nil
-		}
+		item := item1.ToModel()
+		mockGetItemByIDFunc.Return(item, nil)
 	})
 
 	Context("Happy path", func() {
@@ -99,17 +87,13 @@ var _ = Describe("OnePasswordItem controller", func() {
 				"password":   []byte("##newPassword##"),
 				"extraField": []byte("dev"),
 			}
-			mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-				item := onepassword.Item{}
-				item.Fields = []*onepassword.ItemField{}
-				for k, v := range newData {
-					item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
-				}
-				item.Version = item1.Version + 1
-				item.Vault.ID = vaultUUID
-				item.ID = uuid
-				return &item, nil
+
+			item := item2.ToModel()
+			for k, v := range newData {
+				item.Fields = append(item.Fields, model.ItemField{Label: k, Value: v})
 			}
+			mockGetItemByIDFunc.Return(item, nil)
+
 			_, err := onePasswordItemReconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
 			Expect(err).ToNot(HaveOccurred())
 
@@ -178,18 +162,11 @@ var _ = Describe("OnePasswordItem controller", func() {
 				"ice-cream-type": []byte(iceCream),
 			}
 
-			mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-				item := onepassword.Item{}
-				item.Title = "!my sECReT it3m%"
-				item.Fields = []*onepassword.ItemField{}
-				for k, v := range testData {
-					item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
-				}
-				item.Version = item1.Version + 1
-				item.Vault.ID = vaultUUID
-				item.ID = uuid
-				return &item, nil
+			item := item2.ToModel()
+			for k, v := range testData {
+				item.Fields = append(item.Fields, model.ItemField{Label: k, Value: v})
 			}
+			mockGetItemByIDFunc.Return(item, nil)
 
 			By("Creating a new OnePasswordItem successfully")
 			Expect(k8sClient.Create(ctx, toCreate)).Should(Succeed())
