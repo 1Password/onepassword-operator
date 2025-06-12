@@ -33,7 +33,7 @@ var ErrCannotUpdateSecretType = errs.New("Cannot change secret type. Secret type
 
 var log = logf.Log
 
-func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *model.Item, autoRestart string, labels map[string]string, secretType string, ownerRef *metav1.OwnerReference) error {
+func CreateKubernetesSecretFromItem(ctx context.Context, kubeClient kubernetesClient.Client, secretName, namespace string, item *model.Item, autoRestart string, labels map[string]string, secretType string, ownerRef *metav1.OwnerReference) error {
 	itemVersion := fmt.Sprint(item.Version)
 	secretAnnotations := map[string]string{
 		VersionAnnotation:  itemVersion,
@@ -52,10 +52,10 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels, secretType, *item, ownerRef)
 
 	currentSecret := &corev1.Secret{}
-	err := kubeClient.Get(context.Background(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
+	err := kubeClient.Get(ctx, types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
 	if err != nil && errors.IsNotFound(err) {
 		log.Info(fmt.Sprintf("Creating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
-		return kubeClient.Create(context.Background(), secret)
+		return kubeClient.Create(ctx, secret)
 	} else if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 		currentSecret.ObjectMeta.Annotations = secretAnnotations
 		currentSecret.ObjectMeta.Labels = labels
 		currentSecret.Data = secret.Data
-		if err := kubeClient.Update(context.Background(), currentSecret); err != nil {
+		if err := kubeClient.Update(ctx, currentSecret); err != nil {
 			return fmt.Errorf("Kubernetes secret update failed: %w", err)
 		}
 		return nil

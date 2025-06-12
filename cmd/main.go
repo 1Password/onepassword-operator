@@ -25,6 +25,7 @@ SOFTWARE.
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -112,6 +113,9 @@ func main() {
 
 	printVersion()
 
+	// Create a root context that will be cancelled on termination signals
+	ctx := ctrl.SetupSignalHandler()
+
 	watchNamespace, err := getWatchNamespace()
 	if err != nil {
 		setupLog.Error(err, "unable to get WatchNamespace, "+
@@ -152,7 +156,7 @@ func main() {
 	}
 
 	// Setup One Password Client
-	opClient, err := opclient.NewClient(version.OperatorVersion)
+	opClient, err := opclient.NewClient(ctx, version.OperatorVersion)
 	if err != nil {
 		setupLog.Error(err, "unable to create 1Password client")
 		os.Exit(1)
@@ -182,10 +186,10 @@ func main() {
 	//Setup 1PasswordConnect
 	if shouldManageConnect() {
 		setupLog.Info("Automated Connect Management Enabled")
-		go func() {
+		go func(ctx context.Context) {
 			connectStarted := false
 			for connectStarted == false {
-				err := op.SetupConnect(mgr.GetClient(), deploymentNamespace)
+				err := op.SetupConnect(ctx, mgr.GetClient(), deploymentNamespace)
 				// Cache Not Started is an acceptable error. Retry until cache is started.
 				if err != nil && !errors.Is(err, &cache.ErrCacheNotStarted{}) {
 					setupLog.Error(err, "")
@@ -195,7 +199,7 @@ func main() {
 					connectStarted = true
 				}
 			}
-		}()
+		}(ctx)
 	} else {
 		setupLog.Info("Automated Connect Management Disabled")
 	}
@@ -204,20 +208,20 @@ func main() {
 	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opClient, shouldAutoRestartDeployments())
 	done := make(chan bool)
 	ticker := time.NewTicker(getPollingIntervalForUpdatingSecrets())
-	go func() {
+	go func(ctx context.Context) {
 		for {
 			select {
 			case <-done:
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				err := updatedSecretsPoller.UpdateKubernetesSecretsTask()
+				err := updatedSecretsPoller.UpdateKubernetesSecretsTask(ctx)
 				if err != nil {
 					setupLog.Error(err, "error running update kubernetes secret task")
 				}
 			}
 		}
-	}()
+	}(ctx)
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
@@ -229,7 +233,7 @@ func main() {
 	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}

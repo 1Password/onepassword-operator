@@ -1,6 +1,7 @@
 package connect
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/1Password/connect-sdk-go/connect"
@@ -27,7 +28,7 @@ func NewClient(config Config) *Connect {
 	}
 }
 
-func (c *Connect) GetItemByID(vaultID, itemID string) (*model.Item, error) {
+func (c *Connect) GetItemByID(ctx context.Context, vaultID, itemID string) (*model.Item, error) {
 	connectItem, err := c.client.GetItemByUUID(itemID, vaultID)
 	if err != nil {
 		return nil, fmt.Errorf("1password Connect error: %w", err)
@@ -38,7 +39,7 @@ func (c *Connect) GetItemByID(vaultID, itemID string) (*model.Item, error) {
 	return &item, nil
 }
 
-func (c *Connect) GetItemsByTitle(vaultID, itemTitle string) ([]model.Item, error) {
+func (c *Connect) GetItemsByTitle(ctx context.Context, vaultID, itemTitle string) ([]model.Item, error) {
 	// Get all items in the vault with the specified title
 	connectItems, err := c.client.GetItemsByTitle(itemTitle, vaultID)
 	if err != nil {
@@ -55,7 +56,7 @@ func (c *Connect) GetItemsByTitle(vaultID, itemTitle string) ([]model.Item, erro
 	return items, nil
 }
 
-func (c *Connect) GetFileContent(vaultID, itemID, fileID string) ([]byte, error) {
+func (c *Connect) GetFileContent(ctx context.Context, vaultID, itemID, fileID string) ([]byte, error) {
 	bytes, err := c.client.GetFileContent(&onepassword.File{
 		ContentPath: fmt.Sprintf("/v1/vaults/%s/items/%s/files/%s/content", vaultID, itemID, fileID),
 	})
@@ -66,7 +67,7 @@ func (c *Connect) GetFileContent(vaultID, itemID, fileID string) ([]byte, error)
 	return bytes, nil
 }
 
-func (c *Connect) GetVaultsByTitle(vaultQuery string) ([]model.Vault, error) {
+func (c *Connect) GetVaultsByTitle(ctx context.Context, vaultQuery string) ([]model.Vault, error) {
 	connectVaults, err := c.client.GetVaultsByTitle(vaultQuery)
 	if err != nil {
 		return nil, fmt.Errorf("1password Connect error: %w", err)
