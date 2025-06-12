@@ -6,7 +6,7 @@ toolchain go1.24.1
 
 require (
 	github.com/1Password/connect-sdk-go v1.5.3
-	github.com/1password/onepassword-sdk-go v0.3.0
+	github.com/1password/onepassword-sdk-go v0.3.1
 	github.com/onsi/ginkgo/v2 v2.14.0
 	github.com/onsi/gomega v1.30.0
 	github.com/stretchr/testify v1.10.0

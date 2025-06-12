@@ -27,6 +27,8 @@ package controller
 import (
 	"context"
 	"fmt"
+	"strings"
+	"time"
 
 	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
@@ -103,6 +105,12 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 		// Handles creation or updating secrets for deployment if needed
 		err = r.handleOnePasswordItem(ctx, onepassworditem, req)
+		if err != nil {
+			if strings.Contains(err.Error(), "rate limit") {
+				reqLogger.V(logs.InfoLevel).Info("1Password rate limit hit. Requeuing after 15 minutes.")
+				return ctrl.Result{RequeueAfter: 15 * time.Minute}, nil
+			}
+		}
 		if updateStatusErr := r.updateStatus(ctx, onepassworditem, err); updateStatusErr != nil {
 			return ctrl.Result{}, fmt.Errorf("cannot update status: %s", updateStatusErr)
 		}

@@ -28,8 +28,8 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"strings"
+	"time"
 
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/logs"
@@ -46,6 +46,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var logDeployment = logf.Log.WithName("controller_deployment")
@@ -102,7 +103,12 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 		// Handles creation or updating secrets for deployment if needed
 		if err = r.handleApplyingDeployment(ctx, deployment, deployment.Namespace, annotations, req); err != nil {
-			return ctrl.Result{}, err
+			if strings.Contains(err.Error(), "rate limit") {
+				reqLogger.V(logs.InfoLevel).Info("1Password rate limit hit. Requeuing after 15 minutes.")
+				return ctrl.Result{RequeueAfter: 15 * time.Minute}, nil
+			} else {
+				return ctrl.Result{}, err
+			}
 		}
 		return ctrl.Result{}, nil
 	}

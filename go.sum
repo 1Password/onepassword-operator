@@ -1,7 +1,7 @@
 github.com/1Password/connect-sdk-go v1.5.3 h1:KyjJ+kCKj6BwB2Y8tPM1Ixg5uIS6HsB0uWA8U38p/Uk=
 github.com/1Password/connect-sdk-go v1.5.3/go.mod h1:5rSymY4oIYtS4G3t0oMkGAXBeoYiukV3vkqlnEjIDJs=
-github.com/1password/onepassword-sdk-go v0.3.0 h1:PC3J08hOH7xmt5QjpakhjZzx0XfbBb4SkBVEqgYYG54=
-github.com/1password/onepassword-sdk-go v0.3.0/go.mod h1:kssODrGGqHtniqPR91ZPoCMEo79mKulKat7RaD1bunk=
+github.com/1password/onepassword-sdk-go v0.3.1 h1:dz0LrYuIh/HrZ7rxr8NMymikNLBIXhyj4NBmo5Tdamc=
+github.com/1password/onepassword-sdk-go v0.3.1/go.mod h1:kssODrGGqHtniqPR91ZPoCMEo79mKulKat7RaD1bunk=
 github.com/HdrHistogram/hdrhistogram-go v1.1.2 h1:5IcZpTvzydCQeHzK4Ef/D5rrSqwxob0t8PQPMybUNFM=
 github.com/HdrHistogram/hdrhistogram-go v1.1.2/go.mod h1:yDgFjdqOqDEKOvasDdhWNXYg9BVp4O+o5f6V/ehm6Oo=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
