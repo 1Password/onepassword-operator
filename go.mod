@@ -1,8 +1,8 @@
 module github.com/1Password/onepassword-operator
 
-go 1.22.0
+go 1.24
 
-toolchain go1.24.1
+toolchain go1.24.4
 
 require (
 	github.com/1Password/connect-sdk-go v1.5.3
