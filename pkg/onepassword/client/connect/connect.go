@@ -12,7 +12,6 @@ import (
 type Config struct {
 	ConnectHost  string
 	ConnectToken string
-	UserAgent    string
 }
 
 // Connect is a client for interacting with 1Password using the Connect API.
