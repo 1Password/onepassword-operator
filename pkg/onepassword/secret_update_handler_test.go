@@ -787,7 +787,7 @@ var tests = []testUpdateSecretTask{
 func TestUpdateSecretHandler(t *testing.T) {
 	for _, testData := range tests {
 		t.Run(testData.testName, func(t *testing.T) {
-
+			ctx := context.Background()
 			// Register operator types with the runtime scheme.
 			s := scheme.Scheme
 			s.AddKnownTypes(appsv1.SchemeGroupVersion, testData.existingDeployment)
@@ -813,7 +813,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 				shouldAutoRestartDeploymentsGlobal: testData.globalAutoRestartEnabled,
 			}
 
-			err := h.UpdateKubernetesSecretsTask()
+			err := h.UpdateKubernetesSecretsTask(ctx)
 
 			assert.Equal(t, testData.expectedError, err)
 
@@ -826,7 +826,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 
 			// Check if Secret has been created and has the correct data
 			secret := &corev1.Secret{}
-			err = cl.Get(context.TODO(), types.NamespacedName{Name: expectedSecretName, Namespace: namespace}, secret)
+			err = cl.Get(ctx, types.NamespacedName{Name: expectedSecretName, Namespace: namespace}, secret)
 
 			if testData.expectedResultSecret == nil {
 				assert.Error(t, err)
@@ -840,7 +840,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 
 			//check if deployment has been restarted
 			deployment := &appsv1.Deployment{}
-			err = cl.Get(context.TODO(), types.NamespacedName{Name: testData.existingDeployment.Name, Namespace: namespace}, deployment)
+			err = cl.Get(ctx, types.NamespacedName{Name: testData.existingDeployment.Name, Namespace: namespace}, deployment)
 
 			_, ok := deployment.Spec.Template.Annotations[RestartAnnotation]
 			if ok {

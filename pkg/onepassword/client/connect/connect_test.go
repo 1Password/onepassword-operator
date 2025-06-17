@@ -1,6 +1,7 @@
 package connect
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"time"
@@ -49,7 +50,7 @@ func TestConnect_GetItemByID(t *testing.T) {
 	for description, tc := range testCases {
 		t.Run(description, func(t *testing.T) {
 			client := &Connect{client: tc.mockClient()}
-			item, err := client.GetItemByID("vault-id", "item-id")
+			item, err := client.GetItemByID(context.Background(), "vault-id", "item-id")
 			tc.check(t, item, err)
 		})
 	}
@@ -111,7 +112,7 @@ func TestConnect_GetItemsByTitle(t *testing.T) {
 	for description, tc := range testCases {
 		t.Run(description, func(t *testing.T) {
 			client := &Connect{client: tc.mockClient()}
-			items, err := client.GetItemsByTitle("vault-id", "item-title")
+			items, err := client.GetItemsByTitle(context.Background(), "vault-id", "item-title")
 			tc.check(t, items, err)
 		})
 	}
@@ -153,7 +154,7 @@ func TestConnect_GetFileContent(t *testing.T) {
 	for description, tc := range testCases {
 		t.Run(description, func(t *testing.T) {
 			client := &Connect{client: tc.mockClient()}
-			content, err := client.GetFileContent("vault-id", "item-id", "file-id")
+			content, err := client.GetFileContent(context.Background(), "vault-id", "item-id", "file-id")
 			tc.check(t, content, err)
 		})
 	}
@@ -233,7 +234,7 @@ func TestConnect_GetVaultsByTitle(t *testing.T) {
 	for description, tc := range testCases {
 		t.Run(description, func(t *testing.T) {
 			client := &Connect{client: tc.mockClient()}
-			vault, err := client.GetVaultsByTitle(VaultTitleEmployee)
+			vault, err := client.GetVaultsByTitle(context.Background(), VaultTitleEmployee)
 			tc.check(t, vault, err)
 		})
 	}
