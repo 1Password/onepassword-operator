@@ -3,6 +3,7 @@ package connect
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -159,6 +160,7 @@ func TestConnect_GetFileContent(t *testing.T) {
 }
 
 func TestConnect_GetVaultsByTitle(t *testing.T) {
+	now := time.Now()
 	testCases := map[string]struct {
 		mockClient func() *mock.ConnectClientMock
 		check      func(t *testing.T, vaults []model.Vault, err error)
@@ -168,12 +170,14 @@ func TestConnect_GetVaultsByTitle(t *testing.T) {
 				mockConnectClient := &mock.ConnectClientMock{}
 				mockConnectClient.On("GetVaultsByTitle", VaultTitleEmployee).Return([]onepassword.Vault{
 					{
-						ID:   "test-id",
-						Name: VaultTitleEmployee,
+						ID:        "test-id",
+						Name:      VaultTitleEmployee,
+						CreatedAt: now,
 					},
 					{
-						ID:   "test-id-2",
-						Name: "Some other vault",
+						ID:        "test-id-2",
+						Name:      "Some other vault",
+						CreatedAt: now,
 					},
 				}, nil)
 				return mockConnectClient
@@ -182,6 +186,7 @@ func TestConnect_GetVaultsByTitle(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, vaults, 1)
 				require.Equal(t, "test-id", vaults[0].ID)
+				require.Equal(t, now, vaults[0].CreatedAt)
 			},
 		},
 		"should return a two vaults": {
@@ -189,12 +194,14 @@ func TestConnect_GetVaultsByTitle(t *testing.T) {
 				mockConnectClient := &mock.ConnectClientMock{}
 				mockConnectClient.On("GetVaultsByTitle", VaultTitleEmployee).Return([]onepassword.Vault{
 					{
-						ID:   "test-id",
-						Name: VaultTitleEmployee,
+						ID:        "test-id",
+						Name:      VaultTitleEmployee,
+						CreatedAt: now,
 					},
 					{
-						ID:   "test-id-2",
-						Name: VaultTitleEmployee,
+						ID:        "test-id-2",
+						Name:      VaultTitleEmployee,
+						CreatedAt: now,
 					},
 				}, nil)
 				return mockConnectClient
@@ -204,8 +211,9 @@ func TestConnect_GetVaultsByTitle(t *testing.T) {
 				require.Len(t, vaults, 2)
 				// Check the first vault
 				require.Equal(t, "test-id", vaults[0].ID)
+				require.Equal(t, now, vaults[0].CreatedAt)
 				// Check the second vault
-				require.Equal(t, "test-id-2", vaults[1].ID)
+				require.Equal(t, now, vaults[1].CreatedAt)
 			},
 		},
 		"should return an error": {

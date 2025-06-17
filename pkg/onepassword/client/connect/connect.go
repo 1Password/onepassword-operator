@@ -71,14 +71,13 @@ func (c *Connect) GetVaultsByTitle(vaultQuery string) ([]model.Vault, error) {
 		return nil, fmt.Errorf("1Password Connect error: %w", err)
 	}
 
-	vaults := make([]model.Vault, len(connectVaults))
-	for i, connectVault := range connectVaults {
+	var vaults []model.Vault
+	for _, connectVault := range connectVaults {
 		if vaultQuery == connectVault.Name {
 			var vault model.Vault
 			vault.FromConnectVault(&connectVault)
-			vaults[i] = vault
+			vaults = append(vaults, vault)
 		}
 	}
-
 	return vaults, nil
 }
