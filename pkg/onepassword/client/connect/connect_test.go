@@ -213,6 +213,7 @@ func TestConnect_GetVaultsByTitle(t *testing.T) {
 				require.Equal(t, "test-id", vaults[0].ID)
 				require.Equal(t, now, vaults[0].CreatedAt)
 				// Check the second vault
+				require.Equal(t, "test-id-2", vaults[1].ID)
 				require.Equal(t, now, vaults[1].CreatedAt)
 			},
 		},
