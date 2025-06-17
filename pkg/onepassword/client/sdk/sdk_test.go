@@ -23,7 +23,7 @@ func TestSDK_GetItemByID(t *testing.T) {
 		mockItemAPI func() *clientmock.ItemAPIMock
 		check       func(t *testing.T, item *model.Item, err error)
 	}{
-		"should return a single vault": {
+		"should return a single item": {
 			mockItemAPI: func() *clientmock.ItemAPIMock {
 				m := &clientmock.ItemAPIMock{}
 				m.On("Get", context.Background(), "vault-id", "item-id").Return(*sdkItem, nil)
