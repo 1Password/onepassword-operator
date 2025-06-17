@@ -104,6 +104,17 @@ func TestSDK_GetItemsByTitle(t *testing.T) {
 				clienttesting.CheckSDKItemOverviewMapping(t, sdkItem2, &items[1])
 			},
 		},
+		"should return empty list": {
+			mockItemAPI: func() *clientmock.ItemAPIMock {
+				m := &clientmock.ItemAPIMock{}
+				m.On("List", context.Background(), "vault-id", mock.Anything).Return([]sdk.ItemOverview{}, nil)
+				return m
+			},
+			check: func(t *testing.T, items []model.Item, err error) {
+				require.NoError(t, err)
+				require.Len(t, items, 0)
+			},
+		},
 		"should return an error": {
 			mockItemAPI: func() *clientmock.ItemAPIMock {
 				m := &clientmock.ItemAPIMock{}
