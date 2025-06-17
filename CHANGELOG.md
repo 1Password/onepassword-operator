@@ -16,7 +16,7 @@
 # v1.9.0
 
 ## Features
- * Support Service Accounts. {#160}
+ * Support fetching secrets using Service Accounts to authenticate with 1Password. {#160}
 
 ---
 
