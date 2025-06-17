@@ -12,14 +12,6 @@
 
 ---
 
-[//]: # (START/v1.9.0)
-# v1.9.0
-
-## Features
- * Support fetching secrets using Service Accounts to authenticate with 1Password. {#160}
-
----
-
 [//]: # (START/v1.8.1)
 # v1.8.1
 
