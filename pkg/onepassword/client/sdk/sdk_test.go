@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -191,8 +192,8 @@ func TestSDK_GetFileContent(t *testing.T) {
 	}
 }
 
-// TODO: check CreatedAt as soon as a new SDK version returns it
 func TestSDK_GetVaultsByTitle(t *testing.T) {
+	now := time.Now()
 	testCases := map[string]struct {
 		mockVaultAPI func() *clientmock.VaultAPIMock
 		check        func(t *testing.T, vaults []model.Vault, err error)
@@ -202,12 +203,14 @@ func TestSDK_GetVaultsByTitle(t *testing.T) {
 				m := &clientmock.VaultAPIMock{}
 				m.On("List", context.Background()).Return([]sdk.VaultOverview{
 					{
-						ID:    "test-id",
-						Title: VaultTitleEmployee,
+						ID:        "test-id",
+						Title:     VaultTitleEmployee,
+						CreatedAt: now,
 					},
 					{
-						ID:    "test-id-2",
-						Title: "Some other vault",
+						ID:        "test-id-2",
+						Title:     "Some other vault",
+						CreatedAt: now,
 					},
 				}, nil)
 				return m
@@ -216,6 +219,7 @@ func TestSDK_GetVaultsByTitle(t *testing.T) {
 				require.NoError(t, err)
 				require.Len(t, vaults, 1)
 				require.Equal(t, "test-id", vaults[0].ID)
+				require.Equal(t, now, vaults[0].CreatedAt)
 			},
 		},
 		"should return a two vaults": {
@@ -223,12 +227,14 @@ func TestSDK_GetVaultsByTitle(t *testing.T) {
 				m := &clientmock.VaultAPIMock{}
 				m.On("List", context.Background()).Return([]sdk.VaultOverview{
 					{
-						ID:    "test-id",
-						Title: VaultTitleEmployee,
+						ID:        "test-id",
+						Title:     VaultTitleEmployee,
+						CreatedAt: now,
 					},
 					{
-						ID:    "test-id-2",
-						Title: VaultTitleEmployee,
+						ID:        "test-id-2",
+						Title:     VaultTitleEmployee,
+						CreatedAt: now,
 					},
 				}, nil)
 				return m
@@ -238,8 +244,10 @@ func TestSDK_GetVaultsByTitle(t *testing.T) {
 				require.Len(t, vaults, 2)
 				// Check the first vault
 				require.Equal(t, "test-id", vaults[0].ID)
+				require.Equal(t, now, vaults[0].CreatedAt)
 				// Check the second vault
 				require.Equal(t, "test-id-2", vaults[1].ID)
+				require.Equal(t, now, vaults[1].CreatedAt)
 			},
 		},
 		"should return an error": {
