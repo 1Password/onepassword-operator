@@ -8,10 +8,10 @@ import (
 	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/logs"
+	opclient "github.com/1Password/onepassword-operator/pkg/onepassword/client"
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
-	"github.com/1Password/connect-sdk-go/connect"
-	"github.com/1Password/connect-sdk-go/onepassword"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,17 +23,17 @@ const lockTag = "operator.1password.io:ignore-secret"
 
 var log = logf.Log.WithName("update_op_kubernetes_secrets_task")
 
-func NewManager(kubernetesClient client.Client, opConnectClient connect.Client, shouldAutoRestartDeploymentsGlobal bool) *SecretUpdateHandler {
+func NewManager(kubernetesClient client.Client, opClient opclient.Client, shouldAutoRestartDeploymentsGlobal bool) *SecretUpdateHandler {
 	return &SecretUpdateHandler{
 		client:                             kubernetesClient,
-		opConnectClient:                    opConnectClient,
+		opClient:                           opClient,
 		shouldAutoRestartDeploymentsGlobal: shouldAutoRestartDeploymentsGlobal,
 	}
 }
 
 type SecretUpdateHandler struct {
 	client                             client.Client
-	opConnectClient                    connect.Client
+	opClient                           opclient.Client
 	shouldAutoRestartDeploymentsGlobal bool
 }
 
@@ -121,14 +121,14 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 
 		OnePasswordItemPath := h.getPathFromOnePasswordItem(secret)
 
-		item, err := GetOnePasswordItemByPath(h.opConnectClient, OnePasswordItemPath)
+		item, err := GetOnePasswordItemByPath(h.opClient, OnePasswordItemPath)
 		if err != nil {
 			log.Error(err, "failed to retrieve 1Password item at path \"%s\" for secret \"%s\"", secret.Annotations[ItemPathAnnotation], secret.Name)
 			continue
 		}
 
 		itemVersion := fmt.Sprint(item.Version)
-		itemPathString := fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID)
+		itemPathString := fmt.Sprintf("vaults/%v/items/%v", item.VaultID, item.ID)
 
 		if currentVersion != itemVersion || secret.Annotations[ItemPathAnnotation] != itemPathString {
 			if isItemLockedForForcedRestarts(item) {
@@ -159,7 +159,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 	return updatedSecrets, nil
 }
 
-func isItemLockedForForcedRestarts(item *onepassword.Item) bool {
+func isItemLockedForForcedRestarts(item *model.Item) bool {
 	tags := item.Tags
 	for i := 0; i < len(tags); i++ {
 		if tags[i] == lockTag {

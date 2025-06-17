@@ -2,17 +2,13 @@ package kubernetessecrets
 
 import (
 	"context"
+	errs "errors"
 	"fmt"
-
+	"reflect"
 	"regexp"
 	"strings"
 
-	"reflect"
-
-	errs "errors"
-
-	"github.com/1Password/connect-sdk-go/onepassword"
-
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -34,11 +30,11 @@ var ErrCannotUpdateSecretType = errs.New("Cannot change secret type. Secret type
 
 var log = logf.Log
 
-func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, secretType string, ownerRef *metav1.OwnerReference) error {
+func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *model.Item, autoRestart string, labels map[string]string, secretType string, ownerRef *metav1.OwnerReference) error {
 	itemVersion := fmt.Sprint(item.Version)
 	secretAnnotations := map[string]string{
 		VersionAnnotation:  itemVersion,
-		ItemPathAnnotation: fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID),
+		ItemPathAnnotation: fmt.Sprintf("vaults/%v/items/%v", item.VaultID, item.ID),
 	}
 
 	if autoRestart != "" {
@@ -92,7 +88,7 @@ func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretNa
 	return nil
 }
 
-func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, labels map[string]string, secretType string, item onepassword.Item, ownerRef *metav1.OwnerReference) *corev1.Secret {
+func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, labels map[string]string, secretType string, item model.Item, ownerRef *metav1.OwnerReference) *corev1.Secret {
 	var ownerRefs []metav1.OwnerReference
 	if ownerRef != nil {
 		ownerRefs = []metav1.OwnerReference{*ownerRef}
@@ -111,7 +107,7 @@ func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotation
 	}
 }
 
-func BuildKubernetesSecretData(fields []*onepassword.ItemField, files []*onepassword.File) map[string][]byte {
+func BuildKubernetesSecretData(fields []model.ItemField, files []model.File) map[string][]byte {
 	secretData := map[string][]byte{}
 	for i := 0; i < len(fields); i++ {
 		if fields[i].Value != "" {
