@@ -3,8 +3,9 @@ package client
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
+
+	"github.com/go-logr/logr"
 
 	"github.com/1Password/onepassword-operator/pkg/onepassword/client/connect"
 	"github.com/1Password/onepassword-operator/pkg/onepassword/client/sdk"
@@ -19,8 +20,13 @@ type Client interface {
 	GetVaultsByTitle(ctx context.Context, title string) ([]model.Vault, error)
 }
 
-// NewClient creates a new 1Password client based on the provided configuration.
-func NewClient(ctx context.Context, integrationVersion string) (Client, error) {
+type Config struct {
+	Logger  logr.Logger
+	Version string
+}
+
+// NewFromEnvironment creates a new 1Password client based on the provided configuration.
+func NewFromEnvironment(ctx context.Context, cfg Config) (Client, error) {
 	connectHost, _ := os.LookupEnv("OP_CONNECT_HOST")
 	connectToken, _ := os.LookupEnv("OP_CONNECT_TOKEN")
 	serviceAccountToken, _ := os.LookupEnv("OP_SERVICE_ACCOUNT_TOKEN")
@@ -30,16 +36,16 @@ func NewClient(ctx context.Context, integrationVersion string) (Client, error) {
 	}
 
 	if serviceAccountToken != "" {
-		fmt.Printf("Using Service Account Token")
+		cfg.Logger.Info("Using Service Account Token")
 		return sdk.NewClient(ctx, sdk.Config{
 			ServiceAccountToken: serviceAccountToken,
 			IntegrationName:     "1password-operator",
-			IntegrationVersion:  integrationVersion,
+			IntegrationVersion:  cfg.Version,
 		})
 	}
 
 	if connectHost != "" && connectToken != "" {
-		fmt.Printf("Using Connect")
+		cfg.Logger.Info("Using 1Password Connect")
 		return connect.NewClient(connect.Config{
 			ConnectHost:  connectHost,
 			ConnectToken: connectToken,

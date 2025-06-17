@@ -26,7 +26,6 @@ package controller
 
 import (
 	"context"
-	"github.com/stretchr/testify/mock"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -34,6 +33,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"

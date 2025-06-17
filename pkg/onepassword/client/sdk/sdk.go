@@ -26,7 +26,7 @@ func NewClient(ctx context.Context, config Config) (*SDK, error) {
 		sdk.WithIntegrationInfo(config.IntegrationName, config.IntegrationVersion),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("1password sdk error: %w", err)
+		return nil, fmt.Errorf("1Password sdk error: %w", err)
 	}
 
 	return &SDK{
@@ -37,7 +37,7 @@ func NewClient(ctx context.Context, config Config) (*SDK, error) {
 func (s *SDK) GetItemByID(ctx context.Context, vaultID, itemID string) (*model.Item, error) {
 	sdkItem, err := s.client.Items().Get(ctx, vaultID, itemID)
 	if err != nil {
-		return nil, fmt.Errorf("1password sdk error: %w", err)
+		return nil, fmt.Errorf("1Password sdk error: %w", err)
 	}
 
 	var item model.Item
@@ -49,7 +49,7 @@ func (s *SDK) GetItemsByTitle(ctx context.Context, vaultID, itemTitle string) ([
 	// Get all items in the vault
 	sdkItems, err := s.client.Items().List(ctx, vaultID)
 	if err != nil {
-		return nil, fmt.Errorf("1password sdk error: %w", err)
+		return nil, fmt.Errorf("1Password sdk error: %w", err)
 	}
 
 	// Filter items by title
@@ -70,7 +70,7 @@ func (s *SDK) GetFileContent(ctx context.Context, vaultID, itemID, fileID string
 		ID: fileID,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("1password sdk error: %w", err)
+		return nil, fmt.Errorf("1Password sdk error: %w", err)
 	}
 
 	return bytes, nil
@@ -80,7 +80,7 @@ func (s *SDK) GetVaultsByTitle(ctx context.Context, title string) ([]model.Vault
 	// List all vaults
 	sdkVaults, err := s.client.Vaults().List(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("1password sdk error: %w", err)
+		return nil, fmt.Errorf("1Password sdk error: %w", err)
 	}
 
 	// Filter vaults by title

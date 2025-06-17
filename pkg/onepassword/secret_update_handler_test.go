@@ -807,15 +807,6 @@ func TestUpdateSecretHandler(t *testing.T) {
 
 			mockOpClient := &mocks.TestClient{}
 			mockOpClient.On("GetItemByID", mock.Anything, mock.Anything).Return(createItem(), nil)
-			//mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-			//
-			//	item := onepassword.Item{}
-			//	item.Fields = generateFields(testData.opItem["username"], testData.opItem["password"])
-			//	item.Version = itemVersion
-			//	item.Vault.ID = vaultUUID
-			//	item.ID = uuid
-			//	return &item, nil
-			//}
 			h := &SecretUpdateHandler{
 				client:                             cl,
 				opClient:                           mockOpClient,

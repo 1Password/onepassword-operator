@@ -19,5 +19,5 @@ func (v *Vault) FromConnectVault(vault *connect.Vault) {
 
 func (v *Vault) FromSDKVault(vault *sdk.VaultOverview) {
 	v.ID = vault.ID
-	v.CreatedAt = time.Now() // TODO: add to SDK and use it instead of time.Now()
+	v.CreatedAt = vault.CreatedAt
 }

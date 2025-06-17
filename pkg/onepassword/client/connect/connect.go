@@ -13,7 +13,6 @@ import (
 type Config struct {
 	ConnectHost  string
 	ConnectToken string
-	UserAgent    string
 }
 
 // Connect is a client for interacting with 1Password using the Connect API.
@@ -31,7 +30,7 @@ func NewClient(config Config) *Connect {
 func (c *Connect) GetItemByID(ctx context.Context, vaultID, itemID string) (*model.Item, error) {
 	connectItem, err := c.client.GetItemByUUID(itemID, vaultID)
 	if err != nil {
-		return nil, fmt.Errorf("1password Connect error: %w", err)
+		return nil, fmt.Errorf("1Password Connect error: %w", err)
 	}
 
 	var item model.Item
@@ -43,14 +42,14 @@ func (c *Connect) GetItemsByTitle(ctx context.Context, vaultID, itemTitle string
 	// Get all items in the vault with the specified title
 	connectItems, err := c.client.GetItemsByTitle(itemTitle, vaultID)
 	if err != nil {
-		return nil, fmt.Errorf("1password Connect error: %w", err)
+		return nil, fmt.Errorf("1Password Connect error: %w", err)
 	}
 
-	var items []model.Item
-	for _, connectItem := range connectItems {
+	items := make([]model.Item, len(connectItems))
+	for i, connectItem := range connectItems {
 		var item model.Item
 		item.FromConnectItem(&connectItem)
-		items = append(items, item)
+		items[i] = item
 	}
 
 	return items, nil
@@ -61,7 +60,7 @@ func (c *Connect) GetFileContent(ctx context.Context, vaultID, itemID, fileID st
 		ContentPath: fmt.Sprintf("/v1/vaults/%s/items/%s/files/%s/content", vaultID, itemID, fileID),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("1password Connect error: %w", err)
+		return nil, fmt.Errorf("1Password Connect error: %w", err)
 	}
 
 	return bytes, nil
@@ -70,7 +69,7 @@ func (c *Connect) GetFileContent(ctx context.Context, vaultID, itemID, fileID st
 func (c *Connect) GetVaultsByTitle(ctx context.Context, vaultQuery string) ([]model.Vault, error) {
 	connectVaults, err := c.client.GetVaultsByTitle(vaultQuery)
 	if err != nil {
-		return nil, fmt.Errorf("1password Connect error: %w", err)
+		return nil, fmt.Errorf("1Password Connect error: %w", err)
 	}
 
 	var vaults []model.Vault
@@ -81,6 +80,5 @@ func (c *Connect) GetVaultsByTitle(ctx context.Context, vaultQuery string) ([]mo
 			vaults = append(vaults, vault)
 		}
 	}
-
 	return vaults, nil
 }

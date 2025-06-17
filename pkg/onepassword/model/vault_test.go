@@ -23,14 +23,15 @@ func TestVault_FromConnectVault(t *testing.T) {
 	require.Equal(t, connectVault.CreatedAt, vault.CreatedAt)
 }
 
-// TODO: check CreatedAt when available
 func TestVault_FromSDKVault(t *testing.T) {
 	sdkVault := &sdk.VaultOverview{
-		ID: "test-id",
+		ID:        "test-id",
+		CreatedAt: time.Now(),
 	}
 
 	vault := &Vault{}
 	vault.FromSDKVault(sdkVault)
 
 	require.Equal(t, sdkVault.ID, vault.ID)
+	require.Equal(t, sdkVault.CreatedAt, vault.CreatedAt)
 }
