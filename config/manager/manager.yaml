@@ -96,7 +96,7 @@ spec:
                 key: token
           - name: MANAGE_CONNECT
             value: "false"
-#            Uncomment the following lines to enable service account token and comment out the OP_CONNECT_TOKEN and OP_CONNECT_HOST env vars.
+#            Uncomment the following lines to enable service account token and comment out the OP_CONNECT_TOKEN, OP_CONNECT_HOST and MANAGE_CONNECT env vars.
 #          - name: OP_SERVICE_ACCOUNT_TOKEN
 #            valueFrom:
 #              secretKeyRef:
