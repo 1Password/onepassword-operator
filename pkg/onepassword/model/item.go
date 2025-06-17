@@ -52,9 +52,8 @@ func (i *Item) FromSDKItem(item *sdk.Item) {
 	i.VaultID = item.VaultID
 	i.Version = int(item.Version)
 
-	for _, tag := range item.Tags {
-		i.Tags = append(i.Tags, tag)
-	}
+	i.Tags = make([]string, len(item.Tags))
+	copy(i.Tags, item.Tags)
 
 	for _, field := range item.Fields {
 		i.Fields = append(i.Fields, ItemField{
@@ -79,9 +78,8 @@ func (i *Item) FromSDKItemOverview(item *sdk.ItemOverview) {
 	i.ID = item.ID
 	i.VaultID = item.VaultID
 
-	for _, tag := range item.Tags {
-		i.Tags = append(i.Tags, tag)
-	}
+	i.Tags = make([]string, len(item.Tags))
+	copy(i.Tags, item.Tags)
 
 	i.CreatedAt = item.CreatedAt
 }
