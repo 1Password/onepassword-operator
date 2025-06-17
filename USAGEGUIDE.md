@@ -107,7 +107,8 @@ containers:
 
 ---
 
-## [Usage examples](https://developer.1password.com/docs/k8s/operator/?deployment-type=manual#usage-examples)
+## Usage examples
+Find usage [examples](https://developer.1password.com/docs/k8s/operator/?deployment-type=manual#usage-examples) on 1Password developer documentation.
 
 ---
 
