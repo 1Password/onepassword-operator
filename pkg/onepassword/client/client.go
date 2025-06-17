@@ -18,8 +18,8 @@ type Client interface {
 	GetVaultsByTitle(title string) ([]model.Vault, error)
 }
 
-// NewClient creates a new 1Password client based on the provided configuration.
-func NewClient(integrationVersion string) (Client, error) {
+// NewFromEnvironment creates a new 1Password client based on the provided configuration.
+func NewFromEnvironment(integrationVersion string) (Client, error) {
 	connectHost, _ := os.LookupEnv("OP_CONNECT_HOST")
 	connectToken, _ := os.LookupEnv("OP_CONNECT_TOKEN")
 	serviceAccountToken, _ := os.LookupEnv("OP_SERVICE_ACCOUNT_TOKEN")

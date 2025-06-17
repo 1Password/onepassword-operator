@@ -152,7 +152,7 @@ func main() {
 	}
 
 	// Setup One Password Client
-	opClient, err := opclient.NewClient(version.OperatorVersion)
+	opClient, err := opclient.NewFromEnvironment(version.OperatorVersion)
 	if err != nil {
 		setupLog.Error(err, "unable to create 1Password client")
 		os.Exit(1)
