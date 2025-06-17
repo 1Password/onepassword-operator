@@ -44,11 +44,11 @@ func (c *Connect) GetItemsByTitle(vaultID, itemTitle string) ([]model.Item, erro
 		return nil, fmt.Errorf("1Password Connect error: %w", err)
 	}
 
-	var items []model.Item
-	for _, connectItem := range connectItems {
+	items := make([]model.Item, len(connectItems))
+	for i, connectItem := range connectItems {
 		var item model.Item
 		item.FromConnectItem(&connectItem)
-		items = append(items, item)
+		items[i] = item
 	}
 
 	return items, nil
@@ -71,12 +71,12 @@ func (c *Connect) GetVaultsByTitle(vaultQuery string) ([]model.Vault, error) {
 		return nil, fmt.Errorf("1Password Connect error: %w", err)
 	}
 
-	var vaults []model.Vault
-	for _, connectVault := range connectVaults {
+	vaults := make([]model.Vault, len(connectVaults))
+	for i, connectVault := range connectVaults {
 		if vaultQuery == connectVault.Name {
 			var vault model.Vault
 			vault.FromConnectVault(&connectVault)
-			vaults = append(vaults, vault)
+			vaults[i] = vault
 		}
 	}
 
