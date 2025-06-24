@@ -15,6 +15,7 @@ import (
 var defaultNamespacedName = types.NamespacedName{Name: "onepassword-connect", Namespace: "default"}
 
 func TestServiceSetup(t *testing.T) {
+	ctx := context.Background()
 
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
@@ -25,7 +26,7 @@ func TestServiceSetup(t *testing.T) {
 	// Create a fake client to mock API calls.
 	client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
-	err := setupService(client, "../../config/connect/service.yaml", defaultNamespacedName.Namespace)
+	err := setupService(ctx, client, "../../config/connect/service.yaml", defaultNamespacedName.Namespace)
 
 	if err != nil {
 		t.Errorf("Error Setting Up Connect: %v", err)
@@ -33,13 +34,14 @@ func TestServiceSetup(t *testing.T) {
 
 	// check that service was created
 	service := &corev1.Service{}
-	err = client.Get(context.TODO(), defaultNamespacedName, service)
+	err = client.Get(ctx, defaultNamespacedName, service)
 	if err != nil {
 		t.Errorf("Error Setting Up Connect service: %v", err)
 	}
 }
 
 func TestDeploymentSetup(t *testing.T) {
+	ctx := context.Background()
 
 	// Register operator types with the runtime scheme.
 	s := scheme.Scheme
@@ -50,7 +52,7 @@ func TestDeploymentSetup(t *testing.T) {
 	// Create a fake client to mock API calls.
 	client := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
-	err := setupDeployment(client, "../../config/connect/deployment.yaml", defaultNamespacedName.Namespace)
+	err := setupDeployment(ctx, client, "../../config/connect/deployment.yaml", defaultNamespacedName.Namespace)
 
 	if err != nil {
 		t.Errorf("Error Setting Up Connect: %v", err)
@@ -58,7 +60,7 @@ func TestDeploymentSetup(t *testing.T) {
 
 	// check that deployment was created
 	deployment := &appsv1.Deployment{}
-	err = client.Get(context.TODO(), defaultNamespacedName, deployment)
+	err = client.Get(ctx, defaultNamespacedName, deployment)
 	if err != nil {
 		t.Errorf("Error Setting Up Connect deployment: %v", err)
 	}

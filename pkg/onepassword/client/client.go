@@ -1,6 +1,7 @@
 package client
 
 import (
+	"context"
 	"errors"
 	"os"
 
@@ -13,10 +14,10 @@ import (
 
 // Client is an interface for interacting with 1Password items and vaults.
 type Client interface {
-	GetItemByID(vaultID, itemID string) (*model.Item, error)
-	GetItemsByTitle(vaultID, itemTitle string) ([]model.Item, error)
-	GetFileContent(vaultID, itemID, fileID string) ([]byte, error)
-	GetVaultsByTitle(title string) ([]model.Vault, error)
+	GetItemByID(ctx context.Context, vaultID, itemID string) (*model.Item, error)
+	GetItemsByTitle(ctx context.Context, vaultID, itemTitle string) ([]model.Item, error)
+	GetFileContent(ctx context.Context, vaultID, itemID, fileID string) ([]byte, error)
+	GetVaultsByTitle(ctx context.Context, title string) ([]model.Vault, error)
 }
 
 type Config struct {
@@ -25,7 +26,7 @@ type Config struct {
 }
 
 // NewFromEnvironment creates a new 1Password client based on the provided configuration.
-func NewFromEnvironment(cfg Config) (Client, error) {
+func NewFromEnvironment(ctx context.Context, cfg Config) (Client, error) {
 	connectHost, _ := os.LookupEnv("OP_CONNECT_HOST")
 	connectToken, _ := os.LookupEnv("OP_CONNECT_TOKEN")
 	serviceAccountToken, _ := os.LookupEnv("OP_SERVICE_ACCOUNT_TOKEN")
@@ -36,7 +37,7 @@ func NewFromEnvironment(cfg Config) (Client, error) {
 
 	if serviceAccountToken != "" {
 		cfg.Logger.Info("Using Service Account Token")
-		return sdk.NewClient(sdk.Config{
+		return sdk.NewClient(ctx, sdk.Config{
 			ServiceAccountToken: serviceAccountToken,
 			IntegrationName:     "1password-operator",
 			IntegrationVersion:  cfg.Version,

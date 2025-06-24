@@ -77,7 +77,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	reqLogger.V(logs.DebugLevel).Info("Reconciling Deployment")
 
 	deployment := &appsv1.Deployment{}
-	err := r.Get(context.Background(), req.NamespacedName, deployment)
+	err := r.Get(ctx, req.NamespacedName, deployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return reconcile.Result{}, nil
@@ -97,12 +97,12 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		// This is so we can handle cleanup of associated secrets properly
 		if !utils.ContainsString(deployment.ObjectMeta.Finalizers, finalizer) {
 			deployment.ObjectMeta.Finalizers = append(deployment.ObjectMeta.Finalizers, finalizer)
-			if err = r.Update(context.Background(), deployment); err != nil {
+			if err = r.Update(ctx, deployment); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
 		// Handles creation or updating secrets for deployment if needed
-		if err = r.handleApplyingDeployment(deployment, deployment.Namespace, annotations, req); err != nil {
+		if err = r.handleApplyingDeployment(ctx, deployment, deployment.Namespace, annotations, req); err != nil {
 			if strings.Contains(err.Error(), "rate limit") {
 				reqLogger.V(logs.InfoLevel).Info("1Password rate limit hit. Requeuing after 15 minutes.")
 				return ctrl.Result{RequeueAfter: 15 * time.Minute}, nil
@@ -117,12 +117,12 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	if utils.ContainsString(deployment.ObjectMeta.Finalizers, finalizer) {
 
 		secretName := annotations[op.NameAnnotation]
-		if err = r.cleanupKubernetesSecretForDeployment(secretName, deployment); err != nil {
+		if err = r.cleanupKubernetesSecretForDeployment(ctx, secretName, deployment); err != nil {
 			return ctrl.Result{}, err
 		}
 
 		// Remove the finalizer from the deployment so deletion of deployment can be completed
-		if err = r.removeOnePasswordFinalizerFromDeployment(deployment); err != nil {
+		if err = r.removeOnePasswordFinalizerFromDeployment(ctx, deployment); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -136,7 +136,7 @@ func (r *DeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-func (r *DeploymentReconciler) cleanupKubernetesSecretForDeployment(secretName string, deletedDeployment *appsv1.Deployment) error {
+func (r *DeploymentReconciler) cleanupKubernetesSecretForDeployment(ctx context.Context, secretName string, deletedDeployment *appsv1.Deployment) error {
 	kubernetesSecret := &corev1.Secret{}
 	kubernetesSecret.ObjectMeta.Name = secretName
 	kubernetesSecret.ObjectMeta.Namespace = deletedDeployment.Namespace
@@ -146,14 +146,14 @@ func (r *DeploymentReconciler) cleanupKubernetesSecretForDeployment(secretName s
 	}
 	updatedSecrets := map[string]*corev1.Secret{secretName: kubernetesSecret}
 
-	multipleDeploymentsUsingSecret, err := r.areMultipleDeploymentsUsingSecret(updatedSecrets, *deletedDeployment)
+	multipleDeploymentsUsingSecret, err := r.areMultipleDeploymentsUsingSecret(ctx, updatedSecrets, *deletedDeployment)
 	if err != nil {
 		return err
 	}
 
 	// Only delete the associated kubernetes secret if it is not being used by other deployments
 	if !multipleDeploymentsUsingSecret {
-		if err = r.Delete(context.Background(), kubernetesSecret); err != nil {
+		if err = r.Delete(ctx, kubernetesSecret); err != nil {
 			if !errors.IsNotFound(err) {
 				return err
 			}
@@ -162,13 +162,13 @@ func (r *DeploymentReconciler) cleanupKubernetesSecretForDeployment(secretName s
 	return nil
 }
 
-func (r *DeploymentReconciler) areMultipleDeploymentsUsingSecret(updatedSecrets map[string]*corev1.Secret, deletedDeployment appsv1.Deployment) (bool, error) {
+func (r *DeploymentReconciler) areMultipleDeploymentsUsingSecret(ctx context.Context, updatedSecrets map[string]*corev1.Secret, deletedDeployment appsv1.Deployment) (bool, error) {
 	deployments := &appsv1.DeploymentList{}
 	opts := []client.ListOption{
 		client.InNamespace(deletedDeployment.Namespace),
 	}
 
-	err := r.List(context.Background(), deployments, opts...)
+	err := r.List(ctx, deployments, opts...)
 	if err != nil {
 		logDeployment.Error(err, "Failed to list kubernetes deployments")
 		return false, err
@@ -184,12 +184,12 @@ func (r *DeploymentReconciler) areMultipleDeploymentsUsingSecret(updatedSecrets 
 	return false, nil
 }
 
-func (r *DeploymentReconciler) removeOnePasswordFinalizerFromDeployment(deployment *appsv1.Deployment) error {
+func (r *DeploymentReconciler) removeOnePasswordFinalizerFromDeployment(ctx context.Context, deployment *appsv1.Deployment) error {
 	deployment.ObjectMeta.Finalizers = utils.RemoveString(deployment.ObjectMeta.Finalizers, finalizer)
-	return r.Update(context.Background(), deployment)
+	return r.Update(ctx, deployment)
 }
 
-func (r *DeploymentReconciler) handleApplyingDeployment(deployment *appsv1.Deployment, namespace string, annotations map[string]string, request reconcile.Request) error {
+func (r *DeploymentReconciler) handleApplyingDeployment(ctx context.Context, deployment *appsv1.Deployment, namespace string, annotations map[string]string, request reconcile.Request) error {
 	reqLog := logDeployment.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
 	secretName := annotations[op.NameAnnotation]
@@ -201,7 +201,7 @@ func (r *DeploymentReconciler) handleApplyingDeployment(deployment *appsv1.Deplo
 		return nil
 	}
 
-	item, err := op.GetOnePasswordItemByPath(r.OpClient, annotations[op.ItemPathAnnotation])
+	item, err := op.GetOnePasswordItemByPath(ctx, r.OpClient, annotations[op.ItemPathAnnotation])
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}
@@ -218,5 +218,5 @@ func (r *DeploymentReconciler) handleApplyingDeployment(deployment *appsv1.Deplo
 		UID:        deployment.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.Client, secretName, namespace, item, annotations[op.RestartDeploymentsAnnotation], secretLabels, secretType, ownerRef)
+	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, namespace, item, annotations[op.RestartDeploymentsAnnotation], secretLabels, secretType, ownerRef)
 }
