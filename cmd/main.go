@@ -35,8 +35,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/1Password/connect-sdk-go/connect"
-
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
@@ -54,6 +52,7 @@ import (
 	onepasswordcomv1 "github.com/1Password/onepassword-operator/api/v1"
 	"github.com/1Password/onepassword-operator/internal/controller"
 	op "github.com/1Password/onepassword-operator/pkg/onepassword"
+	opclient "github.com/1Password/onepassword-operator/pkg/onepassword/client"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	"github.com/1Password/onepassword-operator/version"
 	//+kubebuilder:scaffold:imports
@@ -153,16 +152,19 @@ func main() {
 	}
 
 	// Setup One Password Client
-	opConnectClient, err := connect.NewClientFromEnvironment()
+	opClient, err := opclient.NewFromEnvironment(opclient.Config{
+		Logger:  setupLog,
+		Version: version.OperatorVersion,
+	})
 	if err != nil {
-		setupLog.Error(err, "unable to create Connect client")
+		setupLog.Error(err, "unable to create 1Password client")
 		os.Exit(1)
 	}
 
 	if err = (&controller.OnePasswordItemReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		OpConnectClient: opConnectClient,
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		OpClient: opClient,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "OnePasswordItem")
 		os.Exit(1)
@@ -172,7 +174,7 @@ func main() {
 	if err = (&controller.DeploymentReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
-		OpConnectClient:    opConnectClient,
+		OpClient:           opClient,
 		OpAnnotationRegExp: r,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Deployment")
@@ -202,7 +204,7 @@ func main() {
 	}
 
 	// Setup update secrets task
-	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opConnectClient, shouldAutoRestartDeployments())
+	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opClient, shouldAutoRestartDeployments())
 	done := make(chan bool)
 	ticker := time.NewTicker(getPollingIntervalForUpdatingSecrets())
 	go func() {

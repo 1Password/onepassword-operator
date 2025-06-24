@@ -3,10 +3,9 @@ package kubernetessecrets
 import (
 	"context"
 	"fmt"
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 	"strings"
 	"testing"
-
-	"github.com/1Password/connect-sdk-go/onepassword"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -21,10 +20,10 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	secretName := "test-secret-name"
 	namespace := "test"
 
-	item := onepassword.Item{}
+	item := model.Item{}
 	item.Fields = generateFields(5)
 	item.Version = 123
-	item.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
+	item.VaultID = "hfnjvi6aymbsnfc2xeeoheizda"
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
 	kubeClient := fake.NewClientBuilder().Build()
@@ -49,10 +48,10 @@ func TestKubernetesSecretFromOnePasswordItemOwnerReferences(t *testing.T) {
 	secretName := "test-secret-name"
 	namespace := "test"
 
-	item := onepassword.Item{}
+	item := model.Item{}
 	item.Fields = generateFields(5)
 	item.Version = 123
-	item.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
+	item.VaultID = "hfnjvi6aymbsnfc2xeeoheizda"
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
 	kubeClient := fake.NewClientBuilder().Build()
@@ -94,10 +93,10 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	secretName := "test-secret-update"
 	namespace := "test"
 
-	item := onepassword.Item{}
+	item := model.Item{}
 	item.Fields = generateFields(5)
 	item.Version = 123
-	item.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
+	item.VaultID = "hfnjvi6aymbsnfc2xeeoheizda"
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
 	kubeClient := fake.NewClientBuilder().Build()
@@ -111,10 +110,10 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	}
 
 	// Updating kubernetes secret with new item
-	newItem := onepassword.Item{}
+	newItem := model.Item{}
 	newItem.Fields = generateFields(6)
 	newItem.Version = 456
-	newItem.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
+	newItem.VaultID = "hfnjvi6aymbsnfc2xeeoheizda"
 	newItem.ID = "h46bb3jddvay7nxopfhvlwg35q"
 	err = CreateKubernetesSecretFromItem(kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation, secretLabels, secretType, nil)
 	if err != nil {
@@ -147,7 +146,7 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	annotations := map[string]string{
 		annotationKey: annotationValue,
 	}
-	item := onepassword.Item{}
+	item := model.Item{}
 	item.Fields = generateFields(5)
 	labels := map[string]string{}
 	secretType := ""
@@ -173,10 +172,10 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 		"annotationKey": "annotationValue",
 	}
 	labels := map[string]string{}
-	item := onepassword.Item{}
+	item := model.Item{}
 	secretType := ""
 
-	item.Fields = []*onepassword.ItemField{
+	item.Fields = []model.ItemField{
 		{
 			Label: "label w%th invalid ch!rs-",
 			Value: "value1",
@@ -209,10 +208,10 @@ func TestCreateKubernetesTLSSecretFromOnePasswordItem(t *testing.T) {
 	secretName := "tls-test-secret-name"
 	namespace := "test"
 
-	item := onepassword.Item{}
+	item := model.Item{}
 	item.Fields = generateFields(5)
 	item.Version = 123
-	item.Vault.ID = "hfnjvi6aymbsnfc2xeeoheizda"
+	item.VaultID = "hfnjvi6aymbsnfc2xeeoheizda"
 	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
 
 	kubeClient := fake.NewClientBuilder().Build()
@@ -235,13 +234,13 @@ func TestCreateKubernetesTLSSecretFromOnePasswordItem(t *testing.T) {
 	}
 }
 
-func compareAnnotationsToItem(annotations map[string]string, item onepassword.Item, t *testing.T) {
+func compareAnnotationsToItem(annotations map[string]string, item model.Item, t *testing.T) {
 	actualVaultId, actualItemId, err := ParseVaultIdAndItemIdFromPath(annotations[ItemPathAnnotation])
 	if err != nil {
 		t.Errorf("Was unable to parse Item Path")
 	}
-	if actualVaultId != item.Vault.ID {
-		t.Errorf("Expected annotation vault id to be %v but was %v", item.Vault.ID, actualVaultId)
+	if actualVaultId != item.VaultID {
+		t.Errorf("Expected annotation vault id to be %v but was %v", item.VaultID, actualVaultId)
 	}
 	if actualItemId != item.ID {
 		t.Errorf("Expected annotation item id to be %v but was %v", item.ID, actualItemId)
@@ -255,7 +254,7 @@ func compareAnnotationsToItem(annotations map[string]string, item onepassword.It
 	}
 }
 
-func compareFields(actualFields []*onepassword.ItemField, secretData map[string][]byte, t *testing.T) {
+func compareFields(actualFields []model.ItemField, secretData map[string][]byte, t *testing.T) {
 	for i := 0; i < len(actualFields); i++ {
 		value, found := secretData[actualFields[i].Label]
 		if !found {
@@ -267,14 +266,13 @@ func compareFields(actualFields []*onepassword.ItemField, secretData map[string]
 	}
 }
 
-func generateFields(numToGenerate int) []*onepassword.ItemField {
-	fields := []*onepassword.ItemField{}
+func generateFields(numToGenerate int) []model.ItemField {
+	fields := []model.ItemField{}
 	for i := 0; i < numToGenerate; i++ {
-		field := onepassword.ItemField{
+		fields = append(fields, model.ItemField{
 			Label: "key" + fmt.Sprint(i),
 			Value: "value" + fmt.Sprint(i),
-		}
-		fields = append(fields, &field)
+		})
 	}
 	return fields
 }

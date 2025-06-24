@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM golang:1.21 as builder
+FROM golang:1.24 as builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -8,13 +8,15 @@ WORKDIR /workspace
 COPY go.mod go.mod
 COPY go.sum go.sum
 
+# Download dependencies
+RUN go mod download
+
 # Copy the go source
 COPY cmd/main.go cmd/main.go
 COPY api/ api/
 COPY internal/controller/ internal/controller/
 COPY pkg/ pkg/
 COPY version/ version/
-COPY vendor/ vendor/
 
 # Build
 # the GOARCH has not a default value to allow the binary be built according to the host where the command
@@ -25,7 +27,6 @@ RUN CGO_ENABLED=0 \
     GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
     go build \
     -ldflags "-X \"github.com/1Password/onepassword-operator/version.Version=$operator_version\"" \
-    -mod vendor \
     -a -o manager cmd/main.go
 
 # Use distroless as minimal base image to package the manager binary

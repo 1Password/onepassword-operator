@@ -31,10 +31,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/1Password/onepassword-operator/pkg/mocks"
-
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
@@ -45,6 +44,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
 	onepasswordcomv1 "github.com/1Password/onepassword-operator/api/v1"
+	"github.com/1Password/onepassword-operator/pkg/mocks"
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -78,8 +79,11 @@ var (
 	cancel                    context.CancelFunc
 	onePasswordItemReconciler *OnePasswordItemReconciler
 	deploymentReconciler      *DeploymentReconciler
+	mockGetItemByIDFunc       *mock.Call
 
 	item1 = &TestItem{
+		ItemID:  "nwrhuano7bcwddcviubpp4mhfq",
+		VaultID: "hfnjvi6aymbsnfc2xeeoheizda",
 		Name:    "test-item",
 		Version: 123,
 		Path:    "vaults/hfnjvi6aymbsnfc2xeeoheizda/items/nwrhuano7bcwddcviubpp4mhfq",
@@ -94,6 +98,8 @@ var (
 	}
 
 	item2 = &TestItem{
+		ItemID:  "nwrhuano7bcwddcviubpp4mhf2",
+		VaultID: "hfnjvi6aymbsnfc2xeeoheizd2",
 		Name:    "test-item2",
 		Path:    "vaults/hfnjvi6aymbsnfc2xeeoheizd2/items/nwrhuano7bcwddcviubpp4mhf2",
 		Version: 456,
@@ -109,11 +115,27 @@ var (
 )
 
 type TestItem struct {
+	ItemID     string
+	VaultID    string
 	Name       string
 	Version    int
 	Path       string
 	Data       map[string]string
 	SecretData map[string][]byte
+}
+
+func (ti *TestItem) ToModel() *model.Item {
+	item := &model.Item{}
+	item.Version = ti.Version
+	item.VaultID = ti.VaultID
+	item.ID = ti.ItemID
+
+	item.Fields = []model.ItemField{}
+	for k, v := range ti.Data {
+		item.Fields = append(item.Fields, model.ItemField{Label: k, Value: v})
+	}
+
+	return item
 }
 
 func TestAPIs(t *testing.T) {
@@ -153,12 +175,13 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
-	opConnectClient := &mocks.TestClient{}
+	mockOpClient := &mocks.TestClient{}
+	mockGetItemByIDFunc = mockOpClient.On("GetItemByID", mock.Anything, mock.Anything)
 
 	onePasswordItemReconciler = &OnePasswordItemReconciler{
-		Client:          k8sManager.GetClient(),
-		Scheme:          k8sManager.GetScheme(),
-		OpConnectClient: opConnectClient,
+		Client:   k8sManager.GetClient(),
+		Scheme:   k8sManager.GetScheme(),
+		OpClient: mockOpClient,
 	}
 	err = (onePasswordItemReconciler).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
@@ -167,7 +190,7 @@ var _ = BeforeSuite(func() {
 	deploymentReconciler = &DeploymentReconciler{
 		Client:             k8sManager.GetClient(),
 		Scheme:             k8sManager.GetScheme(),
-		OpConnectClient:    opConnectClient,
+		OpClient:           mockOpClient,
 		OpAnnotationRegExp: r,
 	}
 	err = (deploymentReconciler).SetupWithManager(k8sManager)

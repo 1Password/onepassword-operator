@@ -28,14 +28,13 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/1Password/connect-sdk-go/connect"
+	"strings"
+	"time"
 
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/logs"
 	op "github.com/1Password/onepassword-operator/pkg/onepassword"
+	opclient "github.com/1Password/onepassword-operator/pkg/onepassword/client"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -47,6 +46,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var logDeployment = logf.Log.WithName("controller_deployment")
@@ -55,7 +55,7 @@ var logDeployment = logf.Log.WithName("controller_deployment")
 type DeploymentReconciler struct {
 	client.Client
 	Scheme             *runtime.Scheme
-	OpConnectClient    connect.Client
+	OpClient           opclient.Client
 	OpAnnotationRegExp *regexp.Regexp
 }
 
@@ -103,7 +103,12 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		}
 		// Handles creation or updating secrets for deployment if needed
 		if err = r.handleApplyingDeployment(deployment, deployment.Namespace, annotations, req); err != nil {
-			return ctrl.Result{}, err
+			if strings.Contains(err.Error(), "rate limit") {
+				reqLogger.V(logs.InfoLevel).Info("1Password rate limit hit. Requeuing after 15 minutes.")
+				return ctrl.Result{RequeueAfter: 15 * time.Minute}, nil
+			} else {
+				return ctrl.Result{}, err
+			}
 		}
 		return ctrl.Result{}, nil
 	}
@@ -196,7 +201,7 @@ func (r *DeploymentReconciler) handleApplyingDeployment(deployment *appsv1.Deplo
 		return nil
 	}
 
-	item, err := op.GetOnePasswordItemByPath(r.OpConnectClient, annotations[op.ItemPathAnnotation])
+	item, err := op.GetOnePasswordItemByPath(r.OpClient, annotations[op.ItemPathAnnotation])
 	if err != nil {
 		return fmt.Errorf("Failed to retrieve item: %v", err)
 	}

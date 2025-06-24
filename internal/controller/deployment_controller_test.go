@@ -2,9 +2,6 @@ package controller
 
 import (
 	"context"
-	"github.com/1Password/connect-sdk-go/onepassword"
-	"github.com/1Password/onepassword-operator/pkg/mocks"
-	op "github.com/1Password/onepassword-operator/pkg/onepassword"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -17,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
+	op "github.com/1Password/onepassword-operator/pkg/onepassword"
 )
 
 const (
@@ -106,17 +104,8 @@ var _ = Describe("Deployment controller", func() {
 	}
 
 	mockGetItemFunc := func() {
-		mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-			item := onepassword.Item{}
-			item.Fields = []*onepassword.ItemField{}
-			for k, v := range item1.Data {
-				item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
-			}
-			item.Version = item1.Version
-			item.Vault.ID = vaultUUID
-			item.ID = uuid
-			return &item, nil
-		}
+		// mock GetItemByID to return test item 'item1'
+		mockGetItemByIDFunc.Return(item1.ToModel(), nil)
 	}
 
 	BeforeEach(func() {
@@ -151,17 +140,10 @@ var _ = Describe("Deployment controller", func() {
 
 		It("Should update existing K8s Secret using deployment", func() {
 			By("Updating secret")
-			mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-				item := onepassword.Item{}
-				item.Fields = []*onepassword.ItemField{}
-				for k, v := range item2.Data {
-					item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
-				}
-				item.Version = item2.Version
-				item.Vault.ID = vaultUUID
-				item.ID = uuid
-				return &item, nil
-			}
+
+			// mock GetItemByID to return test item 'item2'
+			mockGetItemByIDFunc.Return(item2.ToModel(), nil)
+
 			Eventually(func() error {
 				updatedDeployment := &appsv1.Deployment{
 					TypeMeta: metav1.TypeMeta{
