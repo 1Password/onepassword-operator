@@ -5,35 +5,27 @@
 
 ## Table of Contents
 
-1. [Prerequisites](#prerequisites)
-2. [Configuration Options](#configuration-options)
-3. [Use Kubernetes Operator with Service Account](#use-kubernetes-operator-with-service-account)
+1. [Configuration Options](#configuration-options)
+2. [Use Kubernetes Operator with Service Account](#use-kubernetes-operator-with-service-account)
     - [Create a Service Account](#1-create-a-service-account)
     - [Create a Kubernetes secret](#2-create-a-kubernetes-secret-for-the-service-account)
     - [Deploy the Operator](#3-deploy-the-operator)
-4. [Use Kubernetes Operator with Connect](#use-kubernetes-operator-with-connect)
+3. [Use Kubernetes Operator with Connect](#use-kubernetes-operator-with-connect)
     - [Deploy with Helm](#1-deploy-with-helm)
     - [Deploy manually](#2-deploy-manually)
-5. [Logging level](#logging-level)
-6. [Usage examples](#usage-examples)
-7. [How 1Password Items Map to Kubernetes Secrets](#how-1password-items-map-to-kubernetes-secrets)
-8. [Configuring Automatic Rolling Restarts of Deployments](#configuring-automatic-rolling-restarts-of-deployments)
-9. [Development](#development)
+4. [Logging level](#logging-level)
+5. [Usage examples](#usage-examples)
+6. [How 1Password Items Map to Kubernetes Secrets](#how-1password-items-map-to-kubernetes-secrets)
+7. [Configuring Automatic Rolling Restarts of Deployments](#configuring-automatic-rolling-restarts-of-deployments)
+8. [Development](#development)
 
----
-
-## Prerequisites
-
-- [1Password Command Line Tool Installed](https://1password.com/downloads/command-line/)
-- [`kubectl` installed](https://kubernetes.io/docs/tasks/tools/install-kubectl/)
-- [`docker` installed](https://docs.docker.com/get-docker/)
 
 ---
 
 ## Configuration options
 There are 2 ways 1Password Operator can talk to 1Password servers:
-- **Connect**: It uses the 1Password Connect API to access items in 1Password.
-- **Service Account**: It uses [1Password SDK](https://developer.1password.com/docs/sdks/) and [Service Account](https://developer.1password.com/docs/service-accounts) to access items in 1Password.
+- [1Password Service Accounts](https://developer.1password.com/docs/service-accounts)
+- [1Password Connect](https://developer.1password.com/docs/connect/)
 
 ---
 
