@@ -12,6 +12,18 @@
 
 ---
 
+[//]: # (START/v1.9.0)
+# v1.9.0
+
+## Features
+  * Enable the Operator to authenticate to 1Password using service accounts. {#160}
+
+## Fixes
+ * Update Operator to use SDK v1.34.1. {#185}
+ * Pass Kubernetes context down to SDK/Connect. {#199}
+
+---
+
 [//]: # (START/v1.8.1)
 # v1.8.1
 
