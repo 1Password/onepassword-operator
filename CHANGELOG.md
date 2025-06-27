@@ -16,7 +16,7 @@
 # v1.9.0
 
 ## Features
-  * Operator can be used with 1Password Service Accounts now. {#160}
+  * Enable the Operator to authenticate to 1Password using service accounts. {#160}
 
 ## Fixes
  * Update Operator to use SDK v1.34.1. {#185}
