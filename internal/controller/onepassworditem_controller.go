@@ -57,18 +57,18 @@ type OnePasswordItemReconciler struct {
 	OpClient opclient.Client
 }
 
-//+kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems/finalizers,verbs=update
+// +kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems/finalizers,verbs=update
 
-//+kubebuilder:rbac:groups="",resources=pods,verbs=get
-//+kubebuilder:rbac:groups="",resources=pods;services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets;namespaces,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=apps,resources=daemonsets;deployments;replicasets;statefulsets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=apps,resources=replicasets;deployments,verbs=get
-//+kubebuilder:rbac:groups=apps,resourceNames=onepassword-connect-operator,resources=deployments/finalizers,verbs=update
-//+kubebuilder:rbac:groups=onepassword.com,resources=*,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;create
-//+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;create;update
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get
+// +kubebuilder:rbac:groups="",resources=pods;services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets;namespaces,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=daemonsets;deployments;replicasets;statefulsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=replicasets;deployments,verbs=get
+// +kubebuilder:rbac:groups=apps,resourceNames=onepassword-connect-operator,resources=deployments/finalizers,verbs=update
+// +kubebuilder:rbac:groups=onepassword.com,resources=*,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;create
+// +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;create;update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -136,6 +136,7 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 func (r *OnePasswordItemReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&onepasswordv1.OnePasswordItem{}).
+		Named("onepassworditem").
 		Complete(r)
 }
 

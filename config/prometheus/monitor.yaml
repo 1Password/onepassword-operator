@@ -5,7 +5,7 @@ metadata:
   labels:
     name: onepassword-connect-operator
     control-plane: onepassword-connect-operator
-    app.kubernetes.io/name: servicemonitor
+    app.kubernetes.io/name: onepassword-operator
     app.kubernetes.io/instance: controller-manager-metrics-monitor
     app.kubernetes.io/component: metrics
     app.kubernetes.io/created-by: onepassword-connect-operator
@@ -34,3 +34,4 @@ spec:
     matchLabels:
       name: onepassword-connect-operator
       control-plane: onepassword-connect-operator
+      app.kubernetes.io/name: onepassword-operator

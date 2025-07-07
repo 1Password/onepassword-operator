@@ -1,5 +1,5 @@
 run:
-  deadline: 5m
+  timeout: 5m
   allow-parallel-runners: true
 
 issues:
@@ -21,6 +21,7 @@ linters:
   enable:
     - dupl
     - errcheck
+    - copyloopvar
     - ginkgolinter
     - goconst
     - gocyclo
