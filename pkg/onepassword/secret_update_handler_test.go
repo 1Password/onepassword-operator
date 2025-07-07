@@ -43,7 +43,6 @@ type testUpdateSecretTask struct {
 	existingSecret           *corev1.Secret
 	expectedError            error
 	expectedResultSecret     *corev1.Secret
-	expectedEvents           []string
 	opItem                   map[string]string
 	expectedRestart          bool
 	globalAutoRestartEnabled bool
@@ -63,6 +62,9 @@ var defaultNamespace = &corev1.Namespace{
 	},
 }
 
+// TODO: Refactor test cases to avoid duplication.
+//
+//nolint:dupl
 var tests = []testUpdateSecretTask{
 	{
 		testName:          "Test unrelated deployment is not restarted with an updated secret",
@@ -481,80 +483,6 @@ var tests = []testUpdateSecretTask{
 		globalAutoRestartEnabled: false,
 	},
 	{
-		testName:          `Secret autostart true value takes precedence over false deployment value`,
-		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
-			TypeMeta: metav1.TypeMeta{
-				Kind:       deploymentKind,
-				APIVersion: deploymentAPIVersion,
-			},
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
-				},
-			},
-			Spec: appsv1.DeploymentSpec{
-				Template: corev1.PodTemplateSpec{
-					ObjectMeta: metav1.ObjectMeta{
-						Annotations: map[string]string{"external-annotation": "some-value"},
-					},
-					Spec: corev1.PodSpec{
-						Containers: []corev1.Container{
-							{
-								Env: []corev1.EnvVar{
-									{
-										Name: name,
-										ValueFrom: &corev1.EnvVarSource{
-											SecretKeyRef: &corev1.SecretKeySelector{
-												LocalObjectReference: corev1.LocalObjectReference{
-													Name: name,
-												},
-												Key: passKey,
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		existingSecret: &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				Annotations: map[string]string{
-					VersionAnnotation:            "old version",
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "false",
-				},
-			},
-			Data: expectedSecretData,
-		},
-		expectedError: nil,
-		expectedResultSecret: &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: namespace,
-				Annotations: map[string]string{
-					VersionAnnotation:            fmt.Sprint(itemVersion),
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "false",
-				},
-			},
-			Data: expectedSecretData,
-		},
-		opItem: map[string]string{
-			userKey: username,
-			passKey: password,
-		},
-		expectedRestart:          false,
-		globalAutoRestartEnabled: true,
-	},
-	{
 		testName:          `Deployment autostart true value takes precedence over false global auto restart value`,
 		existingNamespace: defaultNamespace,
 		existingDeployment: &appsv1.Deployment{
@@ -838,9 +766,10 @@ func TestUpdateSecretHandler(t *testing.T) {
 				assert.Equal(t, testData.expectedResultSecret.Annotations[VersionAnnotation], secret.Annotations[VersionAnnotation])
 			}
 
-			//check if deployment has been restarted
+			// check if deployment has been restarted
 			deployment := &appsv1.Deployment{}
 			err = cl.Get(ctx, types.NamespacedName{Name: testData.existingDeployment.Name, Namespace: namespace}, deployment)
+			assert.NoError(t, err)
 
 			_, ok := deployment.Spec.Template.Annotations[RestartAnnotation]
 			if ok {

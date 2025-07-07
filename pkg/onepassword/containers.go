@@ -28,7 +28,11 @@ func AreContainersUsingSecrets(containers []corev1.Container, secrets map[string
 	return false
 }
 
-func AppendUpdatedContainerSecrets(containers []corev1.Container, secrets map[string]*corev1.Secret, updatedDeploymentSecrets map[string]*corev1.Secret) map[string]*corev1.Secret {
+func AppendUpdatedContainerSecrets(
+	containers []corev1.Container,
+	secrets map[string]*corev1.Secret,
+	updatedDeploymentSecrets map[string]*corev1.Secret,
+) map[string]*corev1.Secret {
 	for i := 0; i < len(containers); i++ {
 		envVariables := containers[i].Env
 		for j := 0; j < len(envVariables); j++ {

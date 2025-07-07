@@ -104,7 +104,11 @@ func (c *ConnectClientMock) GetFileContent(file *onepassword.File) ([]byte, erro
 	return args.Get(0).([]byte), args.Error(1)
 }
 
-func (c *ConnectClientMock) DownloadFile(file *onepassword.File, targetDirectory string, overwrite bool) (string, error) {
+func (c *ConnectClientMock) DownloadFile(
+	file *onepassword.File,
+	targetDirectory string,
+	overwrite bool,
+) (string, error) {
 	// Only implement this if mocking is needed
 	panic("implement me")
 }

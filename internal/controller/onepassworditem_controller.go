@@ -125,7 +125,7 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 
 		// Remove finalizer now that cleanup is complete
-		if err = r.removeFinalizer(ctx, onepassworditem); err != nil {
+		if err = r.removeOnePasswordFinalizerFromOnePasswordItem(ctx, onepassworditem); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -138,14 +138,6 @@ func (r *OnePasswordItemReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&onepasswordv1.OnePasswordItem{}).
 		Named("onepassworditem").
 		Complete(r)
-}
-
-func (r *OnePasswordItemReconciler) removeFinalizer(ctx context.Context, onePasswordItem *onepasswordv1.OnePasswordItem) error {
-	onePasswordItem.ObjectMeta.Finalizers = utils.RemoveString(onePasswordItem.ObjectMeta.Finalizers, finalizer)
-	if err := r.Update(ctx, onePasswordItem); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(ctx context.Context, onePasswordItem *onepasswordv1.OnePasswordItem) error {
@@ -161,12 +153,12 @@ func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(ctx context.Context,
 	return nil
 }
 
-func (r *OnePasswordItemReconciler) removeOnePasswordFinalizerFromOnePasswordItem(ctx context.Context, opSecret *onepasswordv1.OnePasswordItem) error {
-	opSecret.ObjectMeta.Finalizers = utils.RemoveString(opSecret.ObjectMeta.Finalizers, finalizer)
-	return r.Update(ctx, opSecret)
+func (r *OnePasswordItemReconciler) removeOnePasswordFinalizerFromOnePasswordItem(ctx context.Context, onePasswordItem *onepasswordv1.OnePasswordItem) error {
+	onePasswordItem.ObjectMeta.Finalizers = utils.RemoveString(onePasswordItem.ObjectMeta.Finalizers, finalizer)
+	return r.Update(ctx, onePasswordItem)
 }
 
-func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, resource *onepasswordv1.OnePasswordItem, req ctrl.Request) error {
+func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, resource *onepasswordv1.OnePasswordItem, _ ctrl.Request) error {
 	secretName := resource.GetName()
 	labels := resource.Labels
 	secretType := resource.Type
