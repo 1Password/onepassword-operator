@@ -77,13 +77,6 @@ const (
 	annotationRegExpString = "^operator.1password.io\\/[a-zA-Z\\.]+"
 )
 
-// // Change below variables to serve metrics on different host or port.
-// var (
-// 	metricsHost               = "0.0.0.0"
-// 	metricsPort         int32 = 8383
-// 	operatorMetricsPort int32 = 8686
-// )
-
 func printVersion() {
 	setupLog.Info(fmt.Sprintf("Operator Version: %s", version.OperatorVersion))
 	setupLog.Info(fmt.Sprintf("Go Version: %s", runtime.Version()))
