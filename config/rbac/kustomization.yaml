@@ -17,7 +17,7 @@ resources:
 # More info: https://book.kubebuilder.io/reference/metrics.html
 - metrics_auth_role.yaml
 - metrics_auth_role_binding.yaml
-- metrics_reader_role.yam
+- metrics_reader_role.yaml
 # For each CRD, "Admin", "Editor" and "Viewer" roles are scaffolded by
 # default, aiding admins in cluster management. Those roles are
 # not used by the {{ .ProjectName }} itself. You can comment the following lines
