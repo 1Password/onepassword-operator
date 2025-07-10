@@ -32,7 +32,7 @@ func NewClient(config Config) *Connect {
 func (c *Connect) GetItemByID(ctx context.Context, vaultID, itemID string) (*model.Item, error) {
 	connectItem, err := c.client.GetItemByUUID(itemID, vaultID)
 	if err != nil {
-		return nil, fmt.Errorf("GetItemByID 1Password Connect error: %w", err)
+		return nil, fmt.Errorf("failed to GetItemByID using 1Password Connect: %w", err)
 	}
 
 	var item model.Item
@@ -44,7 +44,7 @@ func (c *Connect) GetItemsByTitle(ctx context.Context, vaultID, itemTitle string
 	// Get all items in the vault with the specified title
 	connectItems, err := c.client.GetItemsByTitle(itemTitle, vaultID)
 	if err != nil {
-		return nil, fmt.Errorf("GetItemsByTitle 1Password Connect error: %w", err)
+		return nil, fmt.Errorf("failed to GetItemsByTitle using 1Password Connect: %w", err)
 	}
 
 	items := make([]model.Item, len(connectItems))
@@ -79,16 +79,16 @@ func (c *Connect) GetFileContent(ctx context.Context, vaultID, itemID, fileID st
 			continue
 		}
 
-		return nil, fmt.Errorf("GetFileContent 1Password Connect error: %w", err)
+		return nil, fmt.Errorf("failed to GetFileContent using 1Password Connect: %w", err)
 	}
 
-	return nil, fmt.Errorf("GetFileContent failed after retries: %w", lastErr)
+	return nil, fmt.Errorf("failed to GetFileContent using 1Password Connect after %d retries: %w", maxRetries, lastErr)
 }
 
 func (c *Connect) GetVaultsByTitle(ctx context.Context, vaultQuery string) ([]model.Vault, error) {
 	connectVaults, err := c.client.GetVaultsByTitle(vaultQuery)
 	if err != nil {
-		return nil, fmt.Errorf("GetVaultsByTitle 1Password Connect error: %w", err)
+		return nil, fmt.Errorf("failed to GetVaultsByTitle using 1Password Connect: %w", err)
 	}
 
 	var vaults []model.Vault
