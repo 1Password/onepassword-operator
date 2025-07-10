@@ -7,6 +7,10 @@ export MAIN_BRANCH ?= main
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 1.9.0
 
+# DEPLOYMENT_NAME defines Kubernetes deployment name for the operator.
+# It should be the same as in 'config/manager/manager.yaml'
+DEPLOYMENT_NAME ?= onepassword-connect-operator
+
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -127,12 +131,15 @@ build: manifests generate fmt vet ## Build manager binary.
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./cmd/main.go
 
+.PHONY: docker-image
+docker-image: ## Build docker image with the manager.
+	DOCKER_BUILDKIT=1 $(CONTAINER_TOOL) build -t ${IMG} .
+
 # If you wish built the manager image targeting other platforms you can use the --platform flag.
 # (i.e. docker build --platform linux/arm64 ). However, you must enable docker buildKit for it.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
-docker-build: test ## Build docker image with the manager.
-	DOCKER_BUILDKIT=1 $(CONTAINER_TOOL) build -t ${IMG} .
+docker-build: test docker-image ## Build docker image with the manager.
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -178,6 +185,10 @@ deploy: manifests kustomize set-namespace ## Deploy controller to the K8s cluste
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+
+.PHONY: restart
+restart: ## Restarts deployment so that the operator picks up changes in the deployment configuration.
+	$(KUBECTL) rollout restart deployment $(DEPLOYMENT_NAME)
 
 ##@ Build Dependencies
 
