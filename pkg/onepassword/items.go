@@ -33,11 +33,12 @@ func GetOnePasswordItemByPath(ctx context.Context, opClient opclient.Client, pat
 		return nil, fmt.Errorf("faield to 'GetItemByID' for vaultID='%s' and itemID='%s': %w", vaultID, itemID, err)
 	}
 
-	for _, file := range item.Files {
-		_, err := opClient.GetFileContent(ctx, vaultID, itemID, file.ID)
+	for i, file := range item.Files {
+		content, err := opClient.GetFileContent(ctx, vaultID, itemID, file.ID)
 		if err != nil {
 			return nil, err
 		}
+		item.Files[i].SetContent(content)
 	}
 
 	return item, nil

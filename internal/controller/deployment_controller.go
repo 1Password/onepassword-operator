@@ -203,13 +203,13 @@ func (r *DeploymentReconciler) handleApplyingDeployment(ctx context.Context, dep
 
 	item, err := op.GetOnePasswordItemByPath(ctx, r.OpClient, annotations[op.ItemPathAnnotation])
 	if err != nil {
-		return fmt.Errorf("Failed to retrieve item: %v", err)
+		return fmt.Errorf("failed to retrieve item: %w", err)
 	}
 
 	// Create owner reference.
 	gvk, err := apiutil.GVKForObject(deployment, r.Scheme)
 	if err != nil {
-		return fmt.Errorf("could not to retrieve group version kind: %v", err)
+		return fmt.Errorf("could not to retrieve group version kind: %w", err)
 	}
 	ownerRef := &metav1.OwnerReference{
 		APIVersion: gvk.GroupVersion().String(),
