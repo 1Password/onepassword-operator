@@ -24,9 +24,7 @@ func (i *Item) FromConnectItem(item *connect.Item) {
 	i.VaultID = item.Vault.ID
 	i.Version = item.Version
 
-	for _, tag := range item.Tags {
-		i.Tags = append(i.Tags, tag)
-	}
+	i.Tags = append(i.Tags, item.Tags...)
 
 	for _, field := range item.Fields {
 		i.Fields = append(i.Fields, ItemField{

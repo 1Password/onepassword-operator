@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -59,20 +60,14 @@ var _ = Describe("OnePasswordItem controller", func() {
 			created := &onepasswordv1.OnePasswordItem{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, created)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 
 			By("Creating the K8s secret successfully")
 			createdSecret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, createdSecret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(createdSecret.Data).Should(Equal(item1.SecretData))
 
@@ -100,10 +95,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			updatedSecret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, updatedSecret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(updatedSecret.Data).Should(Equal(newDataByte))
 
@@ -174,20 +166,14 @@ var _ = Describe("OnePasswordItem controller", func() {
 			created := &onepasswordv1.OnePasswordItem{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, created)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 
 			By("Creating the K8s secret successfully")
 			createdSecret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, createdSecret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(createdSecret.Data).Should(Equal(expectedData))
 
@@ -296,10 +282,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			secret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, secret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(secret.Type).Should(Equal(v1.SecretType(customType)))
 		})
@@ -332,20 +315,14 @@ var _ = Describe("OnePasswordItem controller", func() {
 			secret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, secret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 
 			By("Failing to update K8s secret")
 			Eventually(func() bool {
 				secret.Type = v1.SecretTypeBasicAuth
 				err := k8sClient.Update(ctx, secret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeFalse())
 		})
 

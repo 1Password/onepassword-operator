@@ -80,7 +80,7 @@ func TestGetNoAnnotationsForDeployment(t *testing.T) {
 	}
 
 	numAnnotations := len(filteredAnnotations)
-	if 0 != numAnnotations {
+	if numAnnotations != 0 {
 		t.Errorf("Expected %v annotations got %v", 0, numAnnotations)
 	}
 }

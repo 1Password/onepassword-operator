@@ -43,7 +43,6 @@ type testUpdateSecretTask struct {
 	existingSecret           *corev1.Secret
 	expectedError            error
 	expectedResultSecret     *corev1.Secret
-	expectedEvents           []string
 	opItem                   map[string]string
 	expectedRestart          bool
 	globalAutoRestartEnabled bool
@@ -63,6 +62,9 @@ var defaultNamespace = &corev1.Namespace{
 	},
 }
 
+// TODO: Refactor test cases to avoid duplication.
+//
+//nolint:dupl
 var tests = []testUpdateSecretTask{
 	{
 		testName:          "Test unrelated deployment is not restarted with an updated secret",
@@ -838,9 +840,10 @@ func TestUpdateSecretHandler(t *testing.T) {
 				assert.Equal(t, testData.expectedResultSecret.Annotations[VersionAnnotation], secret.Annotations[VersionAnnotation])
 			}
 
-			//check if deployment has been restarted
+			// check if deployment has been restarted
 			deployment := &appsv1.Deployment{}
 			err = cl.Get(ctx, types.NamespacedName{Name: testData.existingDeployment.Name, Namespace: namespace}, deployment)
+			assert.NoError(t, err)
 
 			_, ok := deployment.Spec.Template.Annotations[RestartAnnotation]
 			if ok {
@@ -849,7 +852,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 				assert.False(t, testData.expectedRestart, "Deployment was restarted but should not have been.")
 			}
 
-			oldPodTemplateAnnotations := testData.existingDeployment.Spec.Template.ObjectMeta.Annotations
+			oldPodTemplateAnnotations := testData.existingDeployment.Spec.Template.Annotations
 			newPodTemplateAnnotations := deployment.Spec.Template.Annotations
 			for name, expected := range oldPodTemplateAnnotations {
 				actual, ok := newPodTemplateAnnotations[name]

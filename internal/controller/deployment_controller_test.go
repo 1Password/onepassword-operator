@@ -82,10 +82,7 @@ var _ = Describe("Deployment controller", func() {
 		time.Sleep(time.Millisecond * 100)
 		Eventually(func() bool {
 			err := k8sClient.Get(ctx, secretKey, createdSecret)
-			if err != nil {
-				return false
-			}
-			return true
+			return err == nil
 		}, timeout, interval).Should(BeTrue())
 		Expect(createdSecret.Data).Should(Equal(item1.SecretData))
 	}
@@ -190,10 +187,7 @@ var _ = Describe("Deployment controller", func() {
 			updatedSecret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, secretKey, updatedSecret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(updatedSecret.Data).Should(Equal(item2.SecretData))
 		})
@@ -247,10 +241,7 @@ var _ = Describe("Deployment controller", func() {
 			updatedSecret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, secretKey, updatedSecret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(updatedSecret.Data).Should(Equal(item1.SecretData))
 		})

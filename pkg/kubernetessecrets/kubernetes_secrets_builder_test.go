@@ -3,7 +3,6 @@ package kubernetessecrets
 import (
 	"context"
 	"fmt"
-	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 	"strings"
 	"testing"
 
@@ -12,26 +11,34 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 )
 
-const restartDeploymentAnnotation = "false"
+const (
+	restartDeploymentAnnotation = "false"
+	testNamespace               = "test"
+	testItemUUID                = "h46bb3jddvay7nxopfhvlwg35q"
+	testVaultUUID               = "hfnjvi6aymbsnfc2xeeoheizda"
+)
 
 func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	ctx := context.Background()
 	secretName := "test-secret-name"
-	namespace := "test"
+	namespace := testNamespace
 
 	item := model.Item{}
 	item.Fields = generateFields(5)
 	item.Version = 123
-	item.VaultID = "hfnjvi6aymbsnfc2xeeoheizda"
-	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
+	item.VaultID = testVaultUUID
+	item.ID = testItemUUID
 
 	kubeClient := fake.NewClientBuilder().Build()
 	secretLabels := map[string]string{}
 	secretType := ""
 
-	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, nil)
+	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
+		secretLabels, secretType, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -48,13 +55,13 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 func TestKubernetesSecretFromOnePasswordItemOwnerReferences(t *testing.T) {
 	ctx := context.Background()
 	secretName := "test-secret-name"
-	namespace := "test"
+	namespace := testNamespace
 
 	item := model.Item{}
 	item.Fields = generateFields(5)
 	item.Version = 123
-	item.VaultID = "hfnjvi6aymbsnfc2xeeoheizda"
-	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
+	item.VaultID = testVaultUUID
+	item.ID = testItemUUID
 
 	kubeClient := fake.NewClientBuilder().Build()
 	secretLabels := map[string]string{}
@@ -66,15 +73,19 @@ func TestKubernetesSecretFromOnePasswordItemOwnerReferences(t *testing.T) {
 		Name:       "test-deployment",
 		UID:        types.UID("test-uid"),
 	}
-	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, ownerRef)
+	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
+		secretLabels, secretType, ownerRef)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
 	createdSecret := &corev1.Secret{}
 	err = kubeClient.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, createdSecret)
+	if err != nil {
+		t.Errorf("Unexpected error: %v", err)
+	}
 
 	// Check owner references.
-	gotOwnerRefs := createdSecret.ObjectMeta.OwnerReferences
+	gotOwnerRefs := createdSecret.OwnerReferences
 	if len(gotOwnerRefs) != 1 {
 		t.Errorf("Expected owner references length: 1 but got: %d", len(gotOwnerRefs))
 	}
@@ -94,19 +105,20 @@ func TestKubernetesSecretFromOnePasswordItemOwnerReferences(t *testing.T) {
 func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	ctx := context.Background()
 	secretName := "test-secret-update"
-	namespace := "test"
+	namespace := testNamespace
 
 	item := model.Item{}
 	item.Fields = generateFields(5)
 	item.Version = 123
-	item.VaultID = "hfnjvi6aymbsnfc2xeeoheizda"
-	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
+	item.VaultID = testVaultUUID
+	item.ID = testItemUUID
 
 	kubeClient := fake.NewClientBuilder().Build()
 	secretLabels := map[string]string{}
 	secretType := ""
 
-	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, nil)
+	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
+		secretLabels, secretType, nil)
 
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -116,9 +128,10 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	newItem := model.Item{}
 	newItem.Fields = generateFields(6)
 	newItem.Version = 456
-	newItem.VaultID = "hfnjvi6aymbsnfc2xeeoheizda"
-	newItem.ID = "h46bb3jddvay7nxopfhvlwg35q"
-	err = CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation, secretLabels, secretType, nil)
+	newItem.VaultID = testVaultUUID
+	newItem.ID = testItemUUID
+	err = CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation,
+		secretLabels, secretType, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -210,19 +223,20 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 func TestCreateKubernetesTLSSecretFromOnePasswordItem(t *testing.T) {
 	ctx := context.Background()
 	secretName := "tls-test-secret-name"
-	namespace := "test"
+	namespace := testNamespace
 
 	item := model.Item{}
 	item.Fields = generateFields(5)
 	item.Version = 123
-	item.VaultID = "hfnjvi6aymbsnfc2xeeoheizda"
-	item.ID = "h46bb3jddvay7nxopfhvlwg35q"
+	item.VaultID = testVaultUUID
+	item.ID = testItemUUID
 
 	kubeClient := fake.NewClientBuilder().Build()
 	secretLabels := map[string]string{}
 	secretType := "kubernetes.io/tls"
 
-	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation, secretLabels, secretType, nil)
+	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
+		secretLabels, secretType, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -254,7 +268,9 @@ func compareAnnotationsToItem(annotations map[string]string, item model.Item, t 
 	}
 
 	if annotations[RestartDeploymentsAnnotation] != "false" {
-		t.Errorf("Expected restart deployments annotation to be %v but was %v", restartDeploymentAnnotation, RestartDeploymentsAnnotation)
+		t.Errorf("Expected restart deployments annotation to be %v but was %v",
+			restartDeploymentAnnotation, RestartDeploymentsAnnotation,
+		)
 	}
 }
 
@@ -286,7 +302,10 @@ func ParseVaultIdAndItemIdFromPath(path string) (string, string, error) {
 	if len(splitPath) == 4 && splitPath[0] == "vaults" && splitPath[2] == "items" {
 		return splitPath[1], splitPath[3], nil
 	}
-	return "", "", fmt.Errorf("%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`", path)
+	return "", "", fmt.Errorf(
+		"%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`",
+		path,
+	)
 }
 
 func validLabel(v string) bool {

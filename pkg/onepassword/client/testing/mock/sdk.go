@@ -23,7 +23,7 @@ type ItemAPIMock struct {
 }
 
 func (i *ItemAPIMock) Create(ctx context.Context, params sdk.ItemCreateParams) (sdk.Item, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -33,27 +33,31 @@ func (i *ItemAPIMock) Get(ctx context.Context, vaultID string, itemID string) (s
 }
 
 func (i *ItemAPIMock) Put(ctx context.Context, item sdk.Item) (sdk.Item, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (i *ItemAPIMock) Delete(ctx context.Context, vaultID string, itemID string) error {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (i *ItemAPIMock) Archive(ctx context.Context, vaultID string, itemID string) error {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
-func (i *ItemAPIMock) List(ctx context.Context, vaultID string, filters ...sdk.ItemListFilter) ([]sdk.ItemOverview, error) {
+func (i *ItemAPIMock) List(
+	ctx context.Context,
+	vaultID string,
+	filters ...sdk.ItemListFilter,
+) ([]sdk.ItemOverview, error) {
 	args := i.Called(ctx, vaultID, filters)
 	return args.Get(0).([]sdk.ItemOverview), args.Error(1)
 }
 
 func (i *ItemAPIMock) Shares() sdk.ItemsSharesAPI {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
@@ -66,17 +70,21 @@ type FileAPIMock struct {
 }
 
 func (f *FileAPIMock) Attach(ctx context.Context, item sdk.Item, fileParams sdk.FileCreateParams) (sdk.Item, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
 func (f *FileAPIMock) Delete(ctx context.Context, item sdk.Item, sectionID string, fieldID string) (sdk.Item, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
-func (f *FileAPIMock) ReplaceDocument(ctx context.Context, item sdk.Item, docParams sdk.DocumentCreateParams) (sdk.Item, error) {
-	//TODO implement me
+func (f *FileAPIMock) ReplaceDocument(
+	ctx context.Context,
+	item sdk.Item,
+	docParams sdk.DocumentCreateParams,
+) (sdk.Item, error) {
+	// TODO implement me
 	panic("implement me")
 }
 

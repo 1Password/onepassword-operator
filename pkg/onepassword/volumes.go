@@ -10,13 +10,14 @@ func AreVolumesUsingSecrets(volumes []corev1.Volume, secrets map[string]*corev1.
 			return false
 		}
 	}
-	if len(volumes) == 0 {
-		return false
-	}
-	return true
+	return len(volumes) > 0
 }
 
-func AppendUpdatedVolumeSecrets(volumes []corev1.Volume, secrets map[string]*corev1.Secret, updatedDeploymentSecrets map[string]*corev1.Secret) map[string]*corev1.Secret {
+func AppendUpdatedVolumeSecrets(
+	volumes []corev1.Volume,
+	secrets map[string]*corev1.Secret,
+	updatedDeploymentSecrets map[string]*corev1.Secret,
+) map[string]*corev1.Secret {
 	for i := 0; i < len(volumes); i++ {
 		secret := IsVolumeUsingSecret(volumes[i], secrets)
 		if secret != nil {

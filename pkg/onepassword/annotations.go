@@ -45,13 +45,14 @@ func FilterAnnotations(annotations map[string]string, regex *regexp.Regexp) map[
 
 func AreAnnotationsUsingSecrets(annotations map[string]string, secrets map[string]*corev1.Secret) bool {
 	_, ok := secrets[annotations[NameAnnotation]]
-	if ok {
-		return true
-	}
-	return false
+	return ok
 }
 
-func AppendAnnotationUpdatedSecret(annotations map[string]string, secrets map[string]*corev1.Secret, updatedDeploymentSecrets map[string]*corev1.Secret) map[string]*corev1.Secret {
+func AppendAnnotationUpdatedSecret(
+	annotations map[string]string,
+	secrets map[string]*corev1.Secret,
+	updatedDeploymentSecrets map[string]*corev1.Secret,
+) map[string]*corev1.Secret {
 	secret, ok := secrets[annotations[NameAnnotation]]
 	if ok {
 		updatedDeploymentSecrets[secret.Name] = secret
