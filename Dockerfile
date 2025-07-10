@@ -27,7 +27,7 @@ RUN CGO_ENABLED=0 \
     GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} \
     go build \
     -ldflags "-X \"github.com/1Password/onepassword-operator/version.Version=$operator_version\"" \
-    -a -o manager cmd/main.go
+    -o manager cmd/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
