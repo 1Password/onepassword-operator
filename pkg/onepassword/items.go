@@ -62,7 +62,7 @@ func getVaultID(ctx context.Context, client opclient.Client, vaultNameOrID strin
 		}
 
 		if len(vaults) == 0 {
-			return "", fmt.Errorf("No vaults found with identifier %q", vaultNameOrID)
+			return "", fmt.Errorf("no vaults found with identifier %q", vaultNameOrID)
 		}
 
 		oldestVault := vaults[0]
@@ -89,7 +89,7 @@ func getItemID(ctx context.Context, client opclient.Client, vaultId, itemNameOrI
 		}
 
 		if len(items) == 0 {
-			return "", fmt.Errorf("No items found with identifier %q", itemNameOrID)
+			return "", fmt.Errorf("no items found with identifier %q", itemNameOrID)
 		}
 
 		oldestItem := items[0]

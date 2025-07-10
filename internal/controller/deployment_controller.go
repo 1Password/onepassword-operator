@@ -92,11 +92,11 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 
 	// If the deployment is not being deleted
-	if deployment.ObjectMeta.DeletionTimestamp.IsZero() {
+	if deployment.DeletionTimestamp.IsZero() {
 		// Adds a finalizer to the deployment if one does not exist.
 		// This is so we can handle cleanup of associated secrets properly
-		if !utils.ContainsString(deployment.ObjectMeta.Finalizers, finalizer) {
-			deployment.ObjectMeta.Finalizers = append(deployment.ObjectMeta.Finalizers, finalizer)
+		if !utils.ContainsString(deployment.Finalizers, finalizer) {
+			deployment.Finalizers = append(deployment.Finalizers, finalizer)
 			if err = r.Update(ctx, deployment); err != nil {
 				return reconcile.Result{}, err
 			}
@@ -114,7 +114,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	}
 	// The deployment has been marked for deletion. If the one password
 	// finalizer is found there are cleanup tasks to perform
-	if utils.ContainsString(deployment.ObjectMeta.Finalizers, finalizer) {
+	if utils.ContainsString(deployment.Finalizers, finalizer) {
 
 		secretName := annotations[op.NameAnnotation]
 		if err = r.cleanupKubernetesSecretForDeployment(ctx, secretName, deployment); err != nil {
@@ -139,8 +139,8 @@ func (r *DeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *DeploymentReconciler) cleanupKubernetesSecretForDeployment(ctx context.Context, secretName string, deletedDeployment *appsv1.Deployment) error {
 	kubernetesSecret := &corev1.Secret{}
-	kubernetesSecret.ObjectMeta.Name = secretName
-	kubernetesSecret.ObjectMeta.Namespace = deletedDeployment.Namespace
+	kubernetesSecret.Name = secretName
+	kubernetesSecret.Namespace = deletedDeployment.Namespace
 
 	if len(secretName) == 0 {
 		return nil
@@ -186,7 +186,7 @@ func (r *DeploymentReconciler) areMultipleDeploymentsUsingSecret(ctx context.Con
 }
 
 func (r *DeploymentReconciler) removeOnePasswordFinalizerFromDeployment(ctx context.Context, deployment *appsv1.Deployment) error {
-	deployment.ObjectMeta.Finalizers = utils.RemoveString(deployment.ObjectMeta.Finalizers, finalizer)
+	deployment.Finalizers = utils.RemoveString(deployment.Finalizers, finalizer)
 	return r.Update(ctx, deployment)
 }
 
@@ -204,7 +204,7 @@ func (r *DeploymentReconciler) handleApplyingDeployment(ctx context.Context, dep
 
 	item, err := op.GetOnePasswordItemByPath(ctx, r.OpClient, annotations[op.ItemPathAnnotation])
 	if err != nil {
-		return fmt.Errorf("Failed to retrieve item: %v", err)
+		return fmt.Errorf("failed to retrieve item: %v", err)
 	}
 
 	// Create owner reference.

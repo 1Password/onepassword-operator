@@ -85,7 +85,7 @@ func TestKubernetesSecretFromOnePasswordItemOwnerReferences(t *testing.T) {
 	}
 
 	// Check owner references.
-	gotOwnerRefs := createdSecret.ObjectMeta.OwnerReferences
+	gotOwnerRefs := createdSecret.OwnerReferences
 	if len(gotOwnerRefs) != 1 {
 		t.Errorf("Expected owner references length: 1 but got: %d", len(gotOwnerRefs))
 	}

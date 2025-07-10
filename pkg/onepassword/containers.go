@@ -46,7 +46,7 @@ func AppendUpdatedContainerSecrets(
 		envFromVariables := containers[i].EnvFrom
 		for j := 0; j < len(envFromVariables); j++ {
 			if envFromVariables[j].SecretRef != nil {
-				secret, ok := secrets[envFromVariables[j].SecretRef.LocalObjectReference.Name]
+				secret, ok := secrets[envFromVariables[j].SecretRef.Name]
 				if ok {
 					updatedDeploymentSecrets[secret.Name] = secret
 				}

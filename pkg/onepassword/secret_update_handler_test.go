@@ -852,7 +852,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 				assert.False(t, testData.expectedRestart, "Deployment was restarted but should not have been.")
 			}
 
-			oldPodTemplateAnnotations := testData.existingDeployment.Spec.Template.ObjectMeta.Annotations
+			oldPodTemplateAnnotations := testData.existingDeployment.Spec.Template.Annotations
 			newPodTemplateAnnotations := deployment.Spec.Template.Annotations
 			for name, expected := range oldPodTemplateAnnotations {
 				actual, ok := newPodTemplateAnnotations[name]

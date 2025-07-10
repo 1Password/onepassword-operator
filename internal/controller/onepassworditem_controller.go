@@ -93,11 +93,11 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// If the deployment is not being deleted
-	if onepassworditem.ObjectMeta.DeletionTimestamp.IsZero() {
+	if onepassworditem.DeletionTimestamp.IsZero() {
 		// Adds a finalizer to the deployment if one does not exist.
 		// This is so we can handle cleanup of associated secrets properly
-		if !utils.ContainsString(onepassworditem.ObjectMeta.Finalizers, finalizer) {
-			onepassworditem.ObjectMeta.Finalizers = append(onepassworditem.ObjectMeta.Finalizers, finalizer)
+		if !utils.ContainsString(onepassworditem.Finalizers, finalizer) {
+			onepassworditem.Finalizers = append(onepassworditem.Finalizers, finalizer)
 			if err = r.Update(ctx, onepassworditem); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -117,7 +117,7 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 	// If one password finalizer exists then we must cleanup associated secrets
-	if utils.ContainsString(onepassworditem.ObjectMeta.Finalizers, finalizer) {
+	if utils.ContainsString(onepassworditem.Finalizers, finalizer) {
 
 		// Delete associated kubernetes secret
 		if err = r.cleanupKubernetesSecret(ctx, onepassworditem); err != nil {
@@ -142,8 +142,8 @@ func (r *OnePasswordItemReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(ctx context.Context, onePasswordItem *onepasswordv1.OnePasswordItem) error {
 	kubernetesSecret := &corev1.Secret{}
-	kubernetesSecret.ObjectMeta.Name = onePasswordItem.Name
-	kubernetesSecret.ObjectMeta.Namespace = onePasswordItem.Namespace
+	kubernetesSecret.Name = onePasswordItem.Name
+	kubernetesSecret.Namespace = onePasswordItem.Namespace
 
 	if err := r.Delete(ctx, kubernetesSecret); err != nil {
 		if !errors.IsNotFound(err) {
@@ -154,7 +154,7 @@ func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(ctx context.Context,
 }
 
 func (r *OnePasswordItemReconciler) removeOnePasswordFinalizerFromOnePasswordItem(ctx context.Context, onePasswordItem *onepasswordv1.OnePasswordItem) error {
-	onePasswordItem.ObjectMeta.Finalizers = utils.RemoveString(onePasswordItem.ObjectMeta.Finalizers, finalizer)
+	onePasswordItem.Finalizers = utils.RemoveString(onePasswordItem.Finalizers, finalizer)
 	return r.Update(ctx, onePasswordItem)
 }
 
@@ -166,7 +166,7 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 
 	item, err := op.GetOnePasswordItemByPath(ctx, r.OpClient, resource.Spec.ItemPath)
 	if err != nil {
-		return fmt.Errorf("Failed to retrieve item: %v", err)
+		return fmt.Errorf("failed to retrieve item: %v", err)
 	}
 
 	// Create owner reference.
