@@ -25,12 +25,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
   - apps
   resources:
   - daemonsets
@@ -45,25 +39,6 @@ rules:
   - patch
   - update
   - watch
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - apps
-  resources:
-  - deployments
-  - replicasets
-  verbs:
-  - get
 - apiGroups:
   - apps
   resources:
@@ -106,17 +81,6 @@ rules:
   - onepassword.com
   resources:
   - '*'
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - onepassword.com
-  resources:
   - onepassworditems
   verbs:
   - create

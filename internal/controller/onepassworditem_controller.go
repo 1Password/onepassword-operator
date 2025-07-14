@@ -57,18 +57,18 @@ type OnePasswordItemReconciler struct {
 	OpClient opclient.Client
 }
 
-//+kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems/finalizers,verbs=update
+// +kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems/finalizers,verbs=update
 
-//+kubebuilder:rbac:groups="",resources=pods,verbs=get
-//+kubebuilder:rbac:groups="",resources=pods;services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets;namespaces,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=apps,resources=daemonsets;deployments;replicasets;statefulsets,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=apps,resources=replicasets;deployments,verbs=get
-//+kubebuilder:rbac:groups=apps,resourceNames=onepassword-connect-operator,resources=deployments/finalizers,verbs=update
-//+kubebuilder:rbac:groups=onepassword.com,resources=*,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;create
-//+kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;create;update
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get
+// +kubebuilder:rbac:groups="",resources=pods;services;services/finalizers;endpoints;persistentvolumeclaims;events;configmaps;secrets;namespaces,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=daemonsets;deployments;replicasets;statefulsets,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=replicasets;deployments,verbs=get
+// +kubebuilder:rbac:groups=apps,resourceNames=onepassword-connect-operator,resources=deployments/finalizers,verbs=update
+// +kubebuilder:rbac:groups=onepassword.com,resources=*,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;create
+// +kubebuilder:rbac:groups=coordination.k8s.io,resources=leases,verbs=get;list;create;update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -93,11 +93,11 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	}
 
 	// If the deployment is not being deleted
-	if onepassworditem.ObjectMeta.DeletionTimestamp.IsZero() {
+	if onepassworditem.DeletionTimestamp.IsZero() {
 		// Adds a finalizer to the deployment if one does not exist.
 		// This is so we can handle cleanup of associated secrets properly
-		if !utils.ContainsString(onepassworditem.ObjectMeta.Finalizers, finalizer) {
-			onepassworditem.ObjectMeta.Finalizers = append(onepassworditem.ObjectMeta.Finalizers, finalizer)
+		if !utils.ContainsString(onepassworditem.Finalizers, finalizer) {
+			onepassworditem.Finalizers = append(onepassworditem.Finalizers, finalizer)
 			if err = r.Update(ctx, onepassworditem); err != nil {
 				return ctrl.Result{}, err
 			}
@@ -117,7 +117,7 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 	// If one password finalizer exists then we must cleanup associated secrets
-	if utils.ContainsString(onepassworditem.ObjectMeta.Finalizers, finalizer) {
+	if utils.ContainsString(onepassworditem.Finalizers, finalizer) {
 
 		// Delete associated kubernetes secret
 		if err = r.cleanupKubernetesSecret(ctx, onepassworditem); err != nil {
@@ -125,7 +125,7 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		}
 
 		// Remove finalizer now that cleanup is complete
-		if err = r.removeFinalizer(ctx, onepassworditem); err != nil {
+		if err = r.removeOnePasswordFinalizerFromOnePasswordItem(ctx, onepassworditem); err != nil {
 			return ctrl.Result{}, err
 		}
 	}
@@ -136,21 +136,14 @@ func (r *OnePasswordItemReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 func (r *OnePasswordItemReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&onepasswordv1.OnePasswordItem{}).
+		Named("onepassworditem").
 		Complete(r)
-}
-
-func (r *OnePasswordItemReconciler) removeFinalizer(ctx context.Context, onePasswordItem *onepasswordv1.OnePasswordItem) error {
-	onePasswordItem.ObjectMeta.Finalizers = utils.RemoveString(onePasswordItem.ObjectMeta.Finalizers, finalizer)
-	if err := r.Update(ctx, onePasswordItem); err != nil {
-		return err
-	}
-	return nil
 }
 
 func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(ctx context.Context, onePasswordItem *onepasswordv1.OnePasswordItem) error {
 	kubernetesSecret := &corev1.Secret{}
-	kubernetesSecret.ObjectMeta.Name = onePasswordItem.Name
-	kubernetesSecret.ObjectMeta.Namespace = onePasswordItem.Namespace
+	kubernetesSecret.Name = onePasswordItem.Name
+	kubernetesSecret.Namespace = onePasswordItem.Namespace
 
 	if err := r.Delete(ctx, kubernetesSecret); err != nil {
 		if !errors.IsNotFound(err) {
@@ -160,12 +153,12 @@ func (r *OnePasswordItemReconciler) cleanupKubernetesSecret(ctx context.Context,
 	return nil
 }
 
-func (r *OnePasswordItemReconciler) removeOnePasswordFinalizerFromOnePasswordItem(ctx context.Context, opSecret *onepasswordv1.OnePasswordItem) error {
-	opSecret.ObjectMeta.Finalizers = utils.RemoveString(opSecret.ObjectMeta.Finalizers, finalizer)
-	return r.Update(ctx, opSecret)
+func (r *OnePasswordItemReconciler) removeOnePasswordFinalizerFromOnePasswordItem(ctx context.Context, onePasswordItem *onepasswordv1.OnePasswordItem) error {
+	onePasswordItem.Finalizers = utils.RemoveString(onePasswordItem.Finalizers, finalizer)
+	return r.Update(ctx, onePasswordItem)
 }
 
-func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, resource *onepasswordv1.OnePasswordItem, req ctrl.Request) error {
+func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, resource *onepasswordv1.OnePasswordItem, _ ctrl.Request) error {
 	secretName := resource.GetName()
 	labels := resource.Labels
 	secretType := resource.Type

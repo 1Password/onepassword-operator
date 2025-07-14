@@ -2,7 +2,7 @@ package kubernetessecrets
 
 import (
 	"context"
-	errs "errors"
+	"errors"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -11,7 +11,7 @@ import (
 	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
@@ -26,11 +26,20 @@ const VersionAnnotation = OnepasswordPrefix + "/item-version"
 const ItemPathAnnotation = OnepasswordPrefix + "/item-path"
 const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
 
-var ErrCannotUpdateSecretType = errs.New("Cannot change secret type. Secret type is immutable")
+var ErrCannotUpdateSecretType = errors.New("cannot change secret type: secret type is immutable")
 
 var log = logf.Log
 
-func CreateKubernetesSecretFromItem(ctx context.Context, kubeClient kubernetesClient.Client, secretName, namespace string, item *model.Item, autoRestart string, labels map[string]string, secretType string, ownerRef *metav1.OwnerReference) error {
+func CreateKubernetesSecretFromItem(
+	ctx context.Context,
+	kubeClient kubernetesClient.Client,
+	secretName, namespace string,
+	item *model.Item,
+	autoRestart string,
+	labels map[string]string,
+	secretType string,
+	ownerRef *metav1.OwnerReference,
+) error {
 	itemVersion := fmt.Sprint(item.Version)
 	secretAnnotations := map[string]string{
 		VersionAnnotation:  itemVersion,
@@ -40,17 +49,20 @@ func CreateKubernetesSecretFromItem(ctx context.Context, kubeClient kubernetesCl
 	if autoRestart != "" {
 		_, err := utils.StringToBool(autoRestart)
 		if err != nil {
-			return fmt.Errorf("Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secretName)
+			return fmt.Errorf("error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false",
+				RestartDeploymentsAnnotation, secretName,
+			)
 		}
 		secretAnnotations[RestartDeploymentsAnnotation] = autoRestart
 	}
 
 	// "Opaque" and "" secret types are treated the same by Kubernetes.
-	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels, secretType, *item, ownerRef)
+	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels,
+		secretType, *item, ownerRef)
 
 	currentSecret := &corev1.Secret{}
 	err := kubeClient.Get(ctx, types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
-	if err != nil && errors.IsNotFound(err) {
+	if err != nil && apierrors.IsNotFound(err) {
 		log.Info(fmt.Sprintf("Creating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
 		return kubeClient.Create(ctx, secret)
 	} else if err != nil {
@@ -75,20 +87,29 @@ func CreateKubernetesSecretFromItem(ctx context.Context, kubeClient kubernetesCl
 	currentLabels := currentSecret.Labels
 	if !reflect.DeepEqual(currentAnnotations, secretAnnotations) || !reflect.DeepEqual(currentLabels, labels) {
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
-		currentSecret.ObjectMeta.Annotations = secretAnnotations
-		currentSecret.ObjectMeta.Labels = labels
+		currentSecret.Annotations = secretAnnotations
+		currentSecret.Labels = labels
 		currentSecret.Data = secret.Data
 		if err := kubeClient.Update(ctx, currentSecret); err != nil {
-			return fmt.Errorf("Kubernetes secret update failed: %w", err)
+			return fmt.Errorf("kubernetes secret update failed: %w", err)
 		}
 		return nil
 	}
 
-	log.Info(fmt.Sprintf("Secret with name %v and version %v already exists", secret.Name, secret.Annotations[VersionAnnotation]))
+	log.Info(fmt.Sprintf("Secret with name %v and version %v already exists",
+		secret.Name, secret.Annotations[VersionAnnotation],
+	))
 	return nil
 }
 
-func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, labels map[string]string, secretType string, item model.Item, ownerRef *metav1.OwnerReference) *corev1.Secret {
+func BuildKubernetesSecretFromOnePasswordItem(
+	name, namespace string,
+	annotations map[string]string,
+	labels map[string]string,
+	secretType string,
+	item model.Item,
+	ownerRef *metav1.OwnerReference,
+) *corev1.Secret {
 	var ownerRefs []metav1.OwnerReference
 	if ownerRef != nil {
 		ownerRefs = []metav1.OwnerReference{*ownerRef}

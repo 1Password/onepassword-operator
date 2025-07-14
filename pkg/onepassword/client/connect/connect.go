@@ -58,7 +58,8 @@ func (c *Connect) GetItemsByTitle(ctx context.Context, vaultID, itemTitle string
 }
 
 // GetFileContent retrieves the content of a file from a 1Password item.
-// As the Connect has a delay when synchronizing files and returns a 500 error in this case, this function implements a retry mechanism.
+// As the Connect has a delay when synchronizing files and returns a 500 error in this case,
+// this function implements a retry mechanism.
 func (c *Connect) GetFileContent(ctx context.Context, vaultID, itemID, fileID string) ([]byte, error) {
 	const maxRetries = 5
 	const delay = 1 * time.Second
