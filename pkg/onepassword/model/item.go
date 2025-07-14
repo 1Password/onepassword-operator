@@ -70,6 +70,15 @@ func (i *Item) FromSDKItem(item *sdk.Item) {
 		})
 	}
 
+	// Items of 'Document' category keeps file information in the Document field.
+	if item.Category == sdk.ItemCategoryDocument {
+		i.Files = append(i.Files, File{
+			ID:   item.Document.ID,
+			Name: item.Document.Name,
+			Size: int(item.Document.Size),
+		})
+	}
+
 	i.CreatedAt = item.CreatedAt
 }
 

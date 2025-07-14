@@ -123,7 +123,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (map[
 
 		item, err := GetOnePasswordItemByPath(ctx, h.opClient, OnePasswordItemPath)
 		if err != nil {
-			log.Error(err, "failed to retrieve 1Password item at path \"%s\" for secret \"%s\"", secret.Annotations[ItemPathAnnotation], secret.Name)
+			log.Error(err, fmt.Sprintf("failed to retrieve 1Password item at path %s for secret %s", secret.Annotations[ItemPathAnnotation], secret.Name))
 			continue
 		}
 
@@ -136,7 +136,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (map[
 				secret.Annotations[VersionAnnotation] = itemVersion
 				secret.Annotations[ItemPathAnnotation] = itemPathString
 				if err := h.client.Update(ctx, &secret); err != nil {
-					log.Error(err, "failed to update secret %s annotations to version %d: %s", secret.Name, itemVersion, err)
+					log.Error(err, fmt.Sprintf("failed to update secret %s annotations to version %s", secret.Name, itemVersion))
 					continue
 				}
 				continue
@@ -147,7 +147,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (map[
 			secret.Data = kubeSecrets.BuildKubernetesSecretData(item.Fields, item.Files)
 			log.V(logs.DebugLevel).Info(fmt.Sprintf("New secret path: %v and version: %v", secret.Annotations[ItemPathAnnotation], secret.Annotations[VersionAnnotation]))
 			if err := h.client.Update(ctx, &secret); err != nil {
-				log.Error(err, "failed to update secret %s to version %d: %s", secret.Name, itemVersion, err)
+				log.Error(err, fmt.Sprintf("failed to update secret %s to version %s", secret.Name, itemVersion))
 				continue
 			}
 			if updatedSecrets[secret.Namespace] == nil {
@@ -218,7 +218,7 @@ func isSecretSetForAutoRestart(secret *corev1.Secret, deployment *appsv1.Deploym
 
 	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
 	if err != nil {
-		log.Error(err, "Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secret.Name)
+		log.Error(err, fmt.Sprintf("Error parsing %s annotation on Secret %s. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secret.Name))
 		return false
 	}
 	return restartDeploymentBool
@@ -233,7 +233,7 @@ func isDeploymentSetForAutoRestart(deployment *appsv1.Deployment, setForAutoRest
 
 	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
 	if err != nil {
-		log.Error(err, "Error parsing %v annotation on Deployment %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, deployment.Name)
+		log.Error(err, fmt.Sprintf("Error parsing %s annotation on Deployment %s. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, deployment.Name))
 		return false
 	}
 	return restartDeploymentBool
@@ -248,7 +248,7 @@ func (h *SecretUpdateHandler) isNamespaceSetToAutoRestart(namespace *corev1.Name
 
 	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
 	if err != nil {
-		log.Error(err, "Error parsing %v annotation on Namespace %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, namespace.Name)
+		log.Error(err, fmt.Sprintf("Error parsing %s annotation on Namespace %s. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, namespace.Name))
 		return false
 	}
 	return restartDeploymentBool
