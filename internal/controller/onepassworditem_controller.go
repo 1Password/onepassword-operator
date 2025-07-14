@@ -166,13 +166,13 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 
 	item, err := op.GetOnePasswordItemByPath(ctx, r.OpClient, resource.Spec.ItemPath)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve item: %v", err)
+		return fmt.Errorf("failed to retrieve item: %w", err)
 	}
 
 	// Create owner reference.
 	gvk, err := apiutil.GVKForObject(resource, r.Scheme)
 	if err != nil {
-		return fmt.Errorf("could not to retrieve group version kind: %v", err)
+		return fmt.Errorf("could not to retrieve group version kind: %w", err)
 	}
 	ownerRef := &metav1.OwnerReference{
 		APIVersion: gvk.GroupVersion().String(),

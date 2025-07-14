@@ -12,6 +12,18 @@
 
 ---
 
+[//]: # (START/v1.9.1)
+# v1.9.1
+
+## Fixes
+ * Operator no longer panics when handling 1Password items containing files. {#209}
+
+## Security
+ * HTTP Proxy bypass using IPv6 Zone IDs in golang.org/x/net. {#210}
+ * golang.org/x/net vulnerable to Cross-site Scripting. {#210}
+
+---
+
 [//]: # (START/v1.9.0)
 # v1.9.0
 

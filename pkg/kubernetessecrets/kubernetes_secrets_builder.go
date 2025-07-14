@@ -141,7 +141,7 @@ func BuildKubernetesSecretData(fields []model.ItemField, files []model.File) map
 	for _, file := range files {
 		content, err := file.Content()
 		if err != nil {
-			log.Error(err, "Could not load contents of file %s", file.Name)
+			log.Error(err, fmt.Sprintf("Could not load contents of file %s", file.Name))
 			continue
 		}
 		if content != nil {
