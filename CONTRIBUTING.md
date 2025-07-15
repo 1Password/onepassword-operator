@@ -11,7 +11,7 @@ Thank you for your interest in contributing to the 1Password Kubernetes Operator
   eval $(minikube docker-env)
 
   # Build the local Docker image for the operator
-  make docker-image
+  make docker-build
 
   # Deploy the operator
   make deploy
@@ -21,7 +21,7 @@ Thank you for your interest in contributing to the 1Password Kubernetes Operator
   ```
 
 - After making changes to the code:
-1. Rebuild the Docker image by running `make docker-image`
+1. Rebuild the Docker image by running `make docker-build`
 2. Restart deployment `make restart`
 
 - For testing the changes made to the `OnePasswordItem` Custom Resource Definition (CRD), you need to re-generate the object:
