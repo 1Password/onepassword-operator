@@ -72,6 +72,7 @@ spec:
         - /manager
         args:
         - --leader-elect
+        - --health-probe-bind-address=:8081
         image: 1password/onepassword-operator:latest
         name: manager
         env:
@@ -106,7 +107,7 @@ spec:
           allowPrivilegeEscalation: false
           capabilities:
             drop:
-              - "ALL"
+            - "ALL"
         livenessProbe:
           httpGet:
             path: /healthz

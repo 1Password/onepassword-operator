@@ -2,6 +2,8 @@ package controller
 
 import (
 	"context"
+	"fmt"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -59,20 +61,14 @@ var _ = Describe("OnePasswordItem controller", func() {
 			created := &onepasswordv1.OnePasswordItem{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, created)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 
 			By("Creating the K8s secret successfully")
 			createdSecret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, createdSecret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(createdSecret.Data).Should(Equal(item1.SecretData))
 
@@ -100,10 +96,7 @@ var _ = Describe("OnePasswordItem controller", func() {
 			updatedSecret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, updatedSecret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(updatedSecret.Data).Should(Equal(newDataByte))
 
@@ -174,20 +167,14 @@ var _ = Describe("OnePasswordItem controller", func() {
 			created := &onepasswordv1.OnePasswordItem{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, created)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 
 			By("Creating the K8s secret successfully")
 			createdSecret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, createdSecret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(createdSecret.Data).Should(Equal(expectedData))
 
@@ -296,12 +283,54 @@ var _ = Describe("OnePasswordItem controller", func() {
 			secret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, secret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(secret.Type).Should(Equal(v1.SecretType(customType)))
+		})
+
+		It("Should handle 1Password Item with a file and populate secret correctly", func() {
+			ctx := context.Background()
+			spec := onepasswordv1.OnePasswordItemSpec{
+				ItemPath: item1.Path,
+			}
+
+			key := types.NamespacedName{
+				Name:      "item-with-file",
+				Namespace: namespace,
+			}
+
+			toCreate := &onepasswordv1.OnePasswordItem{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      key.Name,
+					Namespace: key.Namespace,
+				},
+				Spec: spec,
+			}
+
+			fileContent := []byte("dummy-cert-content")
+			item := item1.ToModel()
+			item.Files = []model.File{
+				{
+					ID:          "file-id-123",
+					Name:        "server.crt",
+					ContentPath: fmt.Sprintf("/v1/vaults/%s/items/%s/files/file-id-123/content", item.VaultID, item.ID),
+				},
+			}
+			item.Files[0].SetContent(fileContent)
+
+			mockGetItemByIDFunc.Return(item, nil)
+			mockGetItemByIDFunc.On("GetFileContent", item.VaultID, item.ID, "file-id-123").Return(fileContent, nil)
+
+			By("Creating a new OnePasswordItem with file successfully")
+			Expect(k8sClient.Create(ctx, toCreate)).Should(Succeed())
+
+			createdSecret := &v1.Secret{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, createdSecret)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			Expect(createdSecret.Data).Should(HaveKeyWithValue("server.crt", fileContent))
 		})
 	})
 
@@ -332,20 +361,14 @@ var _ = Describe("OnePasswordItem controller", func() {
 			secret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, key, secret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 
 			By("Failing to update K8s secret")
 			Eventually(func() bool {
 				secret.Type = v1.SecretTypeBasicAuth
 				err := k8sClient.Update(ctx, secret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeFalse())
 		})
 
