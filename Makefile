@@ -7,6 +7,10 @@ export MAIN_BRANCH ?= main
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 1.9.1
 
+# DEPLOYMENT_NAME defines Kubernetes deployment name for the operator.
+# It should be the same as in 'config/manager/manager.yaml'
+DEPLOYMENT_NAME ?= onepassword-connect-operator
+
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "candidate,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -171,7 +175,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 # More info: https://docs.docker.com/develop/develop-images/build_enhancements/
 .PHONY: docker-build
 docker-build: ## Build docker image with the manager.
-	$(CONTAINER_TOOL) build -t ${IMG} .
+	DOCKER_BUILDKIT=1 $(CONTAINER_TOOL) build -t ${IMG} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the manager.
@@ -226,6 +230,10 @@ deploy: manifests kustomize set-namespace ## Deploy controller to the K8s cluste
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+
+.PHONY: restart
+restart: ## Restarts deployment so that the operator picks up changes in the deployment configuration.
+	$(KUBECTL) rollout restart deployment $(DEPLOYMENT_NAME)
 
 ##@ Dependencies
 
