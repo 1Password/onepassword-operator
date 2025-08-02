@@ -116,7 +116,7 @@ apiVersion: onepassword.com/v1
 kind: OnePasswordItemList
 items:
   - metadata:
-      name: <item_name_1> #this name will also be used for naming the generated kubernetes secret
+      name: <item_name_1> #this name will be used for naming one of the generated kubernetes secrets
     spec:
       itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>"
   - metadata:
