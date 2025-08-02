@@ -120,7 +120,7 @@ items:
     spec:
       itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>"
   - metadata:
-      name: <item_name_2> #this name will also be used for naming the generated kubernetes secret
+      name: <item_name_2> #this name will also be used for naming another of the generated kubernetes secrets
     spec:
       itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>"
 ```
