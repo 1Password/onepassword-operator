@@ -109,7 +109,7 @@ spec:
   itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>" 
 ```
 
-To create a list of Kubernetes Secrets from a 1Password items, create a yaml file with the following
+To create a list of Kubernetes Secrets from 1Password items, create a yaml file with the following
 
 ```yaml
 apiVersion: onepassword.com/v1
