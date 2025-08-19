@@ -9,8 +9,9 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/1Password/onepassword-operator/test/cmd"
-	"github.com/1Password/onepassword-operator/test/kind"
-	"github.com/1Password/onepassword-operator/test/kube"
+	"github.com/1Password/onepassword-operator/test/testhelper/kind"
+	"github.com/1Password/onepassword-operator/test/testhelper/kube"
+	"github.com/1Password/onepassword-operator/test/testhelper/operator"
 )
 
 const (
@@ -35,25 +36,36 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 		By("create onepassword-service-account-token secret")
 		kube.CreateSecretFromEnvVar("OP_SERVICE_ACCOUNT_TOKEN", "onepassword-service-account-token")
 
-		kube.DeployOperator()
-		kube.PathOperatorToUseServiceAccount()
+		operator.DeployOperator()
 	})
 
-	Describe("Deployment annotations", func() {
-		It("Should create secret from manifest file", func() {
-			By("creating secret")
-			wd, err := os.Getwd()
-			Expect(err).NotTo(HaveOccurred())
-			yamlPath := filepath.Join(wd, "manifests", "secret.yaml")
-			_, err = cmd.Run("kubectl", "apply", "-f", yamlPath)
-			Expect(err).NotTo(HaveOccurred())
+	//Context("Use the operator with Connect", func() {
+	//	runCommonTestCases()
+	//})
 
-			By("waiting for secret to be created")
-			Eventually(func(g Gomega) {
-				output, err := cmd.Run("kubectl", "get", "secret", "login", "-o", "jsonpath={.metadata.name}")
-				g.Expect(err).NotTo(HaveOccurred())
-				g.Expect(output).To(Equal("login"))
-			}, defaultTimeout, defaultInterval).Should(Succeed())
+	Context("Use the operator with Service Account", func() {
+		BeforeAll(func() {
+			kube.PathOperatorToUseServiceAccount()
 		})
+
+		runCommonTestCases()
 	})
 })
+
+func runCommonTestCases() {
+	It("Should create secret from manifest file", func() {
+		By("creating secret")
+		wd, err := os.Getwd()
+		Expect(err).NotTo(HaveOccurred())
+		yamlPath := filepath.Join(wd, "manifests", "secret.yaml")
+		_, err = cmd.Run("kubectl", "apply", "-f", yamlPath)
+		Expect(err).NotTo(HaveOccurred())
+
+		By("waiting for secret to be created")
+		Eventually(func(g Gomega) {
+			output, err := cmd.Run("kubectl", "get", "secret", "login", "-o", "jsonpath={.metadata.name}")
+			g.Expect(err).NotTo(HaveOccurred())
+			g.Expect(output).To(Equal("login"))
+		}, defaultTimeout, defaultInterval).Should(Succeed())
+	})
+}
