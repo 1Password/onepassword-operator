@@ -24,9 +24,7 @@ func (i *Item) FromConnectItem(item *connect.Item) {
 	i.VaultID = item.Vault.ID
 	i.Version = item.Version
 
-	for _, tag := range item.Tags {
-		i.Tags = append(i.Tags, tag)
-	}
+	i.Tags = append(i.Tags, item.Tags...)
 
 	for _, field := range item.Fields {
 		i.Fields = append(i.Fields, ItemField{
@@ -67,6 +65,15 @@ func (i *Item) FromSDKItem(item *sdk.Item) {
 			ID:   file.Attributes.ID,
 			Name: file.Attributes.Name,
 			Size: int(file.Attributes.Size),
+		})
+	}
+
+	// Items of 'Document' category keeps file information in the Document field.
+	if item.Category == sdk.ItemCategoryDocument {
+		i.Files = append(i.Files, File{
+			ID:   item.Document.ID,
+			Name: item.Document.Name,
+			Size: int(item.Document.Size),
 		})
 	}
 

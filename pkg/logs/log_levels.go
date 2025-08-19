@@ -1,7 +1,7 @@
 package logs
 
 // A Level is a logging priority. Lower levels are more important.
-// All levels have been multipled by -1 to ensure compatibilty
+// All levels have been multiplied by -1 to ensure compatibility
 // between zapcore and logr
 const (
 	ErrorLevel = -2

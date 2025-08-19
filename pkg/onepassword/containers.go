@@ -28,7 +28,11 @@ func AreContainersUsingSecrets(containers []corev1.Container, secrets map[string
 	return false
 }
 
-func AppendUpdatedContainerSecrets(containers []corev1.Container, secrets map[string]*corev1.Secret, updatedDeploymentSecrets map[string]*corev1.Secret) map[string]*corev1.Secret {
+func AppendUpdatedContainerSecrets(
+	containers []corev1.Container,
+	secrets map[string]*corev1.Secret,
+	updatedDeploymentSecrets map[string]*corev1.Secret,
+) map[string]*corev1.Secret {
 	for i := 0; i < len(containers); i++ {
 		envVariables := containers[i].Env
 		for j := 0; j < len(envVariables); j++ {
@@ -42,7 +46,7 @@ func AppendUpdatedContainerSecrets(containers []corev1.Container, secrets map[st
 		envFromVariables := containers[i].EnvFrom
 		for j := 0; j < len(envFromVariables); j++ {
 			if envFromVariables[j].SecretRef != nil {
-				secret, ok := secrets[envFromVariables[j].SecretRef.LocalObjectReference.Name]
+				secret, ok := secrets[envFromVariables[j].SecretRef.Name]
 				if ok {
 					updatedDeploymentSecrets[secret.Name] = secret
 				}

@@ -33,11 +33,12 @@ func GetOnePasswordItemByPath(ctx context.Context, opClient opclient.Client, pat
 		return nil, fmt.Errorf("faield to 'GetItemByID' for vaultID='%s' and itemID='%s': %w", vaultID, itemID, err)
 	}
 
-	for _, file := range item.Files {
-		_, err := opClient.GetFileContent(ctx, vaultID, itemID, file.ID)
+	for i, file := range item.Files {
+		content, err := opClient.GetFileContent(ctx, vaultID, itemID, file.ID)
 		if err != nil {
 			return nil, err
 		}
+		item.Files[i].SetContent(content)
 	}
 
 	return item, nil
@@ -48,7 +49,10 @@ func ParseVaultAndItemFromPath(path string) (string, string, error) {
 	if len(splitPath) == 4 && splitPath[0] == "vaults" && splitPath[2] == "items" {
 		return splitPath[1], splitPath[3], nil
 	}
-	return "", "", fmt.Errorf("%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`", path)
+	return "", "", fmt.Errorf(
+		"%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`",
+		path,
+	)
 }
 
 func getVaultID(ctx context.Context, client opclient.Client, vaultNameOrID string) (string, error) {
@@ -59,7 +63,7 @@ func getVaultID(ctx context.Context, client opclient.Client, vaultNameOrID strin
 		}
 
 		if len(vaults) == 0 {
-			return "", fmt.Errorf("No vaults found with identifier %q", vaultNameOrID)
+			return "", fmt.Errorf("no vaults found with identifier %q", vaultNameOrID)
 		}
 
 		oldestVault := vaults[0]
@@ -69,7 +73,9 @@ func getVaultID(ctx context.Context, client opclient.Client, vaultNameOrID strin
 					oldestVault = returnedVault
 				}
 			}
-			logger.Info(fmt.Sprintf("%v 1Password vaults found with the title %q. Will use vault %q as it is the oldest.", len(vaults), vaultNameOrID, oldestVault.ID))
+			logger.Info(fmt.Sprintf("%v 1Password vaults found with the title %q. Will use vault %q as it is the oldest.",
+				len(vaults), vaultNameOrID, oldestVault.ID,
+			))
 		}
 		vaultNameOrID = oldestVault.ID
 	}
@@ -84,7 +90,7 @@ func getItemID(ctx context.Context, client opclient.Client, vaultId, itemNameOrI
 		}
 
 		if len(items) == 0 {
-			return "", fmt.Errorf("No items found with identifier %q", itemNameOrID)
+			return "", fmt.Errorf("no items found with identifier %q", itemNameOrID)
 		}
 
 		oldestItem := items[0]
@@ -94,7 +100,9 @@ func getItemID(ctx context.Context, client opclient.Client, vaultId, itemNameOrI
 					oldestItem = returnedItem
 				}
 			}
-			logger.Info(fmt.Sprintf("%v 1Password items found with the title %q. Will use item %q as it is the oldest.", len(items), itemNameOrID, oldestItem.ID))
+			logger.Info(fmt.Sprintf("%v 1Password items found with the title %q. Will use item %q as it is the oldest.",
+				len(items), itemNameOrID, oldestItem.ID,
+			))
 		}
 		itemNameOrID = oldestItem.ID
 	}

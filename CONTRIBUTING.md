@@ -19,7 +19,11 @@ Thank you for your interest in contributing to the 1Password Kubernetes Operator
   # Remove the operator from K8s
   make undeploy
   ```
-  
+
+- After making changes to the code:
+1. Rebuild the Docker image by running `make docker-build`
+2. Restart deployment `make restart`
+
 - For testing the changes made to the `OnePasswordItem` Custom Resource Definition (CRD), you need to re-generate the object:
   ```sh
   make manifests
