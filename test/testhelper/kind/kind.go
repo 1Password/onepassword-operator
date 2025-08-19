@@ -1,8 +1,9 @@
 package kind
 
 import (
-	"github.com/1Password/onepassword-operator/test/cmd"
 	"os"
+
+	"github.com/1Password/onepassword-operator/test/cmd"
 )
 
 // LoadImageToKind loads a local docker image to the Kind cluster

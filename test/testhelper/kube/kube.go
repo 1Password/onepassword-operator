@@ -1,6 +1,7 @@
 package kube
 
 import (
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -9,31 +10,15 @@ import (
 	"github.com/1Password/onepassword-operator/test/cmd"
 )
 
-// DeployOperator deploys the Onepassword Operator in the default namespace.
-// It waits for the operator pod to be in 'Running' state.
-// All the resources created using manifests in `config/` dir.
-// To make the operator use Connect or Service Accounts, patch `config/manager/manager.yaml`
-func DeployOperator() {
-	By("deploying the operator")
-	_, err := cmd.Run("make", "deploy")
+func CreateSecretFromEnvVar(envVar, secretName string) {
+	serviceAccountTokenToken, _ := os.LookupEnv(envVar)
+	Expect(serviceAccountTokenToken).NotTo(BeEmpty())
+	_, err := cmd.Run("kubectl", "create", "secret", "generic", secretName, "--from-literal=token="+serviceAccountTokenToken)
 	Expect(err).NotTo(HaveOccurred())
-
-	By("waiting for the operator pod to be 'Running'")
-	Eventually(func(g Gomega) {
-		output, err := cmd.Run("kubectl", "get", "pods",
-			"-l", "name=onepassword-connect-operator",
-			"-o", "jsonpath={.items[0].status.phase}")
-		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(output).To(ContainSubstring("Running"))
-	}, 30*time.Second, 1*time.Second).Should(Succeed())
 }
 
-func UndeployOperator() {
-	Delete("secret", "onepassword-connect-token")
-	Delete("secret", "onepassword-service-account-token")
-
-	By("undeploying the operator")
-	_, err := cmd.Run("make", "undeploy", "ignore-not-found")
+func Delete(kind, name string) {
+	_, err := cmd.Run("kubectl", "delete", kind, name, "--ignore-not-found=true")
 	Expect(err).NotTo(HaveOccurred())
 }
 
