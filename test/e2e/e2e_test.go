@@ -10,11 +10,13 @@ import (
 
 	"github.com/1Password/onepassword-operator/test/cmd"
 	"github.com/1Password/onepassword-operator/test/kind"
+	"github.com/1Password/onepassword-operator/test/kube"
 )
 
 const (
-	operatorImage = "1password/onepassword-operator:latest"
-	e2eInterval   = 500 * time.Millisecond
+	operatorImage   = "1password/onepassword-operator:latest"
+	defaultInterval = 1 * time.Second
+	defaultTimeout  = 30 * time.Second
 )
 
 var _ = Describe("Onepassword Operator e2e", Ordered, func() {
@@ -27,24 +29,14 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 		err = kind.LoadImageToKind(operatorImage)
 		ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
+		By("create onepassword-token secret")
+		kube.CreateSecretFromEnvVar("OP_CONNECT_TOKEN", "onepassword-token")
+
 		By("create onepassword-service-account-token secret")
-		serviceAccountTokenToken, _ := os.LookupEnv("OP_SERVICE_ACCOUNT_TOKEN")
-		Expect(serviceAccountTokenToken).NotTo(BeEmpty())
-		_, err = cmd.Run("kubectl", "create", "secret", "generic", "onepassword-service-account-token", "--from-literal=token="+serviceAccountTokenToken)
-		ExpectWithOffset(1, err).NotTo(HaveOccurred())
+		kube.CreateSecretFromEnvVar("OP_SERVICE_ACCOUNT_TOKEN", "onepassword-service-account-token")
 
-		By("deploying the operator")
-		_, err = cmd.Run("make", "deploy")
-		ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-		By("waiting for the operator pod to be 'Running'")
-		Eventually(func(g Gomega) {
-			output, err := cmd.Run("kubectl", "get", "pods",
-				"-l", "name=onepassword-connect-operator",
-				"-o", "jsonpath={.items[0].status.phase}")
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(output).To(ContainSubstring("Running"))
-		}, 30*time.Second, 1*time.Second).Should(Succeed())
+		kube.DeployOperator()
+		kube.PathOperatorToUseServiceAccount()
 	})
 
 	Describe("Deployment annotations", func() {
@@ -61,7 +53,7 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 				output, err := cmd.Run("kubectl", "get", "secret", "login", "-o", "jsonpath={.metadata.name}")
 				g.Expect(err).NotTo(HaveOccurred())
 				g.Expect(output).To(Equal("login"))
-			}, 5*time.Second, e2eInterval).Should(Succeed())
+			}, defaultTimeout, defaultInterval).Should(Succeed())
 		})
 	})
 })
