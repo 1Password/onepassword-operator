@@ -3,15 +3,19 @@ package kind
 import (
 	"os"
 
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
 	"github.com/1Password/onepassword-operator/test/cmd"
 )
 
 // LoadImageToKind loads a local docker image to the Kind cluster
-func LoadImageToKind(imageName string) error {
+func LoadImageToKind(imageName string) {
+	By("loading the operator image on Kind")
 	clusterName := "kind"
 	if value, ok := os.LookupEnv("KIND_CLUSTER"); ok {
 		clusterName = value
 	}
 	_, err := cmd.Run("kind", "load", "docker-image", imageName, "--name", clusterName)
-	return err
+	Expect(err).NotTo(HaveOccurred())
 }

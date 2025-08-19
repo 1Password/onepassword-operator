@@ -10,6 +10,12 @@ import (
 	"github.com/1Password/onepassword-operator/test/testhelper/kube"
 )
 
+func BuildOperatorImage() {
+	By("building the operator image")
+	_, err := cmd.Run("make", "docker-build")
+	ExpectWithOffset(1, err).NotTo(HaveOccurred())
+}
+
 // DeployOperator deploys the Onepassword Operator in the default namespace.
 // It waits for the operator pod to be in 'Running' state.
 // All the resources created using manifests in `config/` dir.

@@ -15,20 +15,15 @@ import (
 )
 
 const (
-	operatorImage   = "1password/onepassword-operator:latest"
-	defaultInterval = 1 * time.Second
-	defaultTimeout  = 30 * time.Second
+	operatorImageName = "1password/onepassword-operator:latest"
+	defaultInterval   = 1 * time.Second
+	defaultTimeout    = 30 * time.Second
 )
 
 var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 	BeforeAll(func() {
-		By("building the operator image")
-		_, err := cmd.Run("make", "docker-build")
-		ExpectWithOffset(1, err).NotTo(HaveOccurred())
-
-		By("loading the operator image on Kind")
-		err = kind.LoadImageToKind(operatorImage)
-		ExpectWithOffset(1, err).NotTo(HaveOccurred())
+		operator.BuildOperatorImage()
+		kind.LoadImageToKind(operatorImageName)
 
 		By("create onepassword-token secret")
 		kube.CreateSecretFromEnvVar("OP_CONNECT_TOKEN", "onepassword-token")
