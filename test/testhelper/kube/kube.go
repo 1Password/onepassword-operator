@@ -22,7 +22,7 @@ func Delete(kind, name string) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func PathOperatorToUseServiceAccount() {
+func PatchOperatorToUseServiceAccount() {
 	By("patching the operator deployment with service account token")
 	_, err := cmd.Run(
 		"kubectl", "patch", "deployment", "onepassword-connect-operator",
