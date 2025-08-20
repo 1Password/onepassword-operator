@@ -22,16 +22,20 @@ const (
 
 var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 	BeforeAll(func() {
+		By("Set namespace to default")
+		_, _ = system.Run("kubectl", "config", "set-context", "--current", "--namespace=default")
+
+		By("Build the operator image")
 		operator.BuildOperatorImage()
 		kind.LoadImageToKind(operatorImageName)
 
-		By("create Connect credentials secret")
+		By("Create Connect credentials secret")
 		kube.CreateOpCredentialsSecret()
 
-		By("create onepassword-token secret")
+		By("Create onepassword-token secret")
 		kube.CreateSecretFromEnvVar("OP_CONNECT_TOKEN", "onepassword-token")
 
-		By("create onepassword-service-account-token secret")
+		By("Create onepassword-service-account-token secret")
 		kube.CreateSecretFromEnvVar("OP_SERVICE_ACCOUNT_TOKEN", "onepassword-service-account-token")
 
 		operator.DeployOperator()
@@ -57,14 +61,14 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 
 func runCommonTestCases() {
 	It("Should create secret from manifest file", func() {
-		By("creating secret")
+		By("Creating secret")
 		wd, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
 		yamlPath := filepath.Join(wd, "manifests", "secret.yaml")
 		_, err = system.Run("kubectl", "apply", "-f", yamlPath)
 		Expect(err).NotTo(HaveOccurred())
 
-		By("waiting for secret to be created")
+		By("Waiting for secret to be created")
 		Eventually(func(g Gomega) {
 			output, err := system.Run("kubectl", "get", "secret", "login", "-o", "jsonpath={.metadata.name}")
 			g.Expect(err).NotTo(HaveOccurred())
