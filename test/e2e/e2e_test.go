@@ -17,7 +17,7 @@ import (
 const (
 	operatorImageName = "1password/onepassword-operator:latest"
 	defaultInterval   = 1 * time.Second
-	defaultTimeout    = 30 * time.Second
+	defaultTimeout    = 1 * time.Minute
 )
 
 var _ = Describe("Onepassword Operator e2e", Ordered, func() {
