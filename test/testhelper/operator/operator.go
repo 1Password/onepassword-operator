@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/1Password/onepassword-operator/test/cmd"
-	"github.com/1Password/onepassword-operator/test/testhelper/kube"
 )
 
 func BuildOperatorImage() {
@@ -33,13 +32,4 @@ func DeployOperator() {
 		g.Expect(err).NotTo(HaveOccurred())
 		g.Expect(output).To(ContainSubstring("Running"))
 	}, 30*time.Second, 1*time.Second).Should(Succeed())
-}
-
-func UndeployOperator() {
-	kube.Delete("secret", "onepassword-connect-token")
-	kube.Delete("secret", "onepassword-service-account-token")
-
-	By("undeploying the operator")
-	_, err := cmd.Run("make", "undeploy", "ignore-not-found")
-	Expect(err).NotTo(HaveOccurred())
 }

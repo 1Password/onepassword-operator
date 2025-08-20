@@ -40,8 +40,8 @@ func CreateOpCredentialsSecret() {
 	CreateSecretFromFile("op-session", "op-credentials")
 }
 
-func Delete(kind, name string) {
-	_, err := cmd.Run("kubectl", "delete", kind, name, "--ignore-not-found=true")
+func DeleteSecret(name string) {
+	_, err := cmd.Run("kubectl", "delete", "secret", name, "--ignore-not-found=true")
 	Expect(err).NotTo(HaveOccurred())
 }
 

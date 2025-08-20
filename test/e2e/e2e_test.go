@@ -48,6 +48,7 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 	Context("Use the operator with Service Account", func() {
 		BeforeAll(func() {
 			kube.PatchOperatorToUseServiceAccount()
+			kube.DeleteSecret("login") // remove secret crated in previous test
 		})
 
 		runCommonTestCases()

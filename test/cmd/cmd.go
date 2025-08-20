@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 )
 
@@ -26,4 +27,27 @@ func Run(name string, args ...string) (string, error) {
 	}
 
 	return string(output), nil
+}
+
+func GetProjectRoot() (string, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return "", err
+	}
+
+	for {
+		// check if go.mod exists in current dir
+		modFile := filepath.Join(dir, "go.mod")
+		if _, err := os.Stat(modFile); err == nil {
+			return dir, nil
+		}
+
+		// move one level up
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			// reached filesystem root
+			return "", fmt.Errorf("project root not found (no go.mod)")
+		}
+		dir = parent
+	}
 }
