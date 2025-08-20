@@ -25,6 +25,9 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 		operator.BuildOperatorImage()
 		kind.LoadImageToKind(operatorImageName)
 
+		By("create Connect credentials secret")
+		kube.CreateOpCredentialsSecret()
+
 		By("create onepassword-token secret")
 		kube.CreateSecretFromEnvVar("OP_CONNECT_TOKEN", "onepassword-token")
 
@@ -34,9 +37,13 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 		operator.DeployOperator()
 	})
 
-	//Context("Use the operator with Connect", func() {
-	//	runCommonTestCases()
-	//})
+	Context("Use the operator with Connect", func() {
+		BeforeAll(func() {
+			kube.PatchOperatorManageConnect()
+		})
+
+		runCommonTestCases()
+	})
 
 	Context("Use the operator with Service Account", func() {
 		BeforeAll(func() {
