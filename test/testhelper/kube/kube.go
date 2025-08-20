@@ -73,26 +73,6 @@ var PatchOperatorToUseServiceAccount = WithOperatorRestart(func() {
 	Expect(err).NotTo(HaveOccurred())
 })
 
-// PatchOperatorManageConnect sets env variable `MANAGE_CONNECT: true` and restarts the operator.
-var PatchOperatorManageConnect = WithOperatorRestart(func() {
-	By("patching the operator deployment with to manage Connect")
-	_, err := system.Run(
-		"kubectl", "patch", "deployment", "onepassword-connect-operator",
-		"--type=json",
-		`-p=[{"op":"replace","path":"/spec/template/spec/containers/0/env","value":[
-    {"name":"OPERATOR_NAME","value":"onepassword-connect-operator"},
-    {"name":"POD_NAME","valueFrom":{"fieldRef":{"fieldPath":"metadata.name"}}},
-    {"name":"WATCH_NAMESPACE","value":"default"},
-    {"name":"POLLING_INTERVAL","value":"10"},
-    {"name":"AUTO_RESTART","value":"false"},
-    {"name":"OP_CONNECT_HOST","value":"http://onepassword-connect:8080"},
-    {"name":"OP_CONNECT_TOKEN","valueFrom":{"secretKeyRef":{"name":"onepassword-token","key":"token"}}},
-    {"name":"MANAGE_CONNECT","value":"true"},
-  ]}]`,
-	)
-	Expect(err).NotTo(HaveOccurred())
-})
-
 func WithOperatorRestart(operation func()) func() {
 	return func() {
 		operation()

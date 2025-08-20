@@ -40,10 +40,6 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 	})
 
 	Context("Use the operator with Connect", func() {
-		BeforeAll(func() {
-			kube.PatchOperatorManageConnect()
-		})
-
 		runCommonTestCases()
 	})
 
