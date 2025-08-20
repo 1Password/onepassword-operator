@@ -12,13 +12,13 @@ import (
 func Run(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
 
-	wd, err := os.Getwd()
+	rootDir, err := GetProjectRoot()
 	if err != nil {
-		return wd, err
+		return "", err
 	}
-	wd = strings.Replace(wd, "/test/e2e", "", -1)
+
 	// Command will run from project root
-	cmd.Dir = wd
+	cmd.Dir = rootDir
 
 	command := strings.Join(cmd.Args, " ")
 	output, err := cmd.CombinedOutput()

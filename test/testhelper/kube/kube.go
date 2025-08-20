@@ -15,6 +15,7 @@ import (
 func CreateSecretFromEnvVar(envVar, secretName string) {
 	value, _ := os.LookupEnv(envVar)
 	Expect(value).NotTo(BeEmpty())
+
 	_, err := cmd.Run("kubectl", "create", "secret", "generic", secretName, "--from-literal=token="+value)
 	Expect(err).NotTo(HaveOccurred())
 }
@@ -26,6 +27,8 @@ func CreateSecretFromFile(fileName, secretName string) {
 
 func CreateOpCredentialsSecret() {
 	rootDir, err := cmd.GetProjectRoot()
+	Expect(err).NotTo(HaveOccurred())
+
 	credentialsFilePath := filepath.Join(rootDir, "1password-credentials.json")
 	data, err := os.ReadFile(credentialsFilePath)
 	Expect(err).NotTo(HaveOccurred())
