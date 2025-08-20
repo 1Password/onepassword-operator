@@ -74,6 +74,7 @@ spec:
         - --leader-elect
         - --health-probe-bind-address=:8081
         image: 1password/onepassword-operator:latest
+        imagePullPolicy: Never
         name: manager
         env:
           - name: OPERATOR_NAME
@@ -96,7 +97,7 @@ spec:
                 name: onepassword-token
                 key: token
           - name: MANAGE_CONNECT
-            value: "false"
+            value: "true"
 #            Uncomment the following lines to enable service account token and comment out the OP_CONNECT_TOKEN, OP_CONNECT_HOST and MANAGE_CONNECT env vars.
 #          - name: OP_SERVICE_ACCOUNT_TOKEN
 #            valueFrom:
