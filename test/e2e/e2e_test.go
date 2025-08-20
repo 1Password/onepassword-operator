@@ -37,9 +37,14 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 		kube.CreateSecretFromEnvVar("OP_SERVICE_ACCOUNT_TOKEN", "onepassword-service-account-token")
 
 		operator.DeployOperator()
+		operator.WaitingForOperatorPod()
 	})
 
 	Context("Use the operator with Connect", func() {
+		BeforeAll(func() {
+			operator.WaitingForConnectPod()
+		})
+
 		runCommonTestCases()
 	})
 
