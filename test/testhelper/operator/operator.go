@@ -6,12 +6,12 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/1Password/onepassword-operator/test/cmd"
+	"github.com/1Password/onepassword-operator/test/testhelper/system"
 )
 
 func BuildOperatorImage() {
 	By("building the operator image")
-	_, err := cmd.Run("make", "docker-build")
+	_, err := system.Run("make", "docker-build")
 	ExpectWithOffset(1, err).NotTo(HaveOccurred())
 }
 
@@ -21,12 +21,12 @@ func BuildOperatorImage() {
 // To make the operator use Connect or Service Accounts, patch `config/manager/manager.yaml`
 func DeployOperator() {
 	By("deploying the operator")
-	_, err := cmd.Run("make", "deploy")
+	_, err := system.Run("make", "deploy")
 	Expect(err).NotTo(HaveOccurred())
 
 	By("waiting for the operator pod to be 'Running'")
 	Eventually(func(g Gomega) {
-		output, err := cmd.Run("kubectl", "get", "pods",
+		output, err := system.Run("kubectl", "get", "pods",
 			"-l", "name=onepassword-connect-operator",
 			"-o", "jsonpath={.items[0].status.phase}")
 		g.Expect(err).NotTo(HaveOccurred())

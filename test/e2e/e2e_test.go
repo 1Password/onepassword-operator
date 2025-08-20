@@ -8,10 +8,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/1Password/onepassword-operator/test/cmd"
 	"github.com/1Password/onepassword-operator/test/testhelper/kind"
 	"github.com/1Password/onepassword-operator/test/testhelper/kube"
 	"github.com/1Password/onepassword-operator/test/testhelper/operator"
+	"github.com/1Password/onepassword-operator/test/testhelper/system"
 )
 
 const (
@@ -61,12 +61,12 @@ func runCommonTestCases() {
 		wd, err := os.Getwd()
 		Expect(err).NotTo(HaveOccurred())
 		yamlPath := filepath.Join(wd, "manifests", "secret.yaml")
-		_, err = cmd.Run("kubectl", "apply", "-f", yamlPath)
+		_, err = system.Run("kubectl", "apply", "-f", yamlPath)
 		Expect(err).NotTo(HaveOccurred())
 
 		By("waiting for secret to be created")
 		Eventually(func(g Gomega) {
-			output, err := cmd.Run("kubectl", "get", "secret", "login", "-o", "jsonpath={.metadata.name}")
+			output, err := system.Run("kubectl", "get", "secret", "login", "-o", "jsonpath={.metadata.name}")
 			g.Expect(err).NotTo(HaveOccurred())
 			g.Expect(output).To(Equal("login"))
 		}, defaultTimeout, defaultInterval).Should(Succeed())

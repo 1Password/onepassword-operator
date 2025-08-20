@@ -9,24 +9,24 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/1Password/onepassword-operator/test/cmd"
+	"github.com/1Password/onepassword-operator/test/testhelper/system"
 )
 
 func CreateSecretFromEnvVar(envVar, secretName string) {
 	value, _ := os.LookupEnv(envVar)
 	Expect(value).NotTo(BeEmpty())
 
-	_, err := cmd.Run("kubectl", "create", "secret", "generic", secretName, "--from-literal=token="+value)
+	_, err := system.Run("kubectl", "create", "secret", "generic", secretName, "--from-literal=token="+value)
 	Expect(err).NotTo(HaveOccurred())
 }
 
 func CreateSecretFromFile(fileName, secretName string) {
-	_, err := cmd.Run("kubectl", "create", "secret", "generic", secretName, "--from-file="+fileName)
+	_, err := system.Run("kubectl", "create", "secret", "generic", secretName, "--from-file="+fileName)
 	Expect(err).NotTo(HaveOccurred())
 }
 
 func CreateOpCredentialsSecret() {
-	rootDir, err := cmd.GetProjectRoot()
+	rootDir, err := system.GetProjectRoot()
 	Expect(err).NotTo(HaveOccurred())
 
 	credentialsFilePath := filepath.Join(rootDir, "1password-credentials.json")
@@ -44,14 +44,14 @@ func CreateOpCredentialsSecret() {
 }
 
 func DeleteSecret(name string) {
-	_, err := cmd.Run("kubectl", "delete", "secret", name, "--ignore-not-found=true")
+	_, err := system.Run("kubectl", "delete", "secret", name, "--ignore-not-found=true")
 	Expect(err).NotTo(HaveOccurred())
 }
 
 // PatchOperatorToUseServiceAccount sets `OP_SERVICE_ACCOUNT_TOKEN` env variable
 var PatchOperatorToUseServiceAccount = WithOperatorRestart(func() {
 	By("patching the operator deployment with service account token")
-	_, err := cmd.Run(
+	_, err := system.Run(
 		"kubectl", "patch", "deployment", "onepassword-connect-operator",
 		"--type=json",
 		`-p=[{"op":"replace","path":"/spec/template/spec/containers/0/env","value":[
@@ -70,7 +70,7 @@ var PatchOperatorToUseServiceAccount = WithOperatorRestart(func() {
 // PatchOperatorManageConnect sets env variable `MANAGE_CONNECT: true` and restarts the operator.
 var PatchOperatorManageConnect = WithOperatorRestart(func() {
 	By("patching the operator deployment with to manage Connect")
-	_, err := cmd.Run(
+	_, err := system.Run(
 		"kubectl", "patch", "deployment", "onepassword-connect-operator",
 		"--type=json",
 		`-p=[{"op":"replace","path":"/spec/template/spec/containers/0/env","value":[
@@ -91,13 +91,13 @@ func WithOperatorRestart(operation func()) func() {
 	return func() {
 		operation()
 
-		_, err := cmd.Run("kubectl", "rollout", "status",
+		_, err := system.Run("kubectl", "rollout", "status",
 			"deployment/onepassword-connect-operator", "-n", "default", "--timeout=120s")
 		Expect(err).NotTo(HaveOccurred())
 
 		By("waiting for the operator pod to be 'Running'")
 		Eventually(func(g Gomega) {
-			output, err := cmd.Run("kubectl", "get", "pods",
+			output, err := system.Run("kubectl", "get", "pods",
 				"-l", "name=onepassword-connect-operator",
 				"-o", "jsonpath={.items[0].status.phase}")
 			g.Expect(err).NotTo(HaveOccurred())
