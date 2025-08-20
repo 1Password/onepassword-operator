@@ -1,0 +1,43 @@
+name: Test E2E
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    branches: ['**']   # run for PRs targeting any branch (main and others)
+
+concurrency:
+  group: e2e-${{ github.event.pull_request.head.ref }}
+  cancel-in-progress: true # cancel previous job runs for the same branch
+
+jobs:
+  e2e-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install dependencies
+        run: go mod tidy
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: onepassword-operator-test-e2e
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Create '1password-credentials.json' file
+        run: |
+          echo ${{ secrets.OP_CONNECT_CREDENTIALS }} > 1password-credentials.json
+
+      - name: Run E2E tests
+        run: make e2e-test
+        env:
+          OP_CONNECT_TOKEN: ${{ secrets.OP_CONNECT_TOKEN }}
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
