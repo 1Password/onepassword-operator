@@ -48,6 +48,12 @@ func DeleteSecret(name string) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
+func SetContextNamespace(namespace string) {
+	By("Set namespace to " + namespace)
+	_, err := system.Run("kubectl", "config", "set-context", "--current", "--namespace="+namespace)
+	Expect(err).NotTo(HaveOccurred())
+}
+
 // PatchOperatorToUseServiceAccount sets `OP_SERVICE_ACCOUNT_TOKEN` env variable
 var PatchOperatorToUseServiceAccount = WithOperatorRestart(func() {
 	By("patching the operator deployment with service account token")

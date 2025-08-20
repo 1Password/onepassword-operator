@@ -22,10 +22,8 @@ const (
 
 var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 	BeforeAll(func() {
-		By("Set namespace to default")
-		_, _ = system.Run("kubectl", "config", "set-context", "--current", "--namespace=default")
+		kube.SetContextNamespace("default")
 
-		By("Build the operator image")
 		operator.BuildOperatorImage()
 		kind.LoadImageToKind(operatorImageName)
 
