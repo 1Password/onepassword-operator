@@ -1,7 +1,6 @@
 package e2e
 
 import (
-	"os"
 	"path/filepath"
 	"time"
 
@@ -61,9 +60,10 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 func runCommonTestCases() {
 	It("Should create secret from manifest file", func() {
 		By("Creating secret")
-		wd, err := os.Getwd()
+		root, err := system.GetProjectRoot()
 		Expect(err).NotTo(HaveOccurred())
-		yamlPath := filepath.Join(wd, "manifests", "secret.yaml")
+
+		yamlPath := filepath.Join(root, "test", "e2e", "manifests", "secret.yaml")
 		_, err = system.Run("kubectl", "apply", "-f", yamlPath)
 		Expect(err).NotTo(HaveOccurred())
 
