@@ -39,13 +39,13 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 		operator.WaitingForOperatorPod()
 	})
 
-	//Context("Use the operator with Connect", func() {
-	//	BeforeAll(func() {
-	//		operator.WaitingForConnectPod()
-	//	})
-	//
-	//	runCommonTestCases()
-	//})
+	Context("Use the operator with Connect", func() {
+		BeforeAll(func() {
+			operator.WaitingForConnectPod()
+		})
+
+		runCommonTestCases()
+	})
 
 	Context("Use the operator with Service Account", func() {
 		BeforeAll(func() {
