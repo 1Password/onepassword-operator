@@ -33,8 +33,10 @@ jobs:
         uses: azure/setup-kubectl@v4
 
       - name: Create '1password-credentials.json' file
+        env:
+          OP_CONNECT_CREDENTIALS: ${{ secrets.OP_CONNECT_CREDENTIALS }}
         run: |
-          echo ${{ secrets.OP_CONNECT_CREDENTIALS }} > 1password-credentials.json
+          echo "$OP_CONNECT_CREDENTIALS" > 1password-credentials.json
 
       - name: Run E2E tests
         run: make test-e2e
