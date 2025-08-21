@@ -2,7 +2,6 @@ package e2e
 
 import (
 	"path/filepath"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -15,8 +14,6 @@ import (
 
 const (
 	operatorImageName = "1password/onepassword-operator:latest"
-	defaultInterval   = 1 * time.Second
-	defaultTimeout    = 1 * time.Minute
 )
 
 var _ = Describe("Onepassword Operator e2e", Ordered, func() {
@@ -30,25 +27,19 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 		kube.CreateOpCredentialsSecret()
 
 		By("Checking Connect 'op-credentials' secret is created")
-		Eventually(func() {
-			kube.CheckSecretExists("op-credentials")
-		}, defaultTimeout, defaultInterval).Should(Succeed())
+		kube.CheckSecretExists("op-credentials")
 
 		By("Create 'onepassword-token' secret")
 		kube.CreateSecretFromEnvVar("OP_CONNECT_TOKEN", "onepassword-token")
 
 		By("Checking 'onepassword-token' secret is created")
-		Eventually(func() {
-			kube.CheckSecretExists("onepassword-token")
-		}, defaultTimeout, defaultInterval).Should(Succeed())
+		kube.CheckSecretExists("onepassword-token")
 
 		By("Create 'onepassword-service-account-token' secret")
 		kube.CreateSecretFromEnvVar("OP_SERVICE_ACCOUNT_TOKEN", "onepassword-service-account-token")
 
 		By("Checking 'onepassword-service-account-token' secret is created")
-		Eventually(func() {
-			kube.CheckSecretExists("onepassword-service-account-token")
-		}, defaultTimeout, defaultInterval).Should(Succeed())
+		kube.CheckSecretExists("onepassword-service-account-token")
 
 		operator.DeployOperator()
 		operator.WaitingForOperatorPod()
@@ -81,9 +72,7 @@ func runCommonTestCases() {
 		yamlPath := filepath.Join(root, "test", "e2e", "manifests", "secret.yaml")
 		kube.Apply(yamlPath)
 
-		By("Waiting for secret to be created")
-		Eventually(func() {
-			kube.CheckSecretExists("login")
-		}, defaultTimeout, defaultInterval).Should(Succeed())
+		By("Checking for secret to be created")
+		kube.CheckSecretExists("login")
 	})
 }

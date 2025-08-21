@@ -3,7 +3,9 @@ package operator
 import (
 	"time"
 
+	//nolint:staticcheck // ST1001
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck // ST1001
 	. "github.com/onsi/gomega"
 
 	"github.com/1Password/onepassword-operator/test/testhelper/system"

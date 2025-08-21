@@ -6,9 +6,12 @@ import (
 	"path/filepath"
 	"time"
 
+	//nolint:staticcheck // ST1001
 	. "github.com/onsi/ginkgo/v2"
+	//nolint:staticcheck // ST1001
 	. "github.com/onsi/gomega"
 
+	"github.com/1Password/onepassword-operator/test/testhelper/defaults"
 	"github.com/1Password/onepassword-operator/test/testhelper/system"
 )
 
@@ -49,9 +52,11 @@ func DeleteSecret(name string) {
 }
 
 func CheckSecretExists(name string) {
-	output, err := system.Run("kubectl", "get", "secret", name, "-o", "jsonpath={.metadata.name}")
-	Expect(err).NotTo(HaveOccurred())
-	Expect(output).To(Equal(name))
+	Eventually(func(g Gomega) {
+		output, err := system.Run("kubectl", "get", "secret", name, "-o", "jsonpath={.metadata.name}")
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(output).To(Equal(name))
+	}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
 }
 
 func Apply(yamlPath string) {
@@ -72,14 +77,22 @@ var PatchOperatorToUseServiceAccount = WithOperatorRestart(func() {
 		"kubectl", "patch", "deployment", "onepassword-connect-operator",
 		"--type=json",
 		`-p=[{"op":"replace","path":"/spec/template/spec/containers/0/env","value":[
-    {"name":"OPERATOR_NAME","value":"onepassword-connect-operator"},
-    {"name":"POD_NAME","valueFrom":{"fieldRef":{"fieldPath":"metadata.name"}}},
-    {"name":"WATCH_NAMESPACE","value":"default"},
-    {"name":"POLLING_INTERVAL","value":"10"},
-    {"name":"AUTO_RESTART","value":"false"},
-    {"name":"OP_SERVICE_ACCOUNT_TOKEN","valueFrom":{"secretKeyRef":{"name":"onepassword-service-account-token","key":"token"}}},
-    {"name":"MANAGE_CONNECT","value":"false"}
-  ]}]`,
+	{"name":"OPERATOR_NAME","value":"onepassword-connect-operator"},
+	{"name":"POD_NAME","valueFrom":{"fieldRef":{"fieldPath":"metadata.name"}}},
+	{"name":"WATCH_NAMESPACE","value":"default"},
+	{"name":"POLLING_INTERVAL","value":"10"},
+	{"name":"AUTO_RESTART","value":"false"},
+	{
+		"name":"OP_SERVICE_ACCOUNT_TOKEN",
+		"valueFrom":{
+			"secretKeyRef":{
+				"name":"onepassword-service-account-token",
+				"key":"token",
+			},
+		},
+	},
+	{"name":"MANAGE_CONNECT","value":"false"}
+	]}]`,
 	)
 	Expect(err).NotTo(HaveOccurred())
 })
