@@ -26,14 +26,29 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 		operator.BuildOperatorImage()
 		kind.LoadImageToKind(operatorImageName)
 
-		By("Create Connect credentials secret")
+		By("Create Connect 'op-credentials' credentials secret")
 		kube.CreateOpCredentialsSecret()
 
-		By("Create onepassword-token secret")
+		By("Checking Connect 'op-credentials' secret is created")
+		Eventually(func() {
+			kube.CheckSecretExists("op-credentials")
+		}, defaultTimeout, defaultInterval).Should(Succeed())
+
+		By("Create 'onepassword-token' secret")
 		kube.CreateSecretFromEnvVar("OP_CONNECT_TOKEN", "onepassword-token")
 
-		By("Create onepassword-service-account-token secret")
+		By("Checking 'onepassword-token' secret is created")
+		Eventually(func() {
+			kube.CheckSecretExists("onepassword-token")
+		}, defaultTimeout, defaultInterval).Should(Succeed())
+
+		By("Create 'onepassword-service-account-token' secret")
 		kube.CreateSecretFromEnvVar("OP_SERVICE_ACCOUNT_TOKEN", "onepassword-service-account-token")
+
+		By("Checking 'onepassword-service-account-token' secret is created")
+		Eventually(func() {
+			kube.CheckSecretExists("onepassword-service-account-token")
+		}, defaultTimeout, defaultInterval).Should(Succeed())
 
 		operator.DeployOperator()
 		operator.WaitingForOperatorPod()
@@ -64,14 +79,11 @@ func runCommonTestCases() {
 		Expect(err).NotTo(HaveOccurred())
 
 		yamlPath := filepath.Join(root, "test", "e2e", "manifests", "secret.yaml")
-		_, err = system.Run("kubectl", "apply", "-f", yamlPath)
-		Expect(err).NotTo(HaveOccurred())
+		kube.Apply(yamlPath)
 
 		By("Waiting for secret to be created")
-		Eventually(func(g Gomega) {
-			output, err := system.Run("kubectl", "get", "secret", "login", "-o", "jsonpath={.metadata.name}")
-			g.Expect(err).NotTo(HaveOccurred())
-			g.Expect(output).To(Equal("login"))
+		Eventually(func() {
+			kube.CheckSecretExists("login")
 		}, defaultTimeout, defaultInterval).Should(Succeed())
 	})
 }

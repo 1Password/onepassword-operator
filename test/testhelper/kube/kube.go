@@ -48,6 +48,17 @@ func DeleteSecret(name string) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
+func CheckSecretExists(name string) {
+	output, err := system.Run("kubectl", "get", "secret", name, "-o", "jsonpath={.metadata.name}")
+	Expect(err).NotTo(HaveOccurred())
+	Expect(output).To(Equal(name))
+}
+
+func Apply(yamlPath string) {
+	_, err := system.Run("kubectl", "apply", "-f", yamlPath)
+	Expect(err).NotTo(HaveOccurred())
+}
+
 func SetContextNamespace(namespace string) {
 	By("Set namespace to " + namespace)
 	_, err := system.Run("kubectl", "config", "set-context", "--current", "--namespace="+namespace)
