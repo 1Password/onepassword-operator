@@ -8,7 +8,7 @@ import (
 	//nolint:staticcheck // ST1001
 	. "github.com/onsi/gomega"
 
-	"github.com/1Password/onepassword-operator/test/testhelper/system"
+	"github.com/1Password/onepassword-operator/pkg/testhelper/system"
 )
 
 // LoadImageToKind loads a local docker image to the Kind cluster

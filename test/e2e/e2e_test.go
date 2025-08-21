@@ -6,10 +6,10 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/1Password/onepassword-operator/test/testhelper/kind"
-	"github.com/1Password/onepassword-operator/test/testhelper/kube"
-	"github.com/1Password/onepassword-operator/test/testhelper/operator"
-	"github.com/1Password/onepassword-operator/test/testhelper/system"
+	"github.com/1Password/onepassword-operator/pkg/testhelper/kind"
+	"github.com/1Password/onepassword-operator/pkg/testhelper/kube"
+	"github.com/1Password/onepassword-operator/pkg/testhelper/operator"
+	"github.com/1Password/onepassword-operator/pkg/testhelper/system"
 )
 
 const (
