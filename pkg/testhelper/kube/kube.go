@@ -70,6 +70,19 @@ func CheckSecretExists(name string) {
 	}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
 }
 
+func ReadingSecretData(name, key string) (string, error) {
+	return system.Run("kubectl", "get", "secret", name, "-o", "jsonpath={.data."+key+"}")
+}
+
+func CheckSecretPasswordWasUpdated(name, oldPassword string) {
+	By("Checking '" + name + "' secret password was updated")
+	Eventually(func(g Gomega) {
+		newPassword, err := ReadingSecretData(name, "password")
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(newPassword).NotTo(Equal(oldPassword))
+	}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
+}
+
 // Apply applies a kubernetes manifest file
 func Apply(yamlPath string) {
 	_, err := system.Run("kubectl", "apply", "-f", yamlPath)
