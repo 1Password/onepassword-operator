@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	//nolint:staticcheck // ST1001
@@ -83,6 +84,26 @@ func CheckSecretPasswordWasUpdated(name, oldPassword string) {
 	}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
 }
 
+func CheckSecretPasswordNotUpdated(name, newPassword, oldPassword string) {
+	By("Ensuring '" + name + "' secret password has NOT been updated")
+
+	intervalStr := readPullingInterval()
+	Expect(intervalStr).NotTo(BeEmpty())
+
+	i, err := strconv.Atoi(intervalStr)
+	Expect(err).NotTo(HaveOccurred())
+
+	interval := time.Duration(i) * time.Second // convert to duration in seconds
+	time.Sleep(interval + 2*time.Second)       // wait for one polling interval + 2 seconds to make sure updated secret is pulled
+
+	// read password again
+	currentPassword, err := ReadingSecretData(name, "password")
+	Expect(err).NotTo(HaveOccurred())
+
+	Expect(currentPassword).To(Equal(oldPassword))
+	Expect(currentPassword).NotTo(Equal(newPassword))
+}
+
 // Apply applies a kubernetes manifest file
 func Apply(yamlPath string) {
 	_, err := system.Run("kubectl", "apply", "-f", yamlPath)
@@ -141,4 +162,16 @@ func withOperatorRestart(operation func()) func() {
 			g.Expect(output).To(ContainSubstring("Running"))
 		}, 120*time.Second, 1*time.Second).Should(Succeed())
 	}
+}
+
+// readPullingInterval reads the POLLING_INTERVAL env variable from the operator deployment
+// returns pulling interval in seconds as string
+func readPullingInterval() string {
+	output, err := system.Run(
+		"kubectl", "get", "deployment", "onepassword-connect-operator",
+		"-o", "jsonpath={.spec.template.spec.containers[0].env[?(@.name==\"POLLING_INTERVAL\")].value}",
+	)
+	Expect(err).NotTo(HaveOccurred())
+
+	return output
 }

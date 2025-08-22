@@ -15,6 +15,7 @@ import (
 
 const (
 	operatorImageName = "1password/onepassword-operator:latest"
+	vaultName         = "operator-acceptance-tests"
 )
 
 var _ = Describe("Onepassword Operator e2e", Ordered, func() {
@@ -87,5 +88,29 @@ func runCommonTestCases() {
 		Expect(err).NotTo(HaveOccurred())
 
 		kube.CheckSecretPasswordWasUpdated(secretName, oldPassword)
+	})
+
+	It("1Password item with `ignore-secret` doesn't pull updates to kubernetes secret", func() {
+		itemName := "secret-ignored"
+		secretName := itemName
+
+		By("Creating secret `" + secretName + "` from 1Password item")
+		root, err := system.GetProjectRoot()
+		Expect(err).NotTo(HaveOccurred())
+
+		yamlPath := filepath.Join(root, "test", "e2e", "manifests", secretName+".yaml")
+		kube.Apply(yamlPath)
+		kube.CheckSecretExists(secretName)
+
+		By("Reading old password")
+		oldPassword, err := kube.ReadingSecretData(secretName, "password")
+		Expect(err).NotTo(HaveOccurred())
+
+		By("Updating `" + secretName + "` 1Password item")
+		err = op.UpdateItemPassword(itemName)
+		Expect(err).NotTo(HaveOccurred())
+
+		newPassword, err := op.ReadItemPassword(itemName, vaultName)
+		kube.CheckSecretPasswordNotUpdated(secretName, newPassword, oldPassword)
 	})
 }
