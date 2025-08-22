@@ -19,26 +19,16 @@ const (
 var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 	BeforeAll(func() {
 		kube.SetContextNamespace("default")
-
 		operator.BuildOperatorImage()
 		kind.LoadImageToKind(operatorImageName)
 
-		By("Create Connect 'op-credentials' credentials secret")
 		kube.CreateOpCredentialsSecret()
-
-		By("Checking Connect 'op-credentials' secret is created")
 		kube.CheckSecretExists("op-credentials")
 
-		By("Create 'onepassword-token' secret")
 		kube.CreateSecretFromEnvVar("OP_CONNECT_TOKEN", "onepassword-token")
-
-		By("Checking 'onepassword-token' secret is created")
 		kube.CheckSecretExists("onepassword-token")
 
-		By("Create 'onepassword-service-account-token' secret")
 		kube.CreateSecretFromEnvVar("OP_SERVICE_ACCOUNT_TOKEN", "onepassword-service-account-token")
-
-		By("Checking 'onepassword-service-account-token' secret is created")
 		kube.CheckSecretExists("onepassword-service-account-token")
 
 		operator.DeployOperator()
@@ -63,6 +53,7 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 	})
 })
 
+// runCommonTestCases contains test cases that are common to both Connect and Service Account authentication methods.
 func runCommonTestCases() {
 	It("Should create secret from manifest file", func() {
 		By("Creating secret")
@@ -71,8 +62,6 @@ func runCommonTestCases() {
 
 		yamlPath := filepath.Join(root, "test", "e2e", "manifests", "secret.yaml")
 		kube.Apply(yamlPath)
-
-		By("Checking for secret to be created")
 		kube.CheckSecretExists("login")
 	})
 }

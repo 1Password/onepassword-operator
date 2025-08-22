@@ -15,7 +15,10 @@ import (
 	"github.com/1Password/onepassword-operator/pkg/testhelper/system"
 )
 
+// CreateSecretFromEnvVar creates a kubernetes secret from an environment variable
 func CreateSecretFromEnvVar(envVar, secretName string) {
+	By("Creating '" + secretName + "' secret")
+
 	value, _ := os.LookupEnv(envVar)
 	Expect(value).NotTo(BeEmpty())
 
@@ -23,11 +26,15 @@ func CreateSecretFromEnvVar(envVar, secretName string) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
+// CreateSecretFromFile creates a kubernetes secret from a file
 func CreateSecretFromFile(fileName, secretName string) {
+	By("Creating '" + secretName + "' secret from file")
 	_, err := system.Run("kubectl", "create", "secret", "generic", secretName, "--from-file="+fileName)
 	Expect(err).NotTo(HaveOccurred())
 }
 
+// CreateOpCredentialsSecret creates a kubernetes secret from 1password-credentials.json file
+// encodes it in base64 and saves it to op-session file
 func CreateOpCredentialsSecret() {
 	rootDir, err := system.GetProjectRoot()
 	Expect(err).NotTo(HaveOccurred())
@@ -46,12 +53,16 @@ func CreateOpCredentialsSecret() {
 	CreateSecretFromFile("op-session", "op-credentials")
 }
 
+// DeleteSecret deletes a kubernetes secret
 func DeleteSecret(name string) {
+	By("Deleting '" + name + "' secret")
 	_, err := system.Run("kubectl", "delete", "secret", name, "--ignore-not-found=true")
 	Expect(err).NotTo(HaveOccurred())
 }
 
+// CheckSecretExists checks if a kubernetes secret exists
 func CheckSecretExists(name string) {
+	By("Checking '" + name + "' secret exists")
 	Eventually(func(g Gomega) {
 		output, err := system.Run("kubectl", "get", "secret", name, "-o", "jsonpath={.metadata.name}")
 		g.Expect(err).NotTo(HaveOccurred())
@@ -59,11 +70,13 @@ func CheckSecretExists(name string) {
 	}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
 }
 
+// Apply applies a kubernetes manifest file
 func Apply(yamlPath string) {
 	_, err := system.Run("kubectl", "apply", "-f", yamlPath)
 	Expect(err).NotTo(HaveOccurred())
 }
 
+// SetContextNamespace sets the current kubernetes context namespace
 func SetContextNamespace(namespace string) {
 	By("Set namespace to " + namespace)
 	_, err := system.Run("kubectl", "config", "set-context", "--current", "--namespace="+namespace)
@@ -71,7 +84,7 @@ func SetContextNamespace(namespace string) {
 }
 
 // PatchOperatorToUseServiceAccount sets `OP_SERVICE_ACCOUNT_TOKEN` env variable
-var PatchOperatorToUseServiceAccount = WithOperatorRestart(func() {
+var PatchOperatorToUseServiceAccount = withOperatorRestart(func() {
 	By("patching the operator deployment with service account token")
 	_, err := system.Run(
 		"kubectl", "patch", "deployment", "onepassword-connect-operator",
@@ -97,7 +110,8 @@ var PatchOperatorToUseServiceAccount = WithOperatorRestart(func() {
 	Expect(err).NotTo(HaveOccurred())
 })
 
-func WithOperatorRestart(operation func()) func() {
+// withOperatorRestart is a helper function that restarts the operator deployment
+func withOperatorRestart(operation func()) func() {
 	return func() {
 		operation()
 
@@ -105,7 +119,7 @@ func WithOperatorRestart(operation func()) func() {
 			"deployment/onepassword-connect-operator", "-n", "default", "--timeout=120s")
 		Expect(err).NotTo(HaveOccurred())
 
-		By("waiting for the operator pod to be 'Running'")
+		By("Waiting for the operator pod to be 'Running'")
 		Eventually(func(g Gomega) {
 			output, err := system.Run("kubectl", "get", "pods",
 				"-l", "name=onepassword-connect-operator",
