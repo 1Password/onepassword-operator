@@ -32,6 +32,11 @@ jobs:
       - name: Install kubectl
         uses: azure/setup-kubectl@v4
 
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@v2
+        with:
+          version: 2.32.0
+
       - name: Create '1password-credentials.json' file
         env:
           OP_CONNECT_CREDENTIALS: ${{ secrets.OP_CONNECT_CREDENTIALS }}
