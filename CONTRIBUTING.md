@@ -4,14 +4,13 @@ Thank you for your interest in contributing to the 1Password Kubernetes Operator
 
 ## Testing
 
-To run e2e tests:
+All contributions must include tests where applicable.
 
-1. [Install `kind`](https://kind.sigs.k8s.io/docs/user/quick-start/#installing-with-a-package-manager) to spin up local Kubernetes cluster.
-2. `export OP_CONNECT_TOKEN=<token>`
-3. `export OP_SERVICE_ACCOUNT_TOKEN=<token>`
-4. `make test-e2e`
+- **Unit tests** for pure Go logic.
+- **Integration tests** for controller/reconciler logic using envtest.
+- **E2E tests** for full cluster behavior with kind.
 
-In case tests are failed, before running them again, reset kind using `make cleanup-test-e2e`
+👉 See the [Testing Guide](docs/testing.md) for details on when to use each, how to run them locally, and how they are run in CI. 
 
 ----
 
