@@ -4,7 +4,18 @@ Thank you for your interest in contributing to the 1Password Kubernetes Operator
 
 ## Testing
 
-- For functional testing, run the local version of the operator. From the project root:
+To run e2e tests:
+
+1. [Install `kind`](https://kind.sigs.k8s.io/docs/user/quick-start/#installing-with-a-package-manager) to spin up local Kubernetes cluster.
+2. `export OP_CONNECT_TOKEN=<token>`
+3. `export OP_SERVICE_ACCOUNT_TOKEN=<token>`
+4. `make test-e2e`
+
+In case tests are failed, before running them again, reset kind using `make cleanup-test-e2e`
+
+----
+
+For functional testing, run the local version of the operator. From the project root:
 
   ```sh
   # Go to the K8s environment (e.g. minikube)
@@ -23,6 +34,8 @@ Thank you for your interest in contributing to the 1Password Kubernetes Operator
 - After making changes to the code:
 1. Rebuild the Docker image by running `make docker-build`
 2. Restart deployment `make restart`
+
+----
 
 - For testing the changes made to the `OnePasswordItem` Custom Resource Definition (CRD), you need to re-generate the object:
   ```sh
