@@ -1,114 +1,174 @@
 package kube
 
 import (
-	"encoding/base64"
+	"context"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+
+	//"encoding/base64"
+	"fmt"
+	"k8s.io/apimachinery/pkg/api/errors"
+	//"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/clientcmd"
 	"os"
 	"path/filepath"
+	"sigs.k8s.io/yaml"
 	"strconv"
+	"strings"
 	"time"
 
+	//metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	//"k8s.io/client-go/kubernetes"
+	//"k8s.io/client-go/rest"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	//nolint:staticcheck // ST1001
 	. "github.com/onsi/ginkgo/v2"
 	//nolint:staticcheck // ST1001
 	. "github.com/onsi/gomega"
 
-	"github.com/1Password/onepassword-operator/pkg/testhelper/defaults"
+	//"github.com/1Password/onepassword-operator/pkg/testhelper/defaults"
+	apiv1 "github.com/1Password/onepassword-operator/api/v1"
 	"github.com/1Password/onepassword-operator/pkg/testhelper/system"
 )
 
-// CreateSecretFromEnvVar creates a kubernetes secret from an environment variable
-func CreateSecretFromEnvVar(envVar, secretName string) {
-	By("Creating '" + secretName + "' secret")
+type ClusterConfig struct {
+	Namespace    string
+	ManifestsDir string
+}
 
-	value, _ := os.LookupEnv(envVar)
-	Expect(value).NotTo(BeEmpty())
+type Kube struct {
+	Config *ClusterConfig
+	Client client.Client
+}
 
-	_, err := system.Run("kubectl", "create", "secret", "generic", secretName, "--from-literal=token="+value)
+func NewKubeClient(clusterConfig *ClusterConfig) *Kube {
+	By("Creating a kubernetes client")
+	kubeconfig := os.Getenv("KUBECONFIG")
+	if kubeconfig == "" {
+		home, _ := os.UserHomeDir()
+		kubeconfig = filepath.Join(home, ".kube", "config")
+	}
+	restConfig, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	Expect(err).NotTo(HaveOccurred())
+
+	scheme := runtime.NewScheme()
+	utilruntime.Must(corev1.AddToScheme(scheme))
+	utilruntime.Must(appsv1.AddToScheme(scheme))
+	utilruntime.Must(apiv1.AddToScheme(scheme))
+
+	kubernetesClient, err := client.New(restConfig, client.Options{Scheme: scheme})
+	Expect(err).NotTo(HaveOccurred())
+
+	return &Kube{
+		Config: clusterConfig,
+		Client: kubernetesClient,
+	}
+}
+
+func (k *Kube) Secret(name string) *Secret {
+	return &Secret{
+		client: k.Client,
+		config: k.Config,
+		name:   name,
+	}
+}
+
+func (k *Kube) Deployment(name string) *Deployment {
+	return &Deployment{
+		client: k.Client,
+		config: k.Config,
+		name:   name,
+	}
+}
+
+// ApplyOnePasswordItem applies a OnePasswordItem manifest.
+func (k *Kube) ApplyOnePasswordItem(ctx context.Context, fileName string) {
+	By("Applying " + fileName)
+
+	// Derive a short-lived context so this API call won't hang indefinitely.
+	c, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+
+	data, err := os.ReadFile(k.Config.ManifestsDir + "/" + fileName)
+	Expect(err).NotTo(HaveOccurred())
+
+	item := &apiv1.OnePasswordItem{}
+	err = yaml.Unmarshal(data, item)
+	Expect(err).NotTo(HaveOccurred())
+
+	if item.Namespace == "" {
+		item.Namespace = k.Config.Namespace
+	}
+
+	err = k.Client.Get(c, client.ObjectKey{Name: item.Name, Namespace: k.Config.Namespace}, item)
+	if errors.IsNotFound(err) {
+		err = k.Client.Create(c, item)
+	} else {
+		err = k.Client.Update(c, item)
+	}
 	Expect(err).NotTo(HaveOccurred())
 }
 
-// CreateSecretFromFile creates a kubernetes secret from a file
-func CreateSecretFromFile(fileName, secretName string) {
-	By("Creating '" + secretName + "' secret from file")
-	_, err := system.Run("kubectl", "create", "secret", "generic", secretName, "--from-file="+fileName)
-	Expect(err).NotTo(HaveOccurred())
+func RestartDeployment(name string) (string, error) {
+	return system.Run("kubectl", "rollout", "status", name, "--timeout=120s")
 }
 
-// CreateOpCredentialsSecret creates a kubernetes secret from 1password-credentials.json file
-// encodes it in base64 and saves it to op-session file
-func CreateOpCredentialsSecret() {
-	rootDir, err := system.GetProjectRoot()
-	Expect(err).NotTo(HaveOccurred())
-
-	credentialsFilePath := filepath.Join(rootDir, "1password-credentials.json")
-	data, err := os.ReadFile(credentialsFilePath)
-	Expect(err).NotTo(HaveOccurred())
-
-	encoded := base64.RawURLEncoding.EncodeToString(data)
-
-	// create op-session file in project root
-	sessionFilePath := filepath.Join(rootDir, "op-session")
-	err = os.WriteFile(sessionFilePath, []byte(encoded), 0o600)
-	Expect(err).NotTo(HaveOccurred())
-
-	CreateSecretFromFile("op-session", "op-credentials")
+func GetPodNameBySelector(selector string) (string, error) {
+	return system.Run("kubectl", "get", "pods", "-l", selector, "-o", "jsonpath={.items[0].metadata.name}")
 }
 
-// DeleteSecret deletes a kubernetes secret
-func DeleteSecret(name string) {
-	By("Deleting '" + name + "' secret")
-	_, err := system.Run("kubectl", "delete", "secret", name, "--ignore-not-found=true")
-	Expect(err).NotTo(HaveOccurred())
-}
-
-// CheckSecretExists checks if a kubernetes secret exists
-func CheckSecretExists(name string) {
-	By("Checking '" + name + "' secret exists")
-	Eventually(func(g Gomega) {
-		output, err := system.Run("kubectl", "get", "secret", name, "-o", "jsonpath={.metadata.name}")
-		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(output).To(Equal(name))
-	}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
-}
-
-func ReadingSecretData(name, key string) (string, error) {
-	return system.Run("kubectl", "get", "secret", name, "-o", "jsonpath={.data."+key+"}")
-}
-
-func CheckSecretPasswordWasUpdated(name, oldPassword string) {
-	By("Checking '" + name + "' secret password was updated")
-	Eventually(func(g Gomega) {
-		newPassword, err := ReadingSecretData(name, "password")
-		g.Expect(err).NotTo(HaveOccurred())
-		g.Expect(newPassword).NotTo(Equal(oldPassword))
-	}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
-}
-
-func CheckSecretPasswordNotUpdated(name, newPassword, oldPassword string) {
-	By("Ensuring '" + name + "' secret password has NOT been updated")
-
-	intervalStr := readPullingInterval()
-	Expect(intervalStr).NotTo(BeEmpty())
-
-	i, err := strconv.Atoi(intervalStr)
+func CountOperatorReplicaSets() int {
+	By("Counting operator replicasets")
+	countStr, err := system.Run(
+		"kubectl", "get", "rs",
+		"-l", "name=onepassword-connect-operator",
+		"-o", "jsonpath={.items[*].metadata.name}",
+	)
 	Expect(err).NotTo(HaveOccurred())
 
-	interval := time.Duration(i) * time.Second // convert to duration in seconds
-	time.Sleep(interval + 2*time.Second)       // wait for one polling interval + 2 seconds to make sure updated secret is pulled
+	fields := strings.Fields(countStr)
+	replicaSetCount := len(fields)
 
-	// read password again
-	currentPassword, err := ReadingSecretData(name, "password")
-	Expect(err).NotTo(HaveOccurred())
-
-	Expect(currentPassword).To(Equal(oldPassword))
-	Expect(currentPassword).NotTo(Equal(newPassword))
+	return replicaSetCount
 }
 
-// Apply applies a kubernetes manifest file
-func Apply(yamlPath string) {
-	_, err := system.Run("kubectl", "apply", "-f", yamlPath)
-	Expect(err).NotTo(HaveOccurred())
-}
+// PatchOperatorToUseServiceAccount sets `OP_SERVICE_ACCOUNT_TOKEN` env variable
+//func (s *Kube) PatchOperatorToUseServiceAccount(ctx context.Context) {
+//	By("Patching the operator deployment with service account token")
+//
+//	// Derive a short-lived context so this API call won't hang indefinitely.
+//	c, cancel := context.WithTimeout(ctx, 10*time.Second)
+//	defer cancel()
+//
+//	secret, err := s.ClientSet.CoreV1().Secrets(s.Namespace).Get(c, "onepassword-service-account-token", metav1.GetOptions{})
+//	Expect(err).NotTo(HaveOccurred())
+//
+//	rawServiceAccountToken, ok := secret.Data["token"]
+//	Expect(ok).To(BeTrue())
+//
+//	serviceAccountToken, err := base64.StdEncoding.DecodeString(string(rawServiceAccountToken))
+//	Expect(err).NotTo(HaveOccurred())
+//
+//	deployment, err := s.ClientSet.AppsV1().
+//		Deployments(s.Namespace).
+//		Get(c, "onepassword-connect-operator", metav1.GetOptions{})
+//	Expect(err).NotTo(HaveOccurred())
+//
+//	container := &deployment.Spec.Template.Spec.Containers[0]
+//
+//	withOperatorRestart[struct{}](func(_ struct{}) {
+//		_, err = system.Run(
+//			"kubectl", "set", "env", "deployment/onepassword-connect-operator",
+//			"OP_SERVICE_ACCOUNT_TOKEN="+string(serviceAccountToken),
+//			"OP_CONNECT_HOST-",     // remove
+//			"OP_CONNECT_TOKEN-",    // remove
+//			"MANAGE_CONNECT=false", // ensure operator doesn't try to manage Connect
+//		)
+//		Expect(err).NotTo(HaveOccurred())
+//	})
+//}
 
 // SetContextNamespace sets the current kubernetes context namespace
 func SetContextNamespace(namespace string) {
@@ -117,40 +177,59 @@ func SetContextNamespace(namespace string) {
 	Expect(err).NotTo(HaveOccurred())
 }
 
-// PatchOperatorToUseServiceAccount sets `OP_SERVICE_ACCOUNT_TOKEN` env variable
-var PatchOperatorToUseServiceAccount = withOperatorRestart(func() {
-	By("patching the operator deployment with service account token")
+// PatchOperatorToAutoRestart sets `OP_SERVICE_ACCOUNT_TOKEN` env variable
+var PatchOperatorToAutoRestart = withOperatorRestart[bool](func(value bool) {
+	By("patching the operator to enable AUTO_RESTART")
+	_, err := system.Run(
+		"kubectl", "set", "env", "deployment/onepassword-connect-operator",
+		"AUTO_RESTART="+strconv.FormatBool(value),
+	)
+	Expect(err).NotTo(HaveOccurred())
+})
+
+// PatchOperatorWithCustomSecret sets new env variable CUSTOM_SECRET
+var PatchOperatorWithCustomSecret = withOperatorRestart[map[string]string](func(secret map[string]string) {
+	By("patching the operator with custom secret and AUTO_RESTART=true")
 	_, err := system.Run(
 		"kubectl", "patch", "deployment", "onepassword-connect-operator",
 		"--type=json",
-		`-p=[{"op":"replace","path":"/spec/template/spec/containers/0/env","value":[
+		fmt.Sprintf(`-p=[{"op":"replace","path":"/spec/template/spec/containers/0/env","value":[
 	{"name":"OPERATOR_NAME","value":"onepassword-connect-operator"},
 	{"name":"POD_NAME","valueFrom":{"fieldRef":{"fieldPath":"metadata.name"}}},
 	{"name":"WATCH_NAMESPACE","value":"default"},
 	{"name":"POLLING_INTERVAL","value":"10"},
-	{"name":"AUTO_RESTART","value":"false"},
+	{"name":"MANAGE_CONNECT","value":"true"},
+	{"name":"AUTO_RESTART","value":"true"},
+	{"name":"OP_CONNECT_HOST","value":"http://onepassword-connect:8080"},
 	{
-		"name":"OP_SERVICE_ACCOUNT_TOKEN",
+		"name":"OP_CONNECT_TOKEN",
 		"valueFrom":{
 			"secretKeyRef":{
-				"name":"onepassword-service-account-token",
+				"name":"onepassword-token",
 				"key":"token",
 			},
 		},
 	},
-	{"name":"MANAGE_CONNECT","value":"false"}
-	]}]`,
+	{
+		"name":"CUSTOM_SECRET",
+		"valueFrom":{
+			"secretKeyRef":{
+				"name":"%s",
+				"key":"%s",
+			},
+		},
+	}
+	]}]`, secret["name"], secret["key"]),
 	)
 	Expect(err).NotTo(HaveOccurred())
 })
 
 // withOperatorRestart is a helper function that restarts the operator deployment
-func withOperatorRestart(operation func()) func() {
-	return func() {
-		operation()
+func withOperatorRestart[T any](operation func(arg T)) func(arg T) {
+	return func(arg T) {
+		operation(arg)
 
-		_, err := system.Run("kubectl", "rollout", "status",
-			"deployment/onepassword-connect-operator", "-n", "default", "--timeout=120s")
+		_, err := RestartDeployment("deployment/onepassword-connect-operator")
 		Expect(err).NotTo(HaveOccurred())
 
 		By("Waiting for the operator pod to be 'Running'")
