@@ -2,7 +2,6 @@ package kube
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	//nolint:staticcheck // ST1001
@@ -110,10 +109,6 @@ func (d *Deployment) WaitDeploymentRolledOut(ctx context.Context) {
 
 	Eventually(func(g Gomega) error {
 		newDeployment := d.Get(ctx)
-		// Has controller observed the new spec?
-		if newDeployment.Status.ObservedGeneration < targetGen {
-			return fmt.Errorf("observedGeneration %d < desired %d", newDeployment.Status.ObservedGeneration, targetGen)
-		}
 		g.Expect(newDeployment.Status.ObservedGeneration).To(BeNumerically(">=", targetGen))
 
 		desired := int32(1)
