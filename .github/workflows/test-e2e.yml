@@ -29,9 +29,6 @@ jobs:
         with:
           cluster_name: onepassword-operator-test-e2e
 
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
-
       - name: Install 1Password CLI
         uses: 1password/install-cli-action@v2
         with:
