@@ -2,7 +2,7 @@ name: Test E2E
 
 on:
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    types: [opened, synchronize, reopened]
     branches: ['**']   # run for PRs targeting any branch (main and others)
 
 concurrency:
