@@ -11,13 +11,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/1Password/onepassword-operator/pkg/testhelper/defaults"
 )
 
 type Pod struct {
 	client   client.Client
-	config   *ClusterConfig
+	config   *Config
 	selector map[string]string
 }
 
@@ -45,5 +43,5 @@ func (p *Pod) WaitingForRunningPod(ctx context.Context) {
 			}
 		}
 		g.Expect(foundRunning).To(BeTrue(), "pod not Running yet")
-	}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
+	}, p.config.TestConfig.Timeout, p.config.TestConfig.Interval).Should(Succeed())
 }

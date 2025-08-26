@@ -23,17 +23,23 @@ import (
 	apiv1 "github.com/1Password/onepassword-operator/api/v1"
 )
 
-type ClusterConfig struct {
+type TestConfig struct {
+	Timeout  time.Duration
+	Interval time.Duration
+}
+
+type Config struct {
 	Namespace    string
 	ManifestsDir string
+	TestConfig   *TestConfig
 }
 
 type Kube struct {
-	Config *ClusterConfig
+	Config *Config
 	Client client.Client
 }
 
-func NewKubeClient(clusterConfig *ClusterConfig) *Kube {
+func NewKubeClient(config *Config) *Kube {
 	By("Creating a kubernetes client")
 	kubeconfig := os.Getenv("KUBECONFIG")
 	if kubeconfig == "" {
@@ -62,12 +68,12 @@ func NewKubeClient(clusterConfig *ClusterConfig) *Kube {
 	ctx, ok := cfg.Contexts[currentContext]
 	Expect(ok).To(BeTrue(), fmt.Sprintf("current context %q not found in kubeconfig", currentContext))
 
-	ctx.Namespace = clusterConfig.Namespace
+	ctx.Namespace = config.Namespace
 	err = clientcmd.ModifyConfig(pathOpts, *cfg, true)
 	Expect(err).NotTo(HaveOccurred())
 
 	return &Kube{
-		Config: clusterConfig,
+		Config: config,
 		Client: kubernetesClient,
 	}
 }

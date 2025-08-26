@@ -15,13 +15,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	"github.com/1Password/onepassword-operator/pkg/testhelper/defaults"
 	"github.com/1Password/onepassword-operator/pkg/testhelper/system"
 )
 
 type Secret struct {
 	client client.Client
-	config *ClusterConfig
+	config *Config
 	name   string
 }
 
@@ -138,5 +137,5 @@ func (s *Secret) CheckIfExists(ctx context.Context) {
 		secret := &corev1.Secret{}
 		err := s.client.Get(attemptCtx, client.ObjectKey{Name: s.name, Namespace: s.config.Namespace}, secret)
 		g.Expect(err).NotTo(HaveOccurred())
-	}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
+	}, s.config.TestConfig.Timeout, s.config.TestConfig.Interval).Should(Succeed())
 }

@@ -12,13 +12,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	"github.com/1Password/onepassword-operator/pkg/testhelper/defaults"
 )
 
 type Deployment struct {
 	client client.Client
-	config *ClusterConfig
+	config *Config
 	name   string
 }
 
@@ -128,5 +126,5 @@ func (d *Deployment) WaitDeploymentRolledOut(ctx context.Context) {
 		g.Expect(newDeployment.Status.Replicas).To(Equal(desired))
 
 		return nil
-	}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
+	}, d.config.TestConfig.Timeout, d.config.TestConfig.Interval).Should(Succeed())
 }

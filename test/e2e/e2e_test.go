@@ -30,9 +30,13 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 	ctx := context.Background()
 
 	BeforeAll(func() {
-		kubeClient = kube.NewKubeClient(&kube.ClusterConfig{
+		kubeClient = kube.NewKubeClient(&kube.Config{
 			Namespace:    "default",
 			ManifestsDir: filepath.Join("manifests"),
+			TestConfig: &kube.TestConfig{
+				Timeout:  defaults.E2ETimeout,
+				Interval: defaults.E2EInterval,
+			},
 		})
 
 		operator.BuildOperatorImage()
