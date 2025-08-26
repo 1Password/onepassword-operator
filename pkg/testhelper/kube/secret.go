@@ -7,12 +7,12 @@ import (
 	"path/filepath"
 	"time"
 
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	//nolint:staticcheck // ST1001
 	. "github.com/onsi/ginkgo/v2"
 	//nolint:staticcheck // ST1001
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/1Password/onepassword-operator/pkg/testhelper/defaults"

@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	//nolint:staticcheck // ST1001
 	. "github.com/onsi/gomega"
+	corev1 "k8s.io/api/core/v1"
 
 	"github.com/1Password/onepassword-operator/pkg/testhelper/defaults"
 	"github.com/1Password/onepassword-operator/pkg/testhelper/kind"
@@ -33,7 +34,6 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 			Namespace:    "default",
 			ManifestsDir: filepath.Join("manifests"),
 		})
-		kube.SetContextNamespace("default")
 
 		operator.BuildOperatorImage()
 		kind.LoadImageToKind(operatorImageName)
@@ -48,25 +48,41 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 		kubeClient.Secret("onepassword-service-account-token").CheckIfExists(ctx)
 
 		operator.DeployOperator()
-		operator.WaitingForOperatorPod()
+		kubeClient.Pod(map[string]string{"name": "onepassword-connect-operator"}).WaitingForRunningPod(ctx)
 	})
 
 	Context("Use the operator with Connect", func() {
 		BeforeAll(func() {
-			operator.WaitingForConnectPod()
+			kubeClient.Pod(map[string]string{"app": "onepassword-connect"}).WaitingForRunningPod(ctx)
 		})
 
 		runCommonTestCases(ctx)
 	})
 
-	//Context("Use the operator with Service Account", func() {
-	//	BeforeAll(func() {
-	//		kube.PatchOperatorToUseServiceAccount(struct{}{})
-	//		kubeClient.DeleteSecret(ctx, "login") // remove secret crated in previous test
-	//	})
-	//
-	//	runCommonTestCases(ctx)
-	//})
+	Context("Use the operator with Service Account", func() {
+		BeforeAll(func() {
+			kubeClient.Deployment("onepassword-connect-operator").PatchEnvVars(ctx, []corev1.EnvVar{
+				{Name: "MANAGE_CONNECT", Value: "false"},
+				{
+					Name: "OP_SERVICE_ACCOUNT_TOKEN",
+					ValueFrom: &corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "onepassword-service-account-token",
+							},
+							Key: "token",
+						},
+					},
+				},
+			}, []string{"OP_CONNECT_HOST", "OP_CONNECT_TOKEN"})
+
+			kubeClient.Secret("login").Delete(ctx)             // remove secret crated in previous test
+			kubeClient.Secret("secret-ignored").Delete(ctx)    // remove secret crated in previous test
+			kubeClient.Secret("secret-for-update").Delete(ctx) // remove secret crated in previous test
+		})
+
+		runCommonTestCases(ctx)
+	})
 })
 
 // runCommonTestCases contains test cases that are common to both Connect and Service Account authentication methods.
@@ -127,7 +143,8 @@ func runCommonTestCases(ctx context.Context) {
 		Expect(err).NotTo(HaveOccurred())
 
 		newPassword, err := op.ReadItemPassword(itemName, vaultName)
-		Expect(newPassword).NotTo(Equal(oldPassword))
+		Expect(err).NotTo(HaveOccurred())
+		Expect(newPassword).NotTo(BeEquivalentTo(oldPassword))
 
 		// checking that password was NOT updated
 		Eventually(func(g Gomega) {
@@ -141,16 +158,59 @@ func runCommonTestCases(ctx context.Context) {
 			i, err := strconv.Atoi(intervalStr)
 			Expect(err).NotTo(HaveOccurred())
 
-			interval := time.Duration(i) * time.Second // convert to duration in seconds
-			time.Sleep(interval + 2*time.Second)       // wait for one polling interval + 2 seconds to make sure updated secret is pulled
+			// convert to duration in seconds
+			interval := time.Duration(i) * time.Second
+			// wait for one polling interval + 2 seconds to make sure updated secret is pulled
+			time.Sleep(interval + 2*time.Second)
 
 			secret = kubeClient.Secret(secretName).Get(attemptCtx)
 			g.Expect(err).NotTo(HaveOccurred())
 
 			currentPassword, ok := secret.Data["password"]
 			Expect(ok).To(BeTrue())
-			Expect(currentPassword).To(Equal(oldPassword))
-			Expect(currentPassword).NotTo(Equal(newPassword))
+			Expect(currentPassword).To(BeEquivalentTo(oldPassword))
+			Expect(currentPassword).NotTo(BeEquivalentTo(newPassword))
 		}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
+	})
+
+	It("AUTO_RESTART restarts deployments using 1Password secrets after item update", func() {
+		By("Enabling AUTO_RESTART")
+		kubeClient.Deployment("onepassword-connect-operator").PatchEnvVars(ctx, []corev1.EnvVar{
+			{Name: "AUTO_RESTART", Value: "true"},
+		}, nil)
+
+		DeferCleanup(func() {
+			By("Disabling AUTO_RESTART")
+			// disable AUTO_RESTART after test
+			kubeClient.Deployment("onepassword-connect-operator").PatchEnvVars(ctx, []corev1.EnvVar{
+				{Name: "AUTO_RESTART", Value: "false"},
+			}, nil)
+		})
+
+		// Ensure the secret exists (created in earlier test), but apply again safely just in case
+		kubeClient.ApplyOnePasswordItem(ctx, "secret-for-update.yaml")
+		kubeClient.Secret("secret-for-update").CheckIfExists(ctx)
+
+		// add custom secret to the operator
+		kubeClient.Deployment("onepassword-connect-operator").PatchEnvVars(ctx, []corev1.EnvVar{
+			{
+				Name: "CUSTOM_SECRET",
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "secret-for-update",
+						},
+						Key: "password",
+					},
+				},
+			},
+		}, nil)
+
+		By("Updating `secret-for-update` 1Password item")
+		err := op.UpdateItemPassword("secret-for-update")
+		Expect(err).NotTo(HaveOccurred())
+
+		By("Checking the operator is restarted")
+		kubeClient.Deployment("onepassword-connect-operator").WaitDeploymentRolledOut(ctx)
 	})
 }
