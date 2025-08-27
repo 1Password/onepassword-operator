@@ -17,6 +17,7 @@ import (
 	"github.com/1Password/onepassword-operator/pkg/testhelper/kube"
 	"github.com/1Password/onepassword-operator/pkg/testhelper/op"
 	"github.com/1Password/onepassword-operator/pkg/testhelper/operator"
+	"github.com/1Password/onepassword-operator/pkg/testhelper/system"
 )
 
 const (
@@ -30,12 +31,18 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 	ctx := context.Background()
 
 	BeforeAll(func() {
+		rootDir, err := system.GetProjectRoot()
+		Expect(err).NotTo(HaveOccurred())
+
 		kubeClient = kube.NewKubeClient(&kube.Config{
 			Namespace:    "default",
 			ManifestsDir: filepath.Join("manifests"),
 			TestConfig: &kube.TestConfig{
 				Timeout:  defaults.E2ETimeout,
 				Interval: defaults.E2EInterval,
+			},
+			CRDs: []string{
+				filepath.Join(rootDir, "config", "crd", "bases", "onepassword.com_onepassworditems.yaml"),
 			},
 		})
 
