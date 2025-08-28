@@ -22,5 +22,6 @@
 2. `export OP_CONNECT_TOKEN=<token>`
 3. `export OP_SERVICE_ACCOUNT_TOKEN=<token>`
 4. `make test-e2e`
+5. Put `1password-credentials.json` into project root.
 
 **Run**: `make test-e2e`
