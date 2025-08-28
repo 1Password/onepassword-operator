@@ -156,7 +156,7 @@ func runCommonTestCases(ctx context.Context) {
 		err := op.UpdateItemPassword(itemName)
 		Expect(err).NotTo(HaveOccurred())
 
-		newPassword, err := op.ReadItemPassword(itemName, vaultName)
+		newPassword, err := op.ReadItemField(itemName, vaultName, op.FieldPassword)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(newPassword).NotTo(BeEquivalentTo(oldPassword))
 
