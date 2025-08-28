@@ -127,6 +127,14 @@ func (k *Kube) Pod(selector map[string]string) *Pod {
 	}
 }
 
+func (k *Kube) Namespace(name string) *Namespace {
+	return &Namespace{
+		client: k.Client,
+		config: k.Config,
+		name:   name,
+	}
+}
+
 // ApplyOnePasswordItem applies a OnePasswordItem manifest.
 func (k *Kube) ApplyOnePasswordItem(ctx context.Context, fileName string) {
 	By("Applying " + fileName)
