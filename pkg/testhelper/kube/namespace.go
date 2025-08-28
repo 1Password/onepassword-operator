@@ -19,7 +19,7 @@ type Namespace struct {
 
 // LabelNamespace applies the given labels to the specified namespace
 func (n *Namespace) LabelNamespace(ctx context.Context, labelsMap map[string]string) {
-	if labelsMap == nil || len(labelsMap) == 0 {
+	if len(labelsMap) == 0 {
 		return
 	}
 
