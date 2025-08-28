@@ -16,7 +16,6 @@ import (
 	"github.com/1Password/onepassword-operator/pkg/testhelper/kind"
 	"github.com/1Password/onepassword-operator/pkg/testhelper/kube"
 	"github.com/1Password/onepassword-operator/pkg/testhelper/op"
-	"github.com/1Password/onepassword-operator/pkg/testhelper/operator"
 	"github.com/1Password/onepassword-operator/pkg/testhelper/system"
 )
 
@@ -46,7 +45,10 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 			},
 		})
 
-		operator.BuildOperatorImage()
+		By("Building the Operator image")
+		_, err = system.Run("make", "docker-build")
+		Expect(err).NotTo(HaveOccurred())
+
 		kind.LoadImageToKind(operatorImageName)
 
 		kubeClient.Secret("op-credentials").CreateOpCredentials(ctx)
@@ -58,7 +60,8 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 		kubeClient.Secret("onepassword-service-account-token").CreateFromEnvVar(ctx, "OP_SERVICE_ACCOUNT_TOKEN")
 		kubeClient.Secret("onepassword-service-account-token").CheckIfExists(ctx)
 
-		operator.DeployOperator()
+		_, err = system.Run("make", "deploy")
+		Expect(err).NotTo(HaveOccurred())
 		kubeClient.Pod(map[string]string{"name": "onepassword-connect-operator"}).WaitingForRunningPod(ctx)
 	})
 
