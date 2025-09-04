@@ -39,6 +39,7 @@ spec:
             allowPrivilegeEscalation: false
             capabilities:
               drop: [ "ALL" ]
+              add: ["CHOWN", "FOWNER"]
       containers:
         - name: connect-api
           image: 1password/connect-api:latest
