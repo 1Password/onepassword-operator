@@ -26,5 +26,5 @@ go.work
 *.swo
 *~
 
-1password-credentials.json
-op-session
+**/1password-credentials.json
+**/op-session
