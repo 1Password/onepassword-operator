@@ -1,0 +1,22 @@
+# Write comments "/ok-to-test <hash>" on a pull request. This will emit a repository_dispatch event.
+name: Ok To Test
+
+on:
+  issue_comment:
+    types: [created]
+
+jobs:
+  ok-to-test:
+    runs-on: ubuntu-latest
+    # Only run for PRs, not issue comments
+    if: ${{ github.event.issue.pull_request }}
+    steps:
+      - name: Slash Command Dispatch
+        uses: peter-evans/slash-command-dispatch@v4
+        with:
+          token: ${{ secrets.PAT }}
+          reaction-token: ${{ secrets.PAT }}
+          issue-type: pull-request
+          commands: ok-to-test
+          # The repository permission level required by the user to dispatch commands. Only allows 1Password collaborators to run this.
+          permission: write
