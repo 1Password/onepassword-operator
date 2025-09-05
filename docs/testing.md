@@ -1,14 +1,15 @@
 # Testing
 
-## Unit/integration tests
-**When**: Pure Go logic. Controller/reconciler behavior against a mocked kubernetes cluster.
-**Where**: `internal/...`, `pkg/...`  
-**Add files in**: `*_test.go` next to the code.  
+## Unit & Integration tests
+**When**: Unit (pure Go) and integration (controller-runtime envtest).
+**Where**: `internal/...`, `pkg/...`
+**Add files in**: `*_test.go` next to the code.
 **Run**: `make test`
 
 ## E2E tests (kind)
-**When**: Full cluster behavior (CRDs, operator image, Connect/SA flows).  
-**Where**: `test/e2e/...`  
+**When**: Full cluster behavior (CRDs, operator image, Connect/SA flows).
+**Where**: `test/e2e/...`
+**Add files in**: `*_test.go` next to the code.
 **Framework**: Ginkgo + `pkg/testhelper`.
 
 **Local prep**:
