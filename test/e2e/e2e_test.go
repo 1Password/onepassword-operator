@@ -60,39 +60,42 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 		kubeClient.Secret("onepassword-service-account-token").CreateFromEnvVar(ctx, "OP_SERVICE_ACCOUNT_TOKEN")
 		kubeClient.Secret("onepassword-service-account-token").CheckIfExists(ctx)
 
+		By("Replace manager.yaml")
+		err = system.ReplaceFile("test/e2e/manifests/manager.yaml", "config/manager/manager.yaml")
+		Expect(err).NotTo(HaveOccurred())
+
 		_, err = system.Run("make", "deploy")
 		Expect(err).NotTo(HaveOccurred())
 		kubeClient.Pod(map[string]string{"name": "onepassword-connect-operator"}).WaitingForRunningPod(ctx)
 	})
 
-	Context("Use the operator with Connect", func() {
-		BeforeAll(func() {
-			kubeClient.Pod(map[string]string{"app": "onepassword-connect"}).WaitingForRunningPod(ctx)
-		})
-
+	Context("Use the operator with Service Account", func() {
 		runCommonTestCases(ctx)
 	})
 
-	Context("Use the operator with Service Account", func() {
+	Context("Use the operator with Connect", func() {
 		BeforeAll(func() {
 			kubeClient.Deployment("onepassword-connect-operator").PatchEnvVars(ctx, []corev1.EnvVar{
-				{Name: "MANAGE_CONNECT", Value: "false"},
+				{Name: "MANAGE_CONNECT", Value: "true"},
+				{Name: "OP_CONNECT_HOST", Value: "http://onepassword-connect:8080"},
 				{
-					Name: "OP_SERVICE_ACCOUNT_TOKEN",
+					Name: "OP_CONNECT_TOKEN",
 					ValueFrom: &corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "onepassword-service-account-token",
+								Name: "onepassword-token",
 							},
 							Key: "token",
 						},
 					},
 				},
-			}, []string{"OP_CONNECT_HOST", "OP_CONNECT_TOKEN"})
+			}, []string{"OP_SERVICE_ACCOUNT_TOKEN"})
 
 			kubeClient.Secret("login").Delete(ctx)             // remove secret crated in previous test
 			kubeClient.Secret("secret-ignored").Delete(ctx)    // remove secret crated in previous test
 			kubeClient.Secret("secret-for-update").Delete(ctx) // remove secret crated in previous test
+
+			kubeClient.Pod(map[string]string{"app": "onepassword-connect"}).WaitingForRunningPod(ctx)
 		})
 
 		runCommonTestCases(ctx)
@@ -101,13 +104,13 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 
 // runCommonTestCases contains test cases that are common to both Connect and Service Account authentication methods.
 func runCommonTestCases(ctx context.Context) {
-	It("Should create secret from manifest file", func() {
+	It("Should create kubernetes secret from manifest file", func() {
 		By("Creating secret `login` from 1Password item")
 		kubeClient.ApplyOnePasswordItem(ctx, "secret.yaml")
 		kubeClient.Secret("login").CheckIfExists(ctx)
 	})
 
-	It("Secret is updated after POOLING_INTERVAL", func() {
+	It("Kubernetes secret is updated after POOLING_INTERVAL, when updating item in 1Password", func() {
 		itemName := "secret-for-update"
 		secretName := itemName
 
@@ -139,7 +142,7 @@ func runCommonTestCases(ctx context.Context) {
 		}, defaults.E2ETimeout, defaults.E2EInterval).Should(Succeed())
 	})
 
-	It("1Password item with `ignore-secret` doesn't pull updates to kubernetes secret", func() {
+	It("1Password item with `ignore-secret` tag doesn't pull updates to kubernetes secret", func() {
 		itemName := "secret-ignored"
 		secretName := itemName
 

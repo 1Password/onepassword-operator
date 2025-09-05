@@ -2,6 +2,7 @@ package system
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -50,4 +51,33 @@ func GetProjectRoot() (string, error) {
 		}
 		dir = parent
 	}
+}
+
+func ReplaceFile(src, dst string) error {
+	rootDir, err := GetProjectRoot()
+	if err != nil {
+		return err
+	}
+
+	// Open the source file
+	sourceFile, err := os.Open(filepath.Join(rootDir, src))
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	// Create (or overwrite) the destination file
+	destFile, err := os.Create(filepath.Join(rootDir, dst))
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	// Copy contents
+	if _, err = io.Copy(destFile, sourceFile); err != nil {
+		return err
+	}
+
+	// Ensure data is written to disk
+	return destFile.Sync()
 }
