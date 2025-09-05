@@ -1,15 +1,9 @@
 # Testing
 
-## Unit tests
-**When**: Pure Go logic, no Kubernetes apiserver or network.
+## Unit/integration tests
+**When**: Pure Go logic. Controller/reconciler behavior against a mocked kubernetes cluster.
 **Where**: `internal/...`, `pkg/...`  
 **Add files in**: `*_test.go` next to the code.  
-**Run**: `make test`
-
-## Integration tests (envtest)
-**When**: Controller/reconciler behavior against a mocked kubernetes cluster.  
-**Where**: `internal/controller/...`  
-**Framework**: controller-runtime’s `envtest`.  
 **Run**: `make test`
 
 ## E2E tests (kind)
