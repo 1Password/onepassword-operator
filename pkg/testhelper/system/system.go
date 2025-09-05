@@ -1,6 +1,7 @@
 package system
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -64,14 +65,24 @@ func ReplaceFile(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer sourceFile.Close()
+	defer func(sourceFile *os.File) {
+		cerr := sourceFile.Close()
+		if err != nil {
+			err = errors.Join(err, cerr)
+		}
+	}(sourceFile)
 
 	// Create (or overwrite) the destination file
 	destFile, err := os.Create(filepath.Join(rootDir, dst))
 	if err != nil {
 		return err
 	}
-	defer destFile.Close()
+	defer func(destFile *os.File) {
+		cerr := destFile.Close()
+		if err != nil {
+			err = errors.Join(err, cerr)
+		}
+	}(destFile)
 
 	// Copy contents
 	if _, err = io.Copy(destFile, sourceFile); err != nil {
