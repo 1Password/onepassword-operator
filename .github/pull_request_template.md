@@ -1,6 +1,9 @@
 ### ✨ Summary
 <!-- What does this change do? -->
 
+<!-- What issue does it resolve? -->
+### 🔗 Resolves:
+
 ### ✅ Checklist
 - [ ] 🖊️ Commits are signed
 - [ ] 🧪 Tests added/updated: _(See the [Testing Guide](docs/testing.md) for when to use each type and how to run them)_
