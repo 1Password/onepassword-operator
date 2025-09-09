@@ -14,6 +14,8 @@ spec:
     spec:
       securityContext:
         runAsNonRoot: true
+        fsGroup: 999
+        fsGroupChangePolicy: OnRootMismatch
       volumes:
         - name: shared-data
           emptyDir: {}
@@ -31,10 +33,20 @@ spec:
           volumeMounts:
             - mountPath: /home/opuser/.op/data
               name: shared-data
+          securityContext:
+            runAsUser: 0
+            runAsNonRoot: false
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: [ "ALL" ]
+              add: ["CHOWN", "FOWNER"]
       containers:
         - name: connect-api
           image: 1password/connect-api:latest
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
             allowPrivilegeEscalation: false
           resources:
             limits:
@@ -55,6 +67,9 @@ spec:
         - name: connect-sync
           image: 1password/connect-sync:latest
           securityContext:
+            runAsNonRoot: true
+            runAsUser: 999
+            runAsGroup: 999
             allowPrivilegeEscalation: false
           resources:
             limits:
