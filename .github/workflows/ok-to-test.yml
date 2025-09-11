@@ -8,14 +8,17 @@ on:
 jobs:
   ok-to-test:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # For adding reactions to the pull request comments
+      contents: write # For executing the repository_dispatch event
     # Only run for PRs, not issue comments
     if: ${{ github.event.issue.pull_request }}
     steps:
       - name: Slash Command Dispatch
-        uses: peter-evans/slash-command-dispatch@v4
+        uses: volodymyrZotov/slash-command-dispatch@7c1b623a2b0eba93f684c34f689a441f0be84cf1 # TODO: use peter-evans/slash-command-dispatch when fix for team permissions is released https://github.com/peter-evans/slash-command-dispatch/pull/424
         with:
-          token: ${{ secrets.PAT }}
-          reaction-token: ${{ secrets.PAT }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+          reaction-token: ${{ secrets.GITHUB_TOKEN }}
           issue-type: pull-request
           commands: ok-to-test
           # The repository permission level required by the user to dispatch commands. Only allows 1Password collaborators to run this.
