@@ -16,7 +16,5 @@
 1. [Install `kind`](https://kind.sigs.k8s.io/docs/user/quick-start/#installing-with-a-package-manager) to spin up local Kubernetes cluster.
 2. `export OP_CONNECT_TOKEN=<token>`
 3. `export OP_SERVICE_ACCOUNT_TOKEN=<token>`
-4. `make test-e2e`
-5. Put `1password-credentials.json` into project root.
-
-**Run**: `make test-e2e`
+4. Put `1password-credentials.json` into project root.
+5. `make test-e2e`

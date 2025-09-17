@@ -8,6 +8,9 @@ WORKDIR /workspace
 COPY go.mod go.mod
 COPY go.sum go.sum
 
+# Copy the testhelper module (needed for replace directive)
+COPY pkg/testhelper/ pkg/testhelper/
+
 # Download dependencies
 RUN go mod download
 

@@ -27,7 +27,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 
-	apiv1 "github.com/1Password/onepassword-operator/api/v1"
 	"github.com/1Password/onepassword-operator/pkg/testhelper/defaults"
 )
 
@@ -73,7 +72,6 @@ func NewKubeClient(config *Config) *Kube {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(corev1.AddToScheme(scheme))
 	utilruntime.Must(appsv1.AddToScheme(scheme))
-	utilruntime.Must(apiv1.AddToScheme(scheme)) // add OnePasswordItem to scheme
 
 	kubernetesClient, err := client.New(restConfig, client.Options{
 		Scheme: scheme,
