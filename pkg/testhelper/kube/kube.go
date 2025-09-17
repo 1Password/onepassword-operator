@@ -22,6 +22,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,9 +44,10 @@ type Config struct {
 }
 
 type Kube struct {
-	Config *Config
-	Client client.Client
-	Mapper meta.RESTMapper
+	Config    *Config
+	Client    client.Client
+	Clientset kubernetes.Interface
+	Mapper    meta.RESTMapper
 }
 
 func NewKubeClient(config *Config) *Kube {
@@ -79,6 +81,10 @@ func NewKubeClient(config *Config) *Kube {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
+	// Create Kubernetes clientset for logs and other operations
+	clientset, err := kubernetes.NewForConfig(restConfig)
+	Expect(err).NotTo(HaveOccurred())
+
 	// update the current context’s namespace in kubeconfig
 	pathOpts := clientcmd.NewDefaultPathOptions()
 	cfg, err := pathOpts.GetStartingConfig()
@@ -95,9 +101,10 @@ func NewKubeClient(config *Config) *Kube {
 	Expect(err).NotTo(HaveOccurred())
 
 	return &Kube{
-		Config: config,
-		Client: kubernetesClient,
-		Mapper: rm,
+		Config:    config,
+		Client:    kubernetesClient,
+		Clientset: clientset,
+		Mapper:    rm,
 	}
 }
 
@@ -119,9 +126,10 @@ func (k *Kube) Deployment(name string) *Deployment {
 
 func (k *Kube) Pod(selector map[string]string) *Pod {
 	return &Pod{
-		client:   k.Client,
-		config:   k.Config,
-		selector: selector,
+		client:    k.Client,
+		clientset: k.Clientset,
+		config:    k.Config,
+		selector:  selector,
 	}
 }
 
@@ -133,8 +141,16 @@ func (k *Kube) Namespace(name string) *Namespace {
 	}
 }
 
-// ApplyOnePasswordItem applies a OnePasswordItem manifest.
-func (k *Kube) ApplyOnePasswordItem(ctx context.Context, fileName string) {
+func (k *Kube) Webhook(name string) *Webhook {
+	return &Webhook{
+		client: k.Client,
+		config: k.Config,
+		name:   name,
+	}
+}
+
+// Apply applies a Kubernetes manifest file using server-side apply.
+func (k *Kube) Apply(ctx context.Context, fileName string) {
 	By("Applying " + fileName)
 
 	// Derive a short-lived context so this API call won't hang indefinitely.

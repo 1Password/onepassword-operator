@@ -106,7 +106,7 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 func runCommonTestCases(ctx context.Context) {
 	It("Should create kubernetes secret from manifest file", func() {
 		By("Creating secret `login` from 1Password item")
-		kubeClient.ApplyOnePasswordItem(ctx, "secret.yaml")
+		kubeClient.Apply(ctx, "secret.yaml")
 		kubeClient.Secret("login").CheckIfExists(ctx)
 	})
 
@@ -115,7 +115,7 @@ func runCommonTestCases(ctx context.Context) {
 		secretName := itemName
 
 		By("Creating secret `" + secretName + "` from 1Password item")
-		kubeClient.ApplyOnePasswordItem(ctx, secretName+".yaml")
+		kubeClient.Apply(ctx, secretName+".yaml")
 		kubeClient.Secret(secretName).CheckIfExists(ctx)
 
 		By("Reading old password")
@@ -147,7 +147,7 @@ func runCommonTestCases(ctx context.Context) {
 		secretName := itemName
 
 		By("Creating secret `" + secretName + "` from 1Password item")
-		kubeClient.ApplyOnePasswordItem(ctx, secretName+".yaml")
+		kubeClient.Apply(ctx, secretName+".yaml")
 		kubeClient.Secret(secretName).CheckIfExists(ctx)
 
 		By("Reading old password")
@@ -205,7 +205,7 @@ func runCommonTestCases(ctx context.Context) {
 		})
 
 		// Ensure the secret exists (created in earlier test), but apply again safely just in case
-		kubeClient.ApplyOnePasswordItem(ctx, "secret-for-update.yaml")
+		kubeClient.Apply(ctx, "secret-for-update.yaml")
 		kubeClient.Secret("secret-for-update").CheckIfExists(ctx)
 
 		// add custom secret to the operator
