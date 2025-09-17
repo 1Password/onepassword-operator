@@ -11,6 +11,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	//nolint:staticcheck // ST1001
 	. "github.com/onsi/gomega"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	apiextv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
@@ -74,6 +75,7 @@ func NewKubeClient(config *Config) *Kube {
 	scheme := runtime.NewScheme()
 	utilruntime.Must(corev1.AddToScheme(scheme))
 	utilruntime.Must(appsv1.AddToScheme(scheme))
+	utilruntime.Must(admissionregistrationv1.AddToScheme(scheme))
 
 	kubernetesClient, err := client.New(restConfig, client.Options{
 		Scheme: scheme,
