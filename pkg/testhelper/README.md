@@ -1,6 +1,6 @@
 # OnePassword Operator Test Helper
 
-This is a standalone Go module that provides testing utilities for Kubernetes operators, specifically designed for testing OnePassword operators but can be used for any Kubernetes operator testing.
+This is a standalone Go module that provides testing utilities for Kubernetes operators  and webhooks. It's specifically designed for testing 1Password Kubernetes operator and secrets injector, but it can be used for any Kubernetes operator or webhook testing.
 
 ## Installation
 
@@ -35,19 +35,19 @@ kubeClient := kube.NewKubeClient(&kube.Config{
 ### Working with Secrets
 
 ```go
-// Create a secret from environment variable
-secret := kubeClient.Secret("my-secret")
-secret.CreateFromEnvVar(ctx, "MY_ENV_VAR")
+// Create k8s secret from environment variable
+k8sSecret := kubeClient.Secret("my-secret")
+k8sSecret.CreateFromEnvVar(ctx, "MY_ENV_VAR")
 
 // Create a secret from file
 data := []byte("secret content")
-secret.CreateFromFile(ctx, "filename", data)
+k8sSecret.CreateFromFile(ctx, "filename", data)
 
 // Check if secret exists
-secret.CheckIfExists(ctx)
+k8sSecret.CheckIfExists(ctx)
 
 // Get secret
-secretObj := secret.Get(ctx)
+secretObj := k8sSecret.Get(ctx)
 ```
 
 ### Working with Deployments
