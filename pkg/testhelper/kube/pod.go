@@ -60,13 +60,17 @@ func (p *Pod) GetPodLogs(ctx context.Context) string {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(pods.Items).NotTo(BeEmpty(), "no pods found with selector %q", labels.Set(p.selector).String())
 
-	// Use the first pod found
-	pod := pods.Items[0]
+	// Find a running pod to get logs from
+	var pod *corev1.Pod
+	for i := range pods.Items {
+		if pods.Items[i].Status.Phase == corev1.PodRunning {
+			pod = &pods.Items[i]
+			break
+		}
+	}
+	Expect(pod).NotTo(BeNil(), "no running pod found with selector %q", labels.Set(p.selector).String())
+
 	podName := pod.Name
-
-	// Verify pod is running before getting logs
-	Expect(pod.Status.Phase).To(Equal(corev1.PodRunning), "pod %s is not running (status: %s)", podName, pod.Status.Phase)
-
 	// Get logs using the Kubernetes clientset
 	req := p.clientset.CoreV1().Pods(p.config.Namespace).GetLogs(podName, &corev1.PodLogOptions{})
 	stream, err := req.Stream(context.TODO())
@@ -97,8 +101,15 @@ func (p *Pod) VerifyWebhookInjection(ctx context.Context) {
 		g.Expect(p.client.List(attemptCtx, &pods, listOpts...)).To(Succeed())
 		g.Expect(pods.Items).NotTo(BeEmpty(), "no pods found with selector %q", labels.Set(p.selector).String())
 
-		// Use the first pod found
-		pod := pods.Items[0]
+		// Find a running pod to verify webhook injection
+		var pod *corev1.Pod
+		for i := range pods.Items {
+			if pods.Items[i].Status.Phase == corev1.PodRunning {
+				pod = &pods.Items[i]
+				break
+			}
+		}
+		g.Expect(pod).NotTo(BeNil(), "no running pod found with selector %q", labels.Set(p.selector).String())
 
 		// Check injection status annotation
 		g.Expect(pod.Annotations).To(HaveKey("operator.1password.io/status"))
