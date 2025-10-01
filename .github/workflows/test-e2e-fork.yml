@@ -1,4 +1,4 @@
-name: Run Test E2E tests [fork]
+name: E2E tests [fork]
 
 on:
   repository_dispatch:
@@ -6,15 +6,15 @@ on:
 
 permissions:
   contents: read
+  checks: write
 
 concurrency:
   group: e2e-fork-${{ github.event.client_payload.pull_request.number || github.run_id }}
   cancel-in-progress: true # cancel previous job runs for the same branch
 
 jobs:
-  run-e2e-tests:
-    name: E2E (fork)
-    runs-on: ubuntu-latest
+  e2e-tests:
+    uses: ./.github/workflows/e2e-tests.yml
     if: |
       github.event_name == 'repository_dispatch' &&
       github.event.client_payload.slash_command.args.named.sha != '' &&
@@ -22,36 +22,35 @@ jobs:
         github.event.client_payload.pull_request.head.sha,
         github.event.client_payload.slash_command.args.named.sha
       )
+    secrets:
+      OP_CONNECT_CREDENTIALS: ${{ secrets.OP_CONNECT_CREDENTIALS }}
+      OP_CONNECT_TOKEN: ${{ secrets.OP_CONNECT_TOKEN }}
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+
+  update-check-status:
+    needs: e2e-tests
+    runs-on: ubuntu-latest
+    if: always() && github.event_name == 'repository_dispatch'
     steps:
-      - uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-
-      - name: Install dependencies
-        run: go mod tidy
-
-      - name: Create kind cluster
-        uses: helm/kind-action@v1
-        with:
-          cluster_name: onepassword-operator-test-e2e
-
-      # Install 1Password CLI to support testhelper/op usage
-      - name: Install 1Password CLI
-        uses: 1password/install-cli-action@v2
-        with:
-          version: 2.32.0
-
-      - name: Create '1password-credentials.json' file
+      - uses: actions/github-script@v6
         env:
-          OP_CONNECT_CREDENTIALS: ${{ secrets.OP_CONNECT_CREDENTIALS }}
-        run: |
-          echo "$OP_CONNECT_CREDENTIALS" > 1password-credentials.json
+          ref: ${{ github.event.client_payload.pull_request.head.sha }}
+          conclusion: ${{ needs.e2e-tests.result }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { data: checks } = await github.rest.checks.listForRef({
+              ...context.repo,
+              ref: process.env.ref
+            });
 
-      - name: Run E2E tests
-        run: make test-e2e
-        env:
-          OP_CONNECT_TOKEN: ${{ secrets.OP_CONNECT_TOKEN }}
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+            const check = checks.check_runs.filter(c => c.name === 'e2e-test');
+
+            const { data: result } = await github.rest.checks.update({
+              ...context.repo,
+              check_run_id: check[0].id,
+              status: 'completed',
+              conclusion: process.env.conclusion
+            });
+
+            return result;

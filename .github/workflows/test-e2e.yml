@@ -1,8 +1,9 @@
-name: Test E2E
+name: E2E Tests
 
 on:
-  push:
-    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: ['**']   # run for PRs targeting any branch (main and others)
     paths-ignore: &ignore_paths
       - 'docs/**'
       - '*.md'
@@ -10,49 +11,33 @@ on:
       - '.gitignore'
       - '.dockerignore'
       - 'LICENSE'
-  pull_request:
-    types: [opened, synchronize, reopened]
-    branches: ['**']   # run for PRs targeting any branch (main and others)
+  push:
+    branches: [main]
     paths-ignore: *ignore_paths
 
 concurrency:
   group: e2e-${{ github.event.pull_request.head.ref }}
-  cancel-in-progress: true # cancel previous job runs for the same branch
+  cancel-in-progress: true  # cancel previous job runs for the same branch
 
 jobs:
-  e2e-test:
+  check-external-pr:
     runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v5
-
-      - name: Set up Go
-        uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-
-      - name: Install dependencies
-        run: go mod tidy
-
-      - name: Create kind cluster
-        uses: helm/kind-action@v1
-        with:
-          cluster_name: onepassword-operator-test-e2e
-
-        # install cli to interact with item in 1Password to update/read using `testhelper/op` package
-      - name: Install 1Password CLI
-        uses: 1password/install-cli-action@v2
-        with:
-          version: 2.32.0
-
-      - name: Create '1password-credentials.json' file
-        env:
-          OP_CONNECT_CREDENTIALS: ${{ secrets.OP_CONNECT_CREDENTIALS }}
+      - name: Check if PR is from external contributor
         run: |
-          echo "$OP_CONNECT_CREDENTIALS" > 1password-credentials.json
+          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo "❌ External PR detected. This workflow requires approval from a maintainer."
+            echo "Please ask a maintainer to run '/ok-to-test' command to trigger the fork workflow."
+            exit 1
+          fi
+          echo "✅ Internal PR detected. Proceeding with tests."
 
-      - name: Run E2E tests
-        run: make test-e2e
-        env:
-          OP_CONNECT_TOKEN: ${{ secrets.OP_CONNECT_TOKEN }}
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+  e2e-test:
+    needs: check-external-pr
+    if: always() && (needs.check-external-pr.result == 'success' || github.event_name != 'pull_request')
+    uses: ./.github/workflows/e2e-tests.yml
+    secrets:
+      OP_CONNECT_CREDENTIALS: ${{ secrets.OP_CONNECT_CREDENTIALS }}
+      OP_CONNECT_TOKEN: ${{ secrets.OP_CONNECT_TOKEN }}
+      OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
