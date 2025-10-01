@@ -3,7 +3,7 @@ name: Test E2E
 on:
   push:
     branches: [main]
-    paths-ignore:
+    paths-ignore: &ignore_paths
       - 'docs/**'
       - '*.md'
       - '.golangci.yml'
@@ -13,13 +13,7 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
     branches: ['**']   # run for PRs targeting any branch (main and others)
-    paths-ignore:
-      - 'docs/**'
-      - '*.md'
-      - '.golangci.yml'
-      - '.gitignore'
-      - '.dockerignore'
-      - 'LICENSE'
+    paths-ignore: *ignore_paths
 
 concurrency:
   group: e2e-${{ github.event.pull_request.head.ref }}
