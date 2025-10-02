@@ -30,7 +30,7 @@ jobs:
   update-check-status:
     needs: e2e-tests
     runs-on: ubuntu-latest
-    if: needs.e2e-tests.result == 'success' && github.event_name == 'repository_dispatch'
+    if: always() && github.event_name == 'repository_dispatch'
     steps:
       - uses: actions/github-script@v6
         env:
