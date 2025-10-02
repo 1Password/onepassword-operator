@@ -44,10 +44,10 @@ jobs:
               ref: process.env.ref
             });
 
-            const check = checks.check_runs.filter(c => c.name === 'E2E Tests');
+            const check = checks.check_runs.filter(c => c.name === process.env.job);
 
             if (check.length === 0) {
-              console.log('No check run found with name "E2E Tests"');
+              console.log('No check run found with name "E2E Tests [reusable]"');
               console.log('Available check runs:', checks.check_runs.map(c => c.name));
               throw new Error('No matching check run found');
             }
