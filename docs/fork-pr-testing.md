@@ -6,7 +6,7 @@ This document explains how to test external pull requests using the dispatch act
 
 The testing system consists of three main workflows:
 
-1. **E2E Tests [triggered by maintainer]** (`test-e2e.yml`) - Runs automatically for internal PRs, requires approval for external PRs
+1. **E2E Tests** (`test-e2e.yml`) - Runs automatically for internal PRs, requires approval for external PRs
 2. **Ok To Test** (`ok-to-test.yml`) - Processes slash commands to trigger fork testing
 3. **E2E tests [fork]** (`test-e2e-fork.yml`) - Triggered manually via slash commands for external PRs
 
@@ -53,18 +53,18 @@ Once the initial checks have run (and failed), maintainers can test the PR using
 4. **Workflow Execution**
    The fork workflow runs two jobs:
    
-   **a) `e2e-tests` job** (conditional)
+   **a) `run-e2e-tests` job** (conditional)
    - Only runs if:
      - Event is `repository_dispatch`
      - SHA parameter is not empty
      - PR head SHA contains the provided SHA
-   - Calls the reusable `e2e-tests.yml` workflow
+   - Calls the reusable `run-e2e-tests.yml` workflow
    - Runs the actual E2E tests if conditions are met
    
    **b) `update-check-status` job** (conditional)
    - Runs after `e2e-tests` completes
-   - Updates the existing check for job named "e2e-tests"
-   - Sets the conclusion based on `e2e-tests` result:
+   - Updates the existing check for job named "run-e2e-tests" from 'test-e2e.yml' workflow
+   - Sets the conclusion based on `run-e2e-tests` result:
      - ✅ **Success** if tests pass
      - ❌ **Failure** if tests fail
 
@@ -96,7 +96,7 @@ Once the initial checks have run (and failed), maintainers can test the PR using
 ## Workflow Files
 
 - **`.github/workflows/ok-to-test.yml`** - Ok To Test - Slash command processor
-- **`.github/workflows/test-e2e.yml`** - E2E Tests [triggered by maintainer] - Initial PR checks
+- **`.github/workflows/test-e2e.yml`** - E2E Tests - Initial PR checks
 - **`.github/workflows/test-e2e-fork.yml`** - E2E tests [fork] - Dispatch action handler
 - **`.github/workflows/e2e-tests.yml`** - E2E Tests [reusable] - Reusable workflow for actual testing
 
