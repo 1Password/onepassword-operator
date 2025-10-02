@@ -1,4 +1,4 @@
-name: E2E Tests [triggered by maintainer]
+name: E2E Tests
 
 on:
   pull_request:
