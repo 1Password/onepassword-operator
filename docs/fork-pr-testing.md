@@ -67,7 +67,6 @@ Once the initial checks have run (and failed), maintainers can test the PR using
    - Sets the conclusion based on `e2e-tests` result:
      - ✅ **Success** if tests pass
      - ❌ **Failure** if tests fail
-     - ⏭️ **Skipped** if e2e-tests was skipped
 
 ## Troubleshooting
 
@@ -107,5 +106,4 @@ Once the initial checks have run (and failed), maintainers can test the PR using
 - [ ] Workflow approved to run (if required)
 - [ ] Slash command posted with valid SHA
 - [ ] Dispatch action triggered successfully
-- [ ] E2E Tests [reusable] check run updated with correct conclusion
-- [ ] PR shows both original and updated check runs
+- [ ] `check-external-pr` check run updated with correct conclusion
