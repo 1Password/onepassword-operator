@@ -36,7 +36,7 @@ jobs:
         env:
           ref: ${{ github.event.client_payload.pull_request.head.sha }}
           conclusion: ${{ needs.e2e-tests.result }}
-          job: e2e-tests
+          job: check-external-pr
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
