@@ -1,4 +1,4 @@
-# Write comments "/ok-to-test <hash>" on a pull request. This will emit a repository_dispatch event.
+# Write comments "/ok-to-test sha=<hash>" on a pull request. This will emit a repository_dispatch event.
 name: Ok To Test
 
 on:
