@@ -4,15 +4,18 @@ go 1.24.0
 
 toolchain go1.24.5
 
+// In main go.mod, add this replace directive:
+replace github.com/1Password/onepassword-operator/pkg/testhelper => ./pkg/testhelper
+
 require (
 	github.com/1Password/connect-sdk-go v1.5.3
+	github.com/1Password/onepassword-operator/pkg/testhelper v0.0.0-00010101000000-000000000000
 	github.com/1password/onepassword-sdk-go v0.3.1
 	github.com/go-logr/logr v1.4.2
 	github.com/onsi/ginkgo/v2 v2.22.0
 	github.com/onsi/gomega v1.36.1
 	github.com/stretchr/testify v1.10.0
 	k8s.io/api v0.33.0
-	k8s.io/apiextensions-apiserver v0.33.0
 	k8s.io/apimachinery v0.33.0
 	k8s.io/client-go v0.33.0
 	k8s.io/kubectl v0.29.0
@@ -103,6 +106,7 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	k8s.io/apiextensions-apiserver v0.33.0 // indirect
 	k8s.io/apiserver v0.33.0 // indirect
 	k8s.io/component-base v0.33.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
