@@ -36,6 +36,7 @@ jobs:
         env:
           ref: ${{ github.event.client_payload.pull_request.head.sha }}
           conclusion: ${{ needs.e2e-tests.result }}
+          job: e2e-tests
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -44,13 +45,7 @@ jobs:
               ref: process.env.ref
             });
 
-            const check = checks.check_runs.filter(c => c.name === 'e2e-tests');
-
-            if (check.length === 0) {
-              console.log('No check run found with name "e2e-tests"');
-              console.log('Available check runs:', checks.check_runs.map(c => c.name));
-              throw new Error('No matching check run found');
-            }
+            const check = checks.check_runs.filter(c => c.name === process.env.job);
 
             const { data: result } = await github.rest.checks.update({
               ...context.repo,
