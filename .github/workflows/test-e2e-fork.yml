@@ -46,7 +46,7 @@ jobs:
             // update the 'check-external-pr' check run
             const externalCheck = checks.check_runs.filter(c => c.name === 'check-external-pr');
 
-            const { data: result } = await github.rest.checks.update({
+            const { data: externalCheckUpdateResult } = await github.rest.checks.update({
               ...context.repo,
               check_run_id: externalCheck[0].id,
               status: 'completed',
@@ -56,11 +56,11 @@ jobs:
             // update the 'run-e2e-tests' check run from 'test-e2e.yml' workflow
             const e2eTestCheck = checks.check_runs.filter(c => c.name === 'run-e2e-tests');
 
-            const { data: result } = await github.rest.checks.update({
+            const { data: e2eTestCheckResult } = await github.rest.checks.update({
               ...context.repo,
               check_run_id: e2eTestCheck[0].id,
               status: 'completed',
               conclusion: 'success'
             });
 
-            return null;
+            return [externalCheckUpdateResult, e2eTestCheckResult];
