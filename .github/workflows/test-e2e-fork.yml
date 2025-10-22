@@ -35,7 +35,6 @@ jobs:
       - uses: actions/github-script@v6
         env:
           ref: ${{ github.event.client_payload.pull_request.head.sha }}
-          conclusion: ${{ needs.run-e2e-tests.result }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -45,23 +44,23 @@ jobs:
             });
 
             // update the 'check-external-pr' check run
-            const check = checks.check_runs.filter(c => c.name === 'check-external-pr');
+            const externalCheck = checks.check_runs.filter(c => c.name === 'check-external-pr');
 
             const { data: result } = await github.rest.checks.update({
               ...context.repo,
-              check_run_id: check[0].id,
+              check_run_id: externalCheck[0].id,
               status: 'completed',
-              conclusion: process.env.conclusion
+              conclusion: 'success'
             });
 
             // update the 'run-e2e-tests' check run from 'test-e2e.yml' workflow
-            const check = checks.check_runs.filter(c => c.name === 'run-e2e-tests');
+            const e2eTestCheck = checks.check_runs.filter(c => c.name === 'run-e2e-tests');
 
             const { data: result } = await github.rest.checks.update({
               ...context.repo,
-              check_run_id: check[0].id,
+              check_run_id: e2eTestCheck[0].id,
               status: 'completed',
-              conclusion: process.env.conclusion
+              conclusion: 'success'
             });
 
             return null;
