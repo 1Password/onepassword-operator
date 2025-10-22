@@ -24,7 +24,7 @@ When a PR is created or updated:
 
 **Steps for maintainers:**
 1. Go to the PR page
-2. Click **"Approve workflow to run"** button
+2. Click **"Approve workflow to run"** button. For contributors who have made more than one contribution, workflows will start automatically after approval. 
 3. The workflow will then execute
 
 **Note**: The `test-e2e.yml` workflow will still fail for external PRs even after approval, as it's designed to prevent automatic execution. Need to use the slash command instead.
@@ -41,7 +41,7 @@ Once the initial checks have run (and failed), maintainers can test the PR using
    ```
    /ok-to-test sha=<commit-sha>
    ```
-   Replace `<commit-sha>` with the actual commit SHA from the PR.
+   Replace `<commit-sha>` with the latest commit SHA from the PR.
    
    **Note**: Use the short SHA.
 
