@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true # cancel previous job runs for the same branch
 
 jobs:
-  e2e-tests:
+  run-e2e-tests-fork:
     uses: ./.github/workflows/e2e-tests.yml
     if: |
       github.event_name == 'repository_dispatch' &&
@@ -28,14 +28,14 @@ jobs:
       OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
 
   update-check-status:
-    needs: e2e-tests
+    needs: run-e2e-tests-fork
     runs-on: ubuntu-latest
     if: always() && github.event_name == 'repository_dispatch'
     steps:
       - uses: actions/github-script@v6
         env:
           ref: ${{ github.event.client_payload.pull_request.head.sha }}
-          conclusion: ${{ needs.e2e-tests.result }}
+          conclusion: ${{ needs.run-e2e-tests-fork.result }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -44,13 +44,24 @@ jobs:
               ref: process.env.ref
             });
 
-            const check = checks.check_runs.filter(c => c.name === 'e2e-test');
+            // update the 'check-external-pr' check run
+            const externalCheck = checks.check_runs.filter(c => c.name === 'check-external-pr');
 
-            const { data: result } = await github.rest.checks.update({
+            const { data: externalCheckUpdateResult } = await github.rest.checks.update({
               ...context.repo,
-              check_run_id: check[0].id,
+              check_run_id: externalCheck[0].id,
+              status: 'completed',
+              conclusion: 'success'
+            });
+
+            // update the 'run-e2e-tests' check run from 'test-e2e.yml' workflow
+            const e2eTestCheck = checks.check_runs.filter(c => c.name === 'run-e2e-tests');
+
+            const { data: e2eTestCheckResult } = await github.rest.checks.update({
+              ...context.repo,
+              check_run_id: e2eTestCheck[0].id,
               status: 'completed',
               conclusion: process.env.conclusion
             });
 
-            return result;
+            return [externalCheckUpdateResult, e2eTestCheckResult];

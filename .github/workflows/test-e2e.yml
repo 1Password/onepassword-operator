@@ -33,7 +33,7 @@ jobs:
           fi
           echo "✅ Internal PR detected. Proceeding with tests."
 
-  e2e-test:
+  run-e2e-tests:
     needs: check-external-pr
     if: always() && (needs.check-external-pr.result == 'success' || github.event_name != 'pull_request')
     uses: ./.github/workflows/e2e-tests.yml
