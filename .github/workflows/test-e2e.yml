@@ -37,16 +37,28 @@ jobs:
             # For pull_request events, check if PR is from external fork
             echo "PR head repo: ${{ github.event.pull_request.head.repo.full_name }}"
             if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
-              echo "condition=pr-creation-forked" >> $GITHUB_OUTPUT
-              echo "Setting condition=true (external fork PR creation)"
+              echo "condition=skip" >> $GITHUB_OUTPUT
+              echo "Setting condition=skip (external fork PR creation)"
             else
               echo "condition=pr-creation-maintainer" >> $GITHUB_OUTPUT
-              echo "Setting condition=false (internal PR creation)"
+              echo "Setting condition=pr-creation-maintainer (internal PR creation)"
             fi
           else
-            # For repository_dispatch events (ok-to-test), always return dispatch event
-            echo "condition=dispatch-event" >> $GITHUB_OUTPUT
-            echo "Setting condition=dispatch-event (external fork via dispatch)"
+            # For repository_dispatch events (ok-to-test), check if sha matches
+            SHA_PARAM="${{ github.event.client_payload.slash_command.args.named.sha }}"
+            PR_HEAD_SHA="${{ github.event.client_payload.pull_request.head.sha }}"
+            
+            echo "Checking dispatch event conditions..."
+            echo "SHA from command: $SHA_PARAM"
+            echo "PR head SHA: $PR_HEAD_SHA"
+            
+            if [ -n "$SHA_PARAM" ] && [[ "$PR_HEAD_SHA" == "$SHA_PARAM"* ]]; then
+              echo "condition=dispatch-event" >> $GITHUB_OUTPUT
+              echo "Setting condition=dispatch-event (sha matches)"
+            else
+              echo "condition=skip" >> $GITHUB_OUTPUT
+              echo "Setting condition=skip (sha does not match or empty)"
+            fi
           fi
 
   # Run tests for:
@@ -57,14 +69,7 @@ jobs:
     if: |
         (needs.check-external-pr.outputs.condition == 'pr-creation-maintainer')
         ||
-        (github.event_name == 'repository_dispatch' && 
-         needs.check-external-pr.outputs.condition == 'dispatch-event' &&
-         github.event.client_payload.slash_command.args.named.sha != '' &&
-         contains(
-            github.event.client_payload.pull_request.head.sha,
-            github.event.client_payload.slash_command.args.named.sha
-         )
-        )
+        (needs.check-external-pr.outputs.condition == 'dispatch-event')
     uses: ./.github/workflows/e2e-tests.yml
     secrets:
       OP_CONNECT_CREDENTIALS: ${{ secrets.OP_CONNECT_CREDENTIALS }}
