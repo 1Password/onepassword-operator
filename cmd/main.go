@@ -100,6 +100,7 @@ func main() {
 	var probeAddr string
 	var secureMetrics bool
 	var enableHTTP2 bool
+	var enableAnnotations bool
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "8080",
 		"The address the metrics endpoint binds to. "+
@@ -119,6 +120,8 @@ func main() {
 		"The name of the metrics server key file.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics")
+	flag.BoolVar(&enableAnnotations, "enable-annotations", false,
+		"If set, operator will add annotations to resources it manages.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -289,9 +292,10 @@ func main() {
 	}
 
 	if err = (&controller.OnePasswordItemReconciler{
-		Client:   mgr.GetClient(),
-		Scheme:   mgr.GetScheme(),
-		OpClient: opClient,
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		OpClient:          opClient,
+		EnableAnnotations: enableAnnotations,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "OnePasswordItem")
 		os.Exit(1)
