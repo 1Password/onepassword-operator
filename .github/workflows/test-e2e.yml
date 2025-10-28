@@ -18,7 +18,7 @@ on:
     types: [ok-to-test]
 
 concurrency:
-  group: e2e-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.pull_request.head.ref || github.event.pull_request.head.ref }}
+  group: ${{ github.event_name == 'pull_request' && format('e2e-{0}', github.event.pull_request.head.ref) || format('e2e-{0}', github.event.client_payload.pull_request.head.ref) }}
   cancel-in-progress: true  # cancel previous job runs for the same branch
 
 jobs:
@@ -30,10 +30,20 @@ jobs:
       - name: Check if PR is from external contributor
         id: check
         run: |
-          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
-            echo "is_external=true" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            # For pull_request events, check if PR is from external fork
+            if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+              echo "is_external=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_external=false" >> $GITHUB_OUTPUT
+            fi
           else
-            echo "is_external=false" >> $GITHUB_OUTPUT
+            # For repository_dispatch events (ok-to-test), check client_payload
+            if [ "${{ github.event.client_payload.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+              echo "is_external=true" >> $GITHUB_OUTPUT
+            else
+              echo "is_external=false" >> $GITHUB_OUTPUT
+            fi
           fi
 
   # Run tests for:
