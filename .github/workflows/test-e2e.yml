@@ -83,7 +83,7 @@ jobs:
   comment-pr:
     needs: [check-external-pr, e2e-test]
     runs-on: ubuntu-latest
-    if: github.event_name == 'repository_dispatch' && needs.check-external-pr.outputs.condition == 'dispatch-event'
+    if: always() && needs.check-external-pr.outputs.condition == 'dispatch-event'
     permissions:
       pull-requests: write
     steps:
@@ -96,6 +96,8 @@ jobs:
         with:
           issue-number: ${{ github.event.client_payload.pull_request.number }}
           body: |
-            E2E tests completed. [View test run output][1]
+            ${{ needs.e2e-test.result == 'success' && '✅ E2E tests passed.' || needs.e2e-test.result == 'failure' && '❌ E2E tests failed.' || '⚠️ E2E tests completed.' }}
+            
+            [View test run output][1]
 
             [1]: ${{ steps.vars.outputs.run-url }}
