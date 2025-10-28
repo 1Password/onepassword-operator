@@ -79,3 +79,23 @@ jobs:
       OP_CONNECT_CREDENTIALS: ${{ secrets.OP_CONNECT_CREDENTIALS }}
       OP_CONNECT_TOKEN: ${{ secrets.OP_CONNECT_TOKEN }}
       OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+  
+  comment-pr:
+    needs: [check-external-pr, e2e-test]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'repository_dispatch' && needs.check-external-pr.outputs.condition == 'dispatch-event'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Create URL to the run output
+        id: vars
+        run: echo "run-url=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> $GITHUB_OUTPUT
+      
+      - name: Create comment on PR
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ github.event.client_payload.pull_request.number }}
+          body: |
+            E2E tests completed. [View test run output][1]
+
+            [1]: ${{ steps.vars.outputs.run-url }}
