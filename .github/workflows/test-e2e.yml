@@ -14,14 +14,18 @@ on:
   push:
     branches: [main]
     paths-ignore: *ignore_paths
+  repository_dispatch:
+    types: [ok-to-test]
 
 concurrency:
-  group: e2e-${{ github.event.pull_request.head.ref }}
+  group: e2e-${{ github.event_name == 'repository_dispatch' && github.event.client_payload.pull_request.head.ref || github.event.pull_request.head.ref }}
   cancel-in-progress: true  # cancel previous job runs for the same branch
 
 jobs:
   check-external-pr:
     runs-on: ubuntu-latest
+    outputs:
+      is_external: ${{ steps.check.outputs.is_external }}
     steps:
       - name: Check if PR is from external contributor
         id: check
@@ -48,6 +52,7 @@ jobs:
             github.event.client_payload.pull_request.head.sha,
             github.event.client_payload.slash_command.args.named.sha
          )
+        )
       )
     uses: ./.github/workflows/e2e-tests.yml
     secrets:
