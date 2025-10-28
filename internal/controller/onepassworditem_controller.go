@@ -188,7 +188,7 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 		UID:        resource.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, resource.Namespace, item, autoRestart, annotations, labels, secretType, ownerRef)
+	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, resource.Namespace, item, autoRestart, labels, annotations, secretType, ownerRef)
 }
 
 func (r *OnePasswordItemReconciler) updateStatus(ctx context.Context, resource *onepasswordv1.OnePasswordItem, err error) error {
