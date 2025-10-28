@@ -22,20 +22,33 @@ concurrency:
 jobs:
   check-external-pr:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - name: Check if PR is from external contributor
+        id: check
         run: |
           if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
-            echo "❌ External PR detected. This workflow requires approval from a maintainer."
-            echo "Please ask a maintainer to run '/ok-to-test' command to trigger the fork workflow."
-            exit 1
+            echo "is_external=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_external=false" >> $GITHUB_OUTPUT
           fi
-          echo "✅ Internal PR detected. Proceeding with tests."
 
-  run-e2e-tests:
+  # Run tests for:
+  # 1. Internal PRs on pull_request events
+  # 2. External PRs on repository_dispatch (ok-to-test) events
+  e2e-test:
     needs: check-external-pr
-    if: always() && (needs.check-external-pr.result == 'success' || github.event_name != 'pull_request')
+    if: |
+      always() && (
+        (github.event_name == 'pull_request' && needs.check-external-pr.outputs.is_external == 'false')
+        ||
+        (github.event_name == 'repository_dispatch' && 
+         needs.check-external-pr.outputs.is_external == 'true' &&
+         github.event.client_payload.slash_command.args.named.sha != '' &&
+         contains(
+            github.event.client_payload.pull_request.head.sha,
+            github.event.client_payload.slash_command.args.named.sha
+         )
+      )
     uses: ./.github/workflows/e2e-tests.yml
     secrets:
       OP_CONNECT_CREDENTIALS: ${{ secrets.OP_CONNECT_CREDENTIALS }}
