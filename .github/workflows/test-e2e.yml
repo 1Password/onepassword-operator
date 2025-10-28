@@ -15,7 +15,7 @@ on:
     branches: [main]
     paths-ignore: *ignore_paths
   repository_dispatch:
-    types: [ok-to-test]
+    types: [ ok-to-test-command ]
 
 concurrency:
   group: ${{ github.event_name == 'pull_request' && format('e2e-{0}', github.event.pull_request.head.ref) || format('e2e-{0}', github.event.client_payload.pull_request.head.ref) }}
