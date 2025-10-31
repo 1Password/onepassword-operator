@@ -18,7 +18,10 @@ on:
     types: [ ok-to-test-command ]
 
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('e2e-{0}', github.event.pull_request.head.ref) || format('e2e-{0}', github.event.client_payload.pull_request.head.ref) }}
+  group: >-
+    ${{ github.event_name == 'pull_request' && 
+          format('e2e-{0}', github.event.pull_request.head.ref) || 
+          format('e2e-{0}', github.event.client_payload.pull_request.head.ref) }}
   cancel-in-progress: true  # cancel previous job runs for the same branch
 
 jobs:
@@ -96,8 +99,12 @@ jobs:
         with:
           issue-number: ${{ github.event.client_payload.pull_request.number }}
           body: |
-            ${{ needs.e2e-test.result == 'success' && '✅ E2E tests passed.' || needs.e2e-test.result == 'failure' && '❌ E2E tests failed.' || '⚠️ E2E tests completed.' }}
-            
+            ${{ 
+                needs.e2e-test.result == 'success' && '✅ E2E tests passed.' || 
+                needs.e2e-test.result == 'failure' && '❌ E2E tests failed.' || 
+                '⚠️ E2E tests completed.'
+            }}
+
             [View test run output][1]
 
             [1]: ${{ steps.vars.outputs.run-url }}
