@@ -100,8 +100,8 @@ jobs:
           issue-number: ${{ github.event.client_payload.pull_request.number }}
           body: |
             ${{ 
-                needs.e2e-test.result == 'success' && '✅ E2E tests passed.' || 
-                needs.e2e-test.result == 'failure' && '❌ E2E tests failed.' || 
+                needs.e2e.result == 'success' && '✅ E2E tests passed.' || 
+                needs.e2e.result == 'failure' && '❌ E2E tests failed.' || 
                 '⚠️ E2E tests completed.'
             }}
 
