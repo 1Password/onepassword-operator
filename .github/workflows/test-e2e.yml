@@ -14,30 +14,97 @@ on:
   push:
     branches: [main]
     paths-ignore: *ignore_paths
+  repository_dispatch:
+    types: [ ok-to-test-command ]
 
 concurrency:
-  group: e2e-${{ github.event.pull_request.head.ref }}
+  group: >-
+    ${{ github.event_name == 'pull_request' && 
+          format('e2e-{0}', github.event.pull_request.head.ref) || 
+          format('e2e-{0}', github.event.client_payload.pull_request.head.ref) }}
   cancel-in-progress: true  # cancel previous job runs for the same branch
 
 jobs:
   check-external-pr:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
+    outputs:
+      condition: ${{ steps.check.outputs.condition }}
     steps:
       - name: Check if PR is from external contributor
+        id: check
         run: |
-          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
-            echo "❌ External PR detected. This workflow requires approval from a maintainer."
-            echo "Please ask a maintainer to run '/ok-to-test' command to trigger the fork workflow."
-            exit 1
+          echo "Event name: ${{ github.event_name }}"
+          echo "Repository: ${{ github.repository }}"
+          
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            # For pull_request events, check if PR is from external fork
+            echo "PR head repo: ${{ github.event.pull_request.head.repo.full_name }}"
+            if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+              echo "condition=skip" >> $GITHUB_OUTPUT
+              echo "Setting condition=skip (external fork PR creation)"
+            else
+              echo "condition=pr-creation-maintainer" >> $GITHUB_OUTPUT
+              echo "Setting condition=pr-creation-maintainer (internal PR creation)"
+            fi
+          elif [ "${{ github.event_name }}" == "repository_dispatch" ]; then
+            # For repository_dispatch events (ok-to-test), check if sha matches
+            SHA_PARAM="${{ github.event.client_payload.slash_command.args.named.sha }}"
+            PR_HEAD_SHA="${{ github.event.client_payload.pull_request.head.sha }}"
+            
+            echo "Checking dispatch event conditions..."
+            echo "SHA from command: $SHA_PARAM"
+            echo "PR head SHA: $PR_HEAD_SHA"
+            
+            if [ -n "$SHA_PARAM" ] && [[ "$PR_HEAD_SHA" == *"$SHA_PARAM"* ]]; then
+              echo "condition=dispatch-event" >> $GITHUB_OUTPUT
+              echo "Setting condition=dispatch-event (sha matches)"
+            else
+              echo "condition=skip" >> $GITHUB_OUTPUT
+              echo "Setting condition=skip (sha does not match or empty)"
+            fi
+          else
+            # Unknown event type
+            echo "condition=skip" >> $GITHUB_OUTPUT
+            echo "Setting condition=skip (unknown event type: ${{ github.event_name }})"
           fi
-          echo "✅ Internal PR detected. Proceeding with tests."
 
-  e2e-test:
+  # Run tests for:
+  # 1. Internal PRs on pull_request events
+  # 2. External PRs on repository_dispatch (ok-to-test) events
+  e2e:
     needs: check-external-pr
-    if: always() && (needs.check-external-pr.result == 'success' || github.event_name != 'pull_request')
+    if: |
+        (needs.check-external-pr.outputs.condition == 'pr-creation-maintainer')
+        ||
+        (needs.check-external-pr.outputs.condition == 'dispatch-event')
     uses: ./.github/workflows/e2e-tests.yml
     secrets:
       OP_CONNECT_CREDENTIALS: ${{ secrets.OP_CONNECT_CREDENTIALS }}
       OP_CONNECT_TOKEN: ${{ secrets.OP_CONNECT_TOKEN }}
       OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+  
+  comment-pr:
+    needs: [check-external-pr, e2e]
+    runs-on: ubuntu-latest
+    if: always() && needs.check-external-pr.outputs.condition == 'dispatch-event'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Create URL to the run output
+        id: vars
+        run: echo "run-url=https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" >> $GITHUB_OUTPUT
+      
+      - name: Create comment on PR
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          issue-number: ${{ github.event.client_payload.pull_request.number }}
+          body: |
+            ${{ 
+                needs.e2e-test.result == 'success' && '✅ E2E tests passed.' || 
+                needs.e2e-test.result == 'failure' && '❌ E2E tests failed.' || 
+                '⚠️ E2E tests completed.'
+            }}
+
+            [View test run output][1]
+
+            [1]: ${{ steps.vars.outputs.run-url }}
