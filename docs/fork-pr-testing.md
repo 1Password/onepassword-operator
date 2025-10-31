@@ -7,7 +7,7 @@ This document explains how testing works for external pull requests from forks.
 The testing system consists of two main workflows:
 
 1. **E2E Tests** (`test-e2e.yml`) - Runs automatically for internal PRs, need manual trigger on external PRs.
-2. **Ok To Test** (`ok-to-test.yml`) - Dispatches `repository_dispatch` event when maintainer put's `/ok-to-test sha=<commit hash>` comment in the forked PR thread.
+2. **Ok To Test** (`ok-to-test.yml`) - Dispatches `repository_dispatch` event when maintainer puts the `/ok-to-test sha=<commit hash>` comment in the forked PR thread.
 
 ## How It Works
 
@@ -21,7 +21,7 @@ For the PR created by external contributor `E2E Test` workflow **won't** start a
 Maintainer should make a sanity check of the changes and run it manually by:
 1. Putting a comment `/ok-to-test sha=<latest commit hash>` in the PR thread.
 2. `E2E Test` workflow starts.
-3. After `E2E Test` workflow finishes, the commit with a link and workflow status will appear in the thread.
+3. After `E2E Test` workflow finishes, a comment with a link to the workflow, along with its status will be posted in the PR.
 4. Maintainer can merge PR or request the changes based on the `E2E Test` results.
 
 
