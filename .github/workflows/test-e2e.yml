@@ -68,7 +68,7 @@ jobs:
   # Run tests for:
   # 1. Internal PRs on pull_request events
   # 2. External PRs on repository_dispatch (ok-to-test) events
-  e2e-test:
+  e2e:
     needs: check-external-pr
     if: |
         (needs.check-external-pr.outputs.condition == 'pr-creation-maintainer')
@@ -81,7 +81,7 @@ jobs:
       OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
   
   comment-pr:
-    needs: [check-external-pr, e2e-test]
+    needs: [check-external-pr, e2e]
     runs-on: ubuntu-latest
     if: always() && needs.check-external-pr.outputs.condition == 'dispatch-event'
     permissions:
