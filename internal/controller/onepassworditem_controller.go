@@ -53,8 +53,9 @@ var finalizer = "onepassword.com/finalizer.secret"
 // OnePasswordItemReconciler reconciles a OnePasswordItem object
 type OnePasswordItemReconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	OpClient opclient.Client
+	Scheme            *runtime.Scheme
+	OpClient          opclient.Client
+	EnableAnnotations bool
 }
 
 // +kubebuilder:rbac:groups=onepassword.com,resources=onepassworditems,verbs=get;list;watch;create;update;patch;delete
@@ -163,6 +164,12 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 	labels := resource.Labels
 	secretType := resource.Type
 	autoRestart := resource.Annotations[op.RestartDeploymentsAnnotation]
+	var annotations map[string]string
+	if r.EnableAnnotations {
+		annotations = resource.Annotations
+	} else {
+		annotations = nil
+	}
 
 	item, err := op.GetOnePasswordItemByPath(ctx, r.OpClient, resource.Spec.ItemPath)
 	if err != nil {
@@ -181,7 +188,7 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 		UID:        resource.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, resource.Namespace, item, autoRestart, labels, secretType, ownerRef)
+	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, resource.Namespace, item, autoRestart, labels, annotations, secretType, ownerRef)
 }
 
 func (r *OnePasswordItemReconciler) updateStatus(ctx context.Context, resource *onepasswordv1.OnePasswordItem, err error) error {

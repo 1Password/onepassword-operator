@@ -37,14 +37,16 @@ func CreateKubernetesSecretFromItem(
 	item *model.Item,
 	autoRestart string,
 	labels map[string]string,
+	secretAnnotations map[string]string,
 	secretType string,
 	ownerRef *metav1.OwnerReference,
 ) error {
 	itemVersion := fmt.Sprint(item.Version)
-	secretAnnotations := map[string]string{
-		VersionAnnotation:  itemVersion,
-		ItemPathAnnotation: fmt.Sprintf("vaults/%v/items/%v", item.VaultID, item.ID),
+	if secretAnnotations == nil {
+		secretAnnotations = map[string]string{}
 	}
+	secretAnnotations[VersionAnnotation] = itemVersion
+	secretAnnotations[ItemPathAnnotation] = fmt.Sprintf("vaults/%v/items/%v", item.VaultID, item.ID)
 
 	if autoRestart != "" {
 		_, err := utils.StringToBool(autoRestart)
