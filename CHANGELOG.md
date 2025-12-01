@@ -12,6 +12,15 @@
 
 ---
 
+[//]: # (START/v1.10.0)
+# v1.10.0
+
+## Features
+  * Display READY column for onepassword CRD. {#223}
+  * Introduce '--enable-annotations' flag add custom annotations on generated k8s secrets. {#114}
+
+---
+
 [//]: # (START/v1.9.1)
 # v1.9.1
 
