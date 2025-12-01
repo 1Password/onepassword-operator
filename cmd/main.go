@@ -75,7 +75,7 @@ const (
 	restartDeploymentsEnvVariable = "AUTO_RESTART"
 	defaultPollingInterval        = 600
 
-	annotationRegExpString = "^operator.1password.io\\/[a-zA-Z\\.]+"
+	annotationRegExpString = "^operator\\.1password\\.io\\/[a-zA-Z\\.]+"
 )
 
 func printVersion() {
