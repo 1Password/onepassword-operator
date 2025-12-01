@@ -162,6 +162,38 @@ func TestBuildKubernetesSecretData(t *testing.T) {
 	compareFields(fields, secretData, t)
 }
 
+func TestBuildKubernetesSecretDataWithEmptyValues(t *testing.T) {
+	fields := []model.ItemField{
+		{Label: "token", Value: "secret-token"},
+		{Label: "runner-token", Value: ""},
+		{Label: "another-field", Value: "value"},
+		{Label: "empty-field-2", Value: ""},
+	}
+
+	secretData := BuildKubernetesSecretData(fields, nil)
+
+	// Verify all fields are present, including empty ones
+	if len(secretData) != len(fields) {
+		t.Errorf("Expected %d fields, got %d", len(fields), len(secretData))
+	}
+
+	for _, field := range fields {
+		key := formatSecretDataName(field.Label)
+		value, exists := secretData[key]
+		if !exists {
+			t.Errorf("Field '%s' should be present in secret data", field.Label)
+			continue
+		}
+		if string(value) != field.Value {
+			t.Errorf("Field '%s': expected value '%s', got '%s'", field.Label, field.Value, string(value))
+		}
+		// Verify empty values are empty byte slices (not nil)
+		if field.Value == "" && len(value) != 0 {
+			t.Errorf("Empty field '%s' should have empty byte slice, got length %d", field.Label, len(value))
+		}
+	}
+}
+
 func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	annotationKey := "annotationKey"
 	annotationValue := "annotationValue"
