@@ -16,7 +16,7 @@
 # v1.10.0
 
 ## Fixes
-  * Update Operator to use SDK v1.41.1. {#211}
+  * Improved stability and compatibility by upgrading the Operator SDK to v1.41.1. {#211}
   * Update README to cover multiple items usage. {#60}
   * Fix annotation regexp pattern. {#156}
 
