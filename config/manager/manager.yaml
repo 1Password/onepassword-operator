@@ -1,14 +1,34 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: onepassword-connect-operator
+    app.kubernetes.io/name: namespace
+    app.kubernetes.io/instance: system
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/created-by: onepassword-connect-operator
+    app.kubernetes.io/part-of: onepassword-connect-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: system
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: onepassword-connect-operator
   namespace: system
   labels:
-    name: onepassword-connect-operator
+    control-plane: controller-manager
+    app.kubernetes.io/name: deployment
+    app.kubernetes.io/instance: controller-manager
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/created-by: onepassword-connect-operator
+    app.kubernetes.io/part-of: onepassword-connect-operator
+    app.kubernetes.io/managed-by: kustomize
 spec:
   selector:
     matchLabels:
       name: onepassword-connect-operator
+      control-plane: onepassword-connect-operator
   replicas: 1
   template:
     metadata:
@@ -16,7 +36,28 @@ spec:
         kubectl.kubernetes.io/default-container: manager
       labels:
         name: onepassword-connect-operator
+        control-plane: onepassword-connect-operator
     spec:
+      # TODO(user): Uncomment the following code to configure the nodeAffinity expression
+      # according to the platforms which are supported by your solution.
+      # It is considered best practice to support multiple architectures. You can
+      # build your manager image using the makefile target docker-buildx.
+      # affinity:
+      #   nodeAffinity:
+      #     requiredDuringSchedulingIgnoredDuringExecution:
+      #       nodeSelectorTerms:
+      #         - matchExpressions:
+      #           - key: kubernetes.io/arch
+      #             operator: In
+      #             values:
+      #               - amd64
+      #               - arm64
+      #               - ppc64le
+      #               - s390x
+      #           - key: kubernetes.io/os
+      #             operator: In
+      #             values:
+      #               - linux
       securityContext:
         runAsNonRoot: true
         # TODO(user): For common cases that do not require escalating privileges
@@ -31,33 +72,42 @@ spec:
         - /manager
         args:
         - --leader-elect
+        - --health-probe-bind-address=:8081
         image: 1password/onepassword-operator:latest
         name: manager
         env:
-          - name: WATCH_NAMESPACE
-            value: "default"
+          - name: OPERATOR_NAME
+            value: "onepassword-connect-operator"
           - name: POD_NAME
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
-          - name: OPERATOR_NAME
-            value: "onepassword-connect-operator"
-          - name: OP_CONNECT_HOST
-            value: "http://onepassword-connect:8080"
+          - name: WATCH_NAMESPACE
+            value: "default"
           - name: POLLING_INTERVAL
             value: "10"
+          - name: AUTO_RESTART
+            value: "false"
+          - name: OP_CONNECT_HOST
+            value: "http://onepassword-connect:8080"
           - name: OP_CONNECT_TOKEN
             valueFrom:
               secretKeyRef:
                 name: onepassword-token
                 key: token
-          - name: AUTO_RESTART
+          - name: MANAGE_CONNECT
             value: "false"
+#            Uncomment the following lines to enable service account token and comment out the OP_CONNECT_TOKEN, OP_CONNECT_HOST and MANAGE_CONNECT env vars.
+#          - name: OP_SERVICE_ACCOUNT_TOKEN
+#            valueFrom:
+#              secretKeyRef:
+#                name: onepassword-service-account-token
+#                key: token
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
             drop:
-              - "ALL"
+            - "ALL"
         livenessProbe:
           httpGet:
             path: /healthz
@@ -75,9 +125,9 @@ spec:
         resources:
           limits:
             cpu: 500m
-            memory: 128Mi
+            memory: 512Mi
           requests:
-            cpu: 10m
-            memory: 64Mi
+            cpu: 100m
+            memory: 128Mi
       serviceAccountName: onepassword-connect-operator
       terminationGracePeriodSeconds: 10

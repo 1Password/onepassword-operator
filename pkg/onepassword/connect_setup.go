@@ -15,16 +15,16 @@ import (
 )
 
 var logConnectSetup = logf.Log.WithName("ConnectSetup")
-var deploymentPath = "config/connect/deployment.yaml"
-var servicePath = "config/connect/service.yaml"
+var deploymentPath = "../config/connect/deployment.yaml"
+var servicePath = "../config/connect/service.yaml"
 
-func SetupConnect(kubeClient client.Client, deploymentNamespace string) error {
-	err := setupService(kubeClient, servicePath, deploymentNamespace)
+func SetupConnect(ctx context.Context, kubeClient client.Client, deploymentNamespace string) error {
+	err := setupService(ctx, kubeClient, servicePath, deploymentNamespace)
 	if err != nil {
 		return err
 	}
 
-	err = setupDeployment(kubeClient, deploymentPath, deploymentNamespace)
+	err = setupDeployment(ctx, kubeClient, deploymentPath, deploymentNamespace)
 	if err != nil {
 		return err
 	}
@@ -32,27 +32,40 @@ func SetupConnect(kubeClient client.Client, deploymentNamespace string) error {
 	return nil
 }
 
-func setupDeployment(kubeClient client.Client, deploymentPath string, deploymentNamespace string) error {
+func setupDeployment(
+	ctx context.Context,
+	kubeClient client.Client,
+	deploymentPath string,
+	deploymentNamespace string,
+) error {
 	existingDeployment := &appsv1.Deployment{}
 
 	// check if deployment has already been created
-	err := kubeClient.Get(context.Background(), types.NamespacedName{Name: "onepassword-connect", Namespace: deploymentNamespace}, existingDeployment)
+	err := kubeClient.Get(ctx, types.NamespacedName{
+		Name:      "onepassword-connect",
+		Namespace: deploymentNamespace,
+	}, existingDeployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logConnectSetup.Info("No existing Connect deployment found. Creating Deployment")
-			return createDeployment(kubeClient, deploymentPath, deploymentNamespace)
+			return createDeployment(ctx, kubeClient, deploymentPath, deploymentNamespace)
 		}
 	}
 	return err
 }
 
-func createDeployment(kubeClient client.Client, deploymentPath string, deploymentNamespace string) error {
+func createDeployment(
+	ctx context.Context,
+	kubeClient client.Client,
+	deploymentPath string,
+	deploymentNamespace string,
+) error {
 	deployment, err := getDeploymentToCreate(deploymentPath, deploymentNamespace)
 	if err != nil {
 		return err
 	}
 
-	err = kubeClient.Create(context.Background(), deployment)
+	err = kubeClient.Create(ctx, deployment)
 	if err != nil {
 		return err
 	}
@@ -78,21 +91,29 @@ func getDeploymentToCreate(deploymentPath string, deploymentNamespace string) (*
 	return deployment, nil
 }
 
-func setupService(kubeClient client.Client, servicePath string, deploymentNamespace string) error {
+func setupService(ctx context.Context, kubeClient client.Client, servicePath string, deploymentNamespace string) error {
 	existingService := &corev1.Service{}
 
-	//check if service has already been created
-	err := kubeClient.Get(context.Background(), types.NamespacedName{Name: "onepassword-connect", Namespace: deploymentNamespace}, existingService)
+	// check if service has already been created
+	err := kubeClient.Get(ctx, types.NamespacedName{
+		Name:      "onepassword-connect",
+		Namespace: deploymentNamespace,
+	}, existingService)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			logConnectSetup.Info("No existing Connect service found. Creating Service")
-			return createService(kubeClient, servicePath, deploymentNamespace)
+			return createService(ctx, kubeClient, servicePath, deploymentNamespace)
 		}
 	}
 	return err
 }
 
-func createService(kubeClient client.Client, servicePath string, deploymentNamespace string) error {
+func createService(
+	ctx context.Context,
+	kubeClient client.Client,
+	servicePath string,
+	deploymentNamespace string,
+) error {
 	f, err := os.Open(servicePath)
 	if err != nil {
 		return err
@@ -108,7 +129,7 @@ func createService(kubeClient client.Client, servicePath string, deploymentNames
 		return err
 	}
 
-	err = kubeClient.Create(context.Background(), service)
+	err = kubeClient.Create(ctx, service)
 	if err != nil {
 		return err
 	}

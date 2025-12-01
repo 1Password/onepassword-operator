@@ -1,0 +1,52 @@
+name: E2E Tests [reusable]
+
+on:
+  workflow_call:
+    secrets:
+      OP_CONNECT_CREDENTIALS:
+        description: '1Password Connect credentials'
+        required: true
+      OP_CONNECT_TOKEN:
+        description: '1Password Connect token'
+        required: true
+      OP_SERVICE_ACCOUNT_TOKEN:
+        description: '1Password service account token'
+        required: true
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install dependencies
+        run: go mod tidy
+
+      - name: Create kind cluster
+        uses: helm/kind-action@v1
+        with:
+          cluster_name: onepassword-operator-test-e2e
+
+      # install cli to interact with item in 1Password to update/read using `testhelper/op` package
+      - name: Install 1Password CLI
+        uses: 1password/install-cli-action@v2
+        with:
+          version: 2.32.0
+
+      - name: Create '1password-credentials.json' file
+        env:
+          OP_CONNECT_CREDENTIALS: ${{ secrets.OP_CONNECT_CREDENTIALS }}
+        run: |
+          echo "$OP_CONNECT_CREDENTIALS" > 1password-credentials.json
+
+      - name: Run E2E tests
+        run: make test-e2e
+        env:
+          OP_CONNECT_TOKEN: ${{ secrets.OP_CONNECT_TOKEN }}
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}

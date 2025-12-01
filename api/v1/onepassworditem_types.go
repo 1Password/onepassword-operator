@@ -1,7 +1,7 @@
 /*
 MIT License
 
-Copyright (c) 2020-2022 1Password
+Copyright (c) 2020-2024 1Password
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -67,8 +67,10 @@ type OnePasswordItemStatus struct {
 	Conditions []OnePasswordItemCondition `json:"conditions"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
+// +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
 
 // OnePasswordItem is the Schema for the onepassworditems API
 type OnePasswordItem struct {
@@ -81,7 +83,7 @@ type OnePasswordItem struct {
 	Status OnePasswordItemStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // OnePasswordItemList contains a list of OnePasswordItem
 type OnePasswordItemList struct {

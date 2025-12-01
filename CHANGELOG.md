@@ -12,6 +12,66 @@
 
 ---
 
+[//]: # (START/v1.9.1)
+# v1.9.1
+
+## Fixes
+ * Operator no longer panics when handling 1Password items containing files. {#209}
+
+## Security
+ * HTTP Proxy bypass using IPv6 Zone IDs in golang.org/x/net. {#210}
+ * golang.org/x/net vulnerable to Cross-site Scripting. {#210}
+
+---
+
+[//]: # (START/v1.9.0)
+# v1.9.0
+
+## Features
+  * Enable the Operator to authenticate to 1Password using service accounts. {#160}
+
+## Fixes
+ * Update Operator to use SDK v1.34.1. {#185}
+ * Pass Kubernetes context down to SDK/Connect. {#199}
+
+---
+
+[//]: # (START/v1.8.1)
+# v1.8.1
+
+## Fixes
+ * Upgrade operator to use Operator SDK v1.33.0. {#180}
+
+---
+
+[//]: # (START/v1.8.0)
+# v1.8.0
+
+## Features
+  * Added volume projected detection. Credit to @mmorejon. {#168}
+
+---
+
+[//]: # (START/v1.7.1)
+# v1.7.1
+
+## Fixes
+ * Adjusting logging level on various logs to reduce unnecessary logging. {#164}
+
+---
+
+[//]: # (START/v1.7.0)
+# v1.7.0
+
+## Features
+  * Upgraded operator to version 1.29.0. {#162}
+  * Upgraded Golang version to 1.20. {#161}
+  * Upgraded 1Password Connect version to 1.5.1. {#161}
+  * Added runAsNonRoot and allowPrivalegeEscalation to specs. {#151}
+  * Added code quality improvements. {#146}
+
+---
+
 [//]: # (START/v1.6.0)
 # v1.6.0
 
