@@ -15,6 +15,9 @@
 [//]: # (START/v1.10.0)
 # v1.10.0
 
+## Fixes
+  * Update Operator to use SDK v1.41.1. {#211}
+
 ## Features
   * Display READY column for onepassword CRD. {#223}
   * Introduce '--enable-annotations' flag add custom annotations on generated k8s secrets. {#114}
