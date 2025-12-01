@@ -17,10 +17,13 @@
 
 ## Fixes
   * Update Operator to use SDK v1.41.1. {#211}
+  * Update README to cover multiple items usage. {#60}
+  * Fix annotation regexp pattern. {#156}
 
 ## Features
   * Display READY column for onepassword CRD. {#223}
   * Introduce '--enable-annotations' flag add custom annotations on generated k8s secrets. {#114}
+  * Allow to create secrets with empty value fields. {#145}
 
 ---
 
