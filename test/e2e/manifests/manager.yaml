@@ -1,0 +1,99 @@
+# This manager file is used for e2e tests.
+# It will be copied to `config/manager` and be used when deploying the operator in e2e tests
+# The purpose of it is to increase e2e tests speed and do not introduce additional changes in original `manager.yaml`
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  labels:
+    control-plane: onepassword-connect-operator
+    app.kubernetes.io/name: namespace
+    app.kubernetes.io/instance: system
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/created-by: onepassword-connect-operator
+    app.kubernetes.io/part-of: onepassword-connect-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: onepassword-connect-operator
+  namespace: system
+  labels:
+    control-plane: controller-manager
+    app.kubernetes.io/name: deployment
+    app.kubernetes.io/instance: controller-manager
+    app.kubernetes.io/component: manager
+    app.kubernetes.io/created-by: onepassword-connect-operator
+    app.kubernetes.io/part-of: onepassword-connect-operator
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  selector:
+    matchLabels:
+      name: onepassword-connect-operator
+      control-plane: onepassword-connect-operator
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        name: onepassword-connect-operator
+        control-plane: onepassword-connect-operator
+    spec:
+      securityContext:
+        runAsNonRoot: true
+      containers:
+      - command:
+        - /manager
+        args:
+        - --leader-elect
+        - --health-probe-bind-address=:8081
+        image: 1password/onepassword-operator:latest
+        imagePullPolicy: Never
+        name: manager
+        env:
+          - name: OPERATOR_NAME
+            value: "onepassword-connect-operator"
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: WATCH_NAMESPACE
+            value: "default"
+          - name: POLLING_INTERVAL
+            value: "10"
+          - name: AUTO_RESTART
+            value: "false"
+          - name: OP_SERVICE_ACCOUNT_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: onepassword-service-account-token
+                key: token
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - "ALL"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 128Mi
+      serviceAccountName: onepassword-connect-operator
+      terminationGracePeriodSeconds: 10
