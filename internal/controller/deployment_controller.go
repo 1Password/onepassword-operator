@@ -28,14 +28,13 @@ import (
 	"context"
 	"fmt"
 	"regexp"
-
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	"github.com/1Password/connect-sdk-go/connect"
+	"strings"
+	"time"
 
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
 	"github.com/1Password/onepassword-operator/pkg/logs"
 	op "github.com/1Password/onepassword-operator/pkg/onepassword"
+	opclient "github.com/1Password/onepassword-operator/pkg/onepassword/client"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -47,6 +46,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var logDeployment = logf.Log.WithName("controller_deployment")
@@ -55,13 +55,13 @@ var logDeployment = logf.Log.WithName("controller_deployment")
 type DeploymentReconciler struct {
 	client.Client
 	Scheme             *runtime.Scheme
-	OpConnectClient    connect.Client
+	OpClient           opclient.Client
 	OpAnnotationRegExp *regexp.Regexp
 }
 
-//+kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=apps,resources=deployments/finalizers,verbs=update
+// +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=apps,resources=deployments/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=apps,resources=deployments/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -77,7 +77,7 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 	reqLogger.V(logs.DebugLevel).Info("Reconciling Deployment")
 
 	deployment := &appsv1.Deployment{}
-	err := r.Get(context.Background(), req.NamespacedName, deployment)
+	err := r.Get(ctx, req.NamespacedName, deployment)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return reconcile.Result{}, nil
@@ -91,33 +91,38 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		return ctrl.Result{}, nil
 	}
 
-	//If the deployment is not being deleted
-	if deployment.ObjectMeta.DeletionTimestamp.IsZero() {
+	// If the deployment is not being deleted
+	if deployment.DeletionTimestamp.IsZero() {
 		// Adds a finalizer to the deployment if one does not exist.
 		// This is so we can handle cleanup of associated secrets properly
-		if !utils.ContainsString(deployment.ObjectMeta.Finalizers, finalizer) {
-			deployment.ObjectMeta.Finalizers = append(deployment.ObjectMeta.Finalizers, finalizer)
-			if err = r.Update(context.Background(), deployment); err != nil {
+		if !utils.ContainsString(deployment.Finalizers, finalizer) {
+			deployment.Finalizers = append(deployment.Finalizers, finalizer)
+			if err = r.Update(ctx, deployment); err != nil {
 				return reconcile.Result{}, err
 			}
 		}
 		// Handles creation or updating secrets for deployment if needed
-		if err = r.handleApplyingDeployment(deployment, deployment.Namespace, annotations, req); err != nil {
-			return ctrl.Result{}, err
+		if err = r.handleApplyingDeployment(ctx, deployment, deployment.Namespace, annotations, req); err != nil {
+			if strings.Contains(err.Error(), "rate limit") {
+				reqLogger.V(logs.InfoLevel).Info("1Password rate limit hit. Requeuing after 15 minutes.")
+				return ctrl.Result{RequeueAfter: 15 * time.Minute}, nil
+			} else {
+				return ctrl.Result{}, err
+			}
 		}
 		return ctrl.Result{}, nil
 	}
 	// The deployment has been marked for deletion. If the one password
 	// finalizer is found there are cleanup tasks to perform
-	if utils.ContainsString(deployment.ObjectMeta.Finalizers, finalizer) {
+	if utils.ContainsString(deployment.Finalizers, finalizer) {
 
 		secretName := annotations[op.NameAnnotation]
-		if err = r.cleanupKubernetesSecretForDeployment(secretName, deployment); err != nil {
+		if err = r.cleanupKubernetesSecretForDeployment(ctx, secretName, deployment); err != nil {
 			return ctrl.Result{}, err
 		}
 
 		// Remove the finalizer from the deployment so deletion of deployment can be completed
-		if err = r.removeOnePasswordFinalizerFromDeployment(deployment); err != nil {
+		if err = r.removeOnePasswordFinalizerFromDeployment(ctx, deployment); err != nil {
 			return reconcile.Result{}, err
 		}
 	}
@@ -128,27 +133,28 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 func (r *DeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&appsv1.Deployment{}).
+		Named("onepassword-deployment").
 		Complete(r)
 }
 
-func (r *DeploymentReconciler) cleanupKubernetesSecretForDeployment(secretName string, deletedDeployment *appsv1.Deployment) error {
+func (r *DeploymentReconciler) cleanupKubernetesSecretForDeployment(ctx context.Context, secretName string, deletedDeployment *appsv1.Deployment) error {
 	kubernetesSecret := &corev1.Secret{}
-	kubernetesSecret.ObjectMeta.Name = secretName
-	kubernetesSecret.ObjectMeta.Namespace = deletedDeployment.Namespace
+	kubernetesSecret.Name = secretName
+	kubernetesSecret.Namespace = deletedDeployment.Namespace
 
 	if len(secretName) == 0 {
 		return nil
 	}
 	updatedSecrets := map[string]*corev1.Secret{secretName: kubernetesSecret}
 
-	multipleDeploymentsUsingSecret, err := r.areMultipleDeploymentsUsingSecret(updatedSecrets, *deletedDeployment)
+	multipleDeploymentsUsingSecret, err := r.areMultipleDeploymentsUsingSecret(ctx, updatedSecrets, *deletedDeployment)
 	if err != nil {
 		return err
 	}
 
 	// Only delete the associated kubernetes secret if it is not being used by other deployments
 	if !multipleDeploymentsUsingSecret {
-		if err = r.Delete(context.Background(), kubernetesSecret); err != nil {
+		if err = r.Delete(ctx, kubernetesSecret); err != nil {
 			if !errors.IsNotFound(err) {
 				return err
 			}
@@ -157,13 +163,13 @@ func (r *DeploymentReconciler) cleanupKubernetesSecretForDeployment(secretName s
 	return nil
 }
 
-func (r *DeploymentReconciler) areMultipleDeploymentsUsingSecret(updatedSecrets map[string]*corev1.Secret, deletedDeployment appsv1.Deployment) (bool, error) {
+func (r *DeploymentReconciler) areMultipleDeploymentsUsingSecret(ctx context.Context, updatedSecrets map[string]*corev1.Secret, deletedDeployment appsv1.Deployment) (bool, error) {
 	deployments := &appsv1.DeploymentList{}
 	opts := []client.ListOption{
 		client.InNamespace(deletedDeployment.Namespace),
 	}
 
-	err := r.List(context.Background(), deployments, opts...)
+	err := r.List(ctx, deployments, opts...)
 	if err != nil {
 		logDeployment.Error(err, "Failed to list kubernetes deployments")
 		return false, err
@@ -179,12 +185,12 @@ func (r *DeploymentReconciler) areMultipleDeploymentsUsingSecret(updatedSecrets 
 	return false, nil
 }
 
-func (r *DeploymentReconciler) removeOnePasswordFinalizerFromDeployment(deployment *appsv1.Deployment) error {
-	deployment.ObjectMeta.Finalizers = utils.RemoveString(deployment.ObjectMeta.Finalizers, finalizer)
-	return r.Update(context.Background(), deployment)
+func (r *DeploymentReconciler) removeOnePasswordFinalizerFromDeployment(ctx context.Context, deployment *appsv1.Deployment) error {
+	deployment.Finalizers = utils.RemoveString(deployment.Finalizers, finalizer)
+	return r.Update(ctx, deployment)
 }
 
-func (r *DeploymentReconciler) handleApplyingDeployment(deployment *appsv1.Deployment, namespace string, annotations map[string]string, request reconcile.Request) error {
+func (r *DeploymentReconciler) handleApplyingDeployment(ctx context.Context, deployment *appsv1.Deployment, namespace string, annotations map[string]string, request reconcile.Request) error {
 	reqLog := logDeployment.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 
 	secretName := annotations[op.NameAnnotation]
@@ -196,15 +202,15 @@ func (r *DeploymentReconciler) handleApplyingDeployment(deployment *appsv1.Deplo
 		return nil
 	}
 
-	item, err := op.GetOnePasswordItemByPath(r.OpConnectClient, annotations[op.ItemPathAnnotation])
+	item, err := op.GetOnePasswordItemByPath(ctx, r.OpClient, annotations[op.ItemPathAnnotation])
 	if err != nil {
-		return fmt.Errorf("Failed to retrieve item: %v", err)
+		return fmt.Errorf("failed to retrieve item: %w", err)
 	}
 
 	// Create owner reference.
 	gvk, err := apiutil.GVKForObject(deployment, r.Scheme)
 	if err != nil {
-		return fmt.Errorf("could not to retrieve group version kind: %v", err)
+		return fmt.Errorf("could not to retrieve group version kind: %w", err)
 	}
 	ownerRef := &metav1.OwnerReference{
 		APIVersion: gvk.GroupVersion().String(),
@@ -213,5 +219,5 @@ func (r *DeploymentReconciler) handleApplyingDeployment(deployment *appsv1.Deplo
 		UID:        deployment.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(r.Client, secretName, namespace, item, annotations[op.AutoRestartWorkloadAnnotation], secretLabels, secretType, ownerRef)
+	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, namespace, item, annotations[op.AutoRestartWorkloadAnnotation], secretLabels, annotations, secretType, ownerRef)
 }

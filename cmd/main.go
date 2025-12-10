@@ -25,17 +25,18 @@ SOFTWARE.
 package main
 
 import (
+	"context"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/1Password/connect-sdk-go/connect"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -47,16 +48,20 @@ import (
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/certwatcher"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	onepasswordcomv1 "github.com/1Password/onepassword-operator/api/v1"
 	"github.com/1Password/onepassword-operator/internal/controller"
 	op "github.com/1Password/onepassword-operator/pkg/onepassword"
+	opclient "github.com/1Password/onepassword-operator/pkg/onepassword/client"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	"github.com/1Password/onepassword-operator/version"
-	//+kubebuilder:scaffold:imports
+	// +kubebuilder:scaffold:imports
 )
 
 var (
@@ -70,14 +75,7 @@ const (
 	restartWorkloadsEnvVariable = "AUTO_RESTART"
 	defaultPollingInterval      = 600
 
-	annotationRegExpString = "^operator.1password.io\\/[a-zA-Z\\.]+"
-)
-
-// Change below variables to serve metrics on different host or port.
-var (
-	metricsHost               = "0.0.0.0"
-	metricsPort         int32 = 8383
-	operatorMetricsPort int32 = 8686
+	annotationRegExpString = "^operator\\.1password\\.io\\/[a-zA-Z\\.]+"
 )
 
 func printVersion() {
@@ -91,18 +89,39 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(onepasswordcomv1.AddToScheme(scheme))
-	//+kubebuilder:scaffold:scheme
+	// +kubebuilder:scaffold:scheme
 }
 
 func main() {
 	var metricsAddr string
+	var metricsCertPath, metricsCertName, metricsCertKey string
+	var webhookCertPath, webhookCertName, webhookCertKey string
 	var enableLeaderElection bool
 	var probeAddr string
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
+	var secureMetrics bool
+	var enableHTTP2 bool
+	var enableAnnotations bool
+	var tlsOpts []func(*tls.Config)
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080",
+		"The address the metrics endpoint binds to. "+
+			"Use :8443 for HTTPS or :8080 for HTTP, or leave as 0 to disable the metrics service.")
+	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081",
+		"The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&secureMetrics, "metrics-secure", true,
+		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
+	flag.StringVar(&metricsCertPath, "metrics-cert-path", "",
+		"The directory that contains the metrics server certificate.")
+	flag.StringVar(&metricsCertName, "metrics-cert-name", "tls.crt",
+		"The name of the metrics server certificate file.")
+	flag.StringVar(&metricsCertKey, "metrics-cert-key", "tls.key",
+		"The name of the metrics server key file.")
+	flag.BoolVar(&enableHTTP2, "enable-http2", false,
+		"If set, HTTP/2 will be enabled for the metrics")
+	flag.BoolVar(&enableAnnotations, "enable-annotations", false,
+		"If set, operator will add annotations to resources it manages.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -111,7 +130,25 @@ func main() {
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
+	// if the enable-http2 flag is false (the default), http/2 should be disabled
+	// due to its vulnerabilities. More specifically, disabling http/2 will
+	// prevent from being vulnerable to the HTTP/2 Stream Cancelation and
+	// Rapid Reset CVEs. For more information see:
+	// - https://github.com/advisories/GHSA-qppj-fm5r-hxr3
+	// - https://github.com/advisories/GHSA-4374-p667-p6c8
+	disableHTTP2 := func(c *tls.Config) {
+		setupLog.Info("disabling http/2")
+		c.NextProtos = []string{"http/1.1"}
+	}
+
+	if !enableHTTP2 {
+		tlsOpts = append(tlsOpts, disableHTTP2)
+	}
+
 	printVersion()
+
+	// Create a root context that will be cancelled on termination signals
+	ctx := ctrl.SetupSignalHandler()
 
 	watchNamespace, err := getWatchNamespace()
 	if err != nil {
@@ -125,12 +162,104 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create watchers for metrics and webhooks certificates
+	var metricsCertWatcher, webhookCertWatcher *certwatcher.CertWatcher
+
+	// Initial webhook TLS options
+	webhookTLSOpts := tlsOpts
+
+	if len(webhookCertPath) > 0 {
+		setupLog.Info("Initializing webhook certificate watcher using provided certificates",
+			"webhook-cert-path", webhookCertPath, "webhook-cert-name", webhookCertName, "webhook-cert-key", webhookCertKey)
+
+		var err error
+		webhookCertWatcher, err = certwatcher.New(
+			filepath.Join(webhookCertPath, webhookCertName),
+			filepath.Join(webhookCertPath, webhookCertKey),
+		)
+		if err != nil {
+			setupLog.Error(err, "Failed to initialize webhook certificate watcher")
+			os.Exit(1)
+		}
+
+		webhookTLSOpts = append(webhookTLSOpts, func(config *tls.Config) {
+			config.GetCertificate = webhookCertWatcher.GetCertificate
+		})
+	}
+
+	webhookServer := webhook.NewServer(webhook.Options{
+		TLSOpts: webhookTLSOpts,
+	})
+
+	// Metrics endpoint is enabled in 'config/default/kustomization.yaml'. The Metrics options configure the server.
+	// More info:
+	// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.21.0/pkg/metrics/server
+	// - https://book.kubebuilder.io/reference/metrics.html
+	metricsServerOptions := metricsserver.Options{
+		BindAddress:   metricsAddr,
+		SecureServing: secureMetrics,
+		// TODO(user): TLSOpts is used to allow configuring the TLS config used for the server. If certificates are
+		// not provided, self-signed certificates will be generated by default. This option is not recommended for
+		// production environments as self-signed certificates do not offer the same level of trust and security
+		// as certificates issued by a trusted Certificate Authority (CA). The primary risk is potentially allowing
+		// unauthorized access to sensitive metrics data. Consider replacing with CertDir, CertName, and KeyName
+		// to provide certificates, ensuring the server communicates using trusted and secure certificates.
+		TLSOpts: tlsOpts,
+	}
+
+	if secureMetrics {
+		// FilterProvider is used to protect the metrics endpoint with authn/authz.
+		// These configurations ensure that only authorized users and service accounts
+		// can access the metrics endpoint. The RBAC are configured in 'config/rbac/kustomization.yaml'. More info:
+		// https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.19.0/pkg/metrics/filters#WithAuthenticationAndAuthorization
+		metricsServerOptions.FilterProvider = filters.WithAuthenticationAndAuthorization
+	}
+
+	// If the certificate is not specified, controller-runtime will automatically
+	// generate self-signed certificates for the metrics server. While convenient for development and testing,
+	// this setup is not recommended for production.
+	//
+	// TODO(user): If you enable certManager, uncomment the following lines:
+	// - [METRICS-WITH-CERTS] at config/default/kustomization.yaml to generate and use certificates
+	// managed by cert-manager for the metrics server.
+	// - [PROMETHEUS-WITH-CERTS] at config/prometheus/kustomization.yaml for TLS certification.
+	if len(metricsCertPath) > 0 {
+		setupLog.Info("Initializing metrics certificate watcher using provided certificates",
+			"metrics-cert-path", metricsCertPath, "metrics-cert-name", metricsCertName, "metrics-cert-key", metricsCertKey)
+
+		var err error
+		metricsCertWatcher, err = certwatcher.New(
+			filepath.Join(metricsCertPath, metricsCertName),
+			filepath.Join(metricsCertPath, metricsCertKey),
+		)
+		if err != nil {
+			setupLog.Error(err, "Failed to initialize metrics certificate watcher")
+			os.Exit(1)
+		}
+
+		metricsServerOptions.TLSOpts = append(metricsServerOptions.TLSOpts, func(config *tls.Config) {
+			config.GetCertificate = metricsCertWatcher.GetCertificate
+		})
+	}
+
 	options := ctrl.Options{
 		Scheme:                 scheme,
-		Metrics:                metricsserver.Options{BindAddress: metricsAddr},
+		Metrics:                metricsServerOptions,
+		WebhookServer:          webhookServer,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "c26807fd.onepassword.com",
+		// LeaderElectionReleaseOnCancel defines if the leader should step down voluntarily
+		// when the Manager ends. This requires the binary to immediately end when the
+		// Manager is stopped, otherwise, this setting is unsafe. Setting this significantly
+		// speeds up voluntary leader transitions as the new leader don't have to wait
+		// LeaseDuration time first.
+		//
+		// In the default scaffold provided, the program ends immediately after
+		// the manager stops, so would be fine to enable this option. However,
+		// if you are doing or is intended to do any operation such as perform cleanups
+		// after the manager stops then its usage might be unsafe.
+		// LeaderElectionReleaseOnCancel: true,
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
@@ -153,16 +282,20 @@ func main() {
 	}
 
 	// Setup One Password Client
-	opConnectClient, err := connect.NewClientFromEnvironment()
+	opClient, err := opclient.NewFromEnvironment(ctx, opclient.Config{
+		Logger:  setupLog,
+		Version: version.OperatorVersion,
+	})
 	if err != nil {
-		setupLog.Error(err, "unable to create Connect client")
+		setupLog.Error(err, "unable to create 1Password client")
 		os.Exit(1)
 	}
 
 	if err = (&controller.OnePasswordItemReconciler{
-		Client:          mgr.GetClient(),
-		Scheme:          mgr.GetScheme(),
-		OpConnectClient: opConnectClient,
+		Client:            mgr.GetClient(),
+		Scheme:            mgr.GetScheme(),
+		OpClient:          opClient,
+		EnableAnnotations: enableAnnotations,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "OnePasswordItem")
 		os.Exit(1)
@@ -172,21 +305,21 @@ func main() {
 	if err = (&controller.DeploymentReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
-		OpConnectClient:    opConnectClient,
+		OpClient:           opClient,
 		OpAnnotationRegExp: r,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Deployment")
 		os.Exit(1)
 	}
-	//+kubebuilder:scaffold:builder
+	// +kubebuilder:scaffold:builder
 
-	//Setup 1PasswordConnect
+	// Setup 1PasswordConnect
 	if shouldManageConnect() {
 		setupLog.Info("Automated Connect Management Enabled")
-		go func() {
+		go func(ctx context.Context) {
 			connectStarted := false
-			for connectStarted == false {
-				err := op.SetupConnect(mgr.GetClient(), deploymentNamespace)
+			for !connectStarted {
+				err := op.SetupConnect(ctx, mgr.GetClient(), deploymentNamespace)
 				// Cache Not Started is an acceptable error. Retry until cache is started.
 				if err != nil && !errors.Is(err, &cache.ErrCacheNotStarted{}) {
 					setupLog.Error(err, "")
@@ -196,29 +329,37 @@ func main() {
 					connectStarted = true
 				}
 			}
-		}()
+		}(ctx)
 	} else {
 		setupLog.Info("Automated Connect Management Disabled")
 	}
 
 	// Setup update secrets task
-	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opConnectClient, shouldAutoRestartWorkloads())
+	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opClient, shouldAutoRestartWorkloads())
 	done := make(chan bool)
 	ticker := time.NewTicker(getPollingIntervalForUpdatingSecrets())
-	go func() {
+	go func(ctx context.Context) {
 		for {
 			select {
 			case <-done:
 				ticker.Stop()
 				return
 			case <-ticker.C:
-				err := updatedSecretsPoller.UpdateKubernetesSecretsTask()
+				err := updatedSecretsPoller.UpdateKubernetesSecretsTask(ctx)
 				if err != nil {
 					setupLog.Error(err, "error running update kubernetes secret task")
 				}
 			}
 		}
-	}()
+	}(ctx)
+
+	if metricsCertWatcher != nil {
+		setupLog.Info("Adding metrics certificate watcher to manager")
+		if err := mgr.Add(metricsCertWatcher); err != nil {
+			setupLog.Error(err, "Unable to add metrics certificate watcher to manager")
+			os.Exit(1)
+		}
+	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
 		setupLog.Error(err, "unable to set up health check")
@@ -230,7 +371,7 @@ func main() {
 	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}

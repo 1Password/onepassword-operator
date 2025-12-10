@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/1Password/onepassword-operator/pkg/mocks"
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 
-	"github.com/1Password/connect-sdk-go/onepassword"
-	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
@@ -41,7 +44,6 @@ type testUpdateSecretTask struct {
 	existingSecret           *corev1.Secret
 	expectedError            error
 	expectedResultSecret     *corev1.Secret
-	expectedEvents           []string
 	opItem                   map[string]string
 	expectedRestart          bool
 	globalAutoRestartEnabled bool
@@ -61,6 +63,9 @@ var defaultNamespace = &corev1.Namespace{
 	},
 }
 
+// TODO: Refactor test cases to avoid duplication.
+//
+//nolint:dupl
 var tests = []testUpdateSecretTask{
 	{
 		testName:          "Test unrelated deployment is not restarted with an updated secret",
@@ -785,7 +790,7 @@ var tests = []testUpdateSecretTask{
 func TestUpdateSecretHandler(t *testing.T) {
 	for _, testData := range tests {
 		t.Run(testData.testName, func(t *testing.T) {
-
+			ctx := context.Background()
 			// Register operator types with the runtime scheme.
 			s := scheme.Scheme
 			s.AddKnownTypes(appsv1.SchemeGroupVersion, testData.existingWorkload)
@@ -803,23 +808,15 @@ func TestUpdateSecretHandler(t *testing.T) {
 			// Create a fake client to mock API calls.
 			cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
-			opConnectClient := &mocks.TestClient{}
-			mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-
-				item := onepassword.Item{}
-				item.Fields = generateFields(testData.opItem["username"], testData.opItem["password"])
-				item.Version = itemVersion
-				item.Vault.ID = vaultUUID
-				item.ID = uuid
-				return &item, nil
-			}
+			mockOpClient := &mocks.TestClient{}
+			mockOpClient.On("GetItemByID", mock.Anything, mock.Anything).Return(createItem(), nil)
 			h := &SecretUpdateHandler{
-				client:                       cl,
-				opConnectClient:              opConnectClient,
-				autoRestartWorkloadsGlobally: testData.globalAutoRestartEnabled,
+				client:                             cl,
+				opClient:                           mockOpClient,
+				shouldAutoRestartWorkloadsGlobally: testData.globalAutoRestartEnabled,
 			}
 
-			err := h.UpdateKubernetesSecretsTask()
+			err := h.UpdateKubernetesSecretsTask(ctx)
 
 			assert.Equal(t, testData.expectedError, err)
 
@@ -832,7 +829,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 
 			// Check if Secret has been created and has the correct data
 			secret := &corev1.Secret{}
-			err = cl.Get(context.TODO(), types.NamespacedName{Name: expectedSecretName, Namespace: namespace}, secret)
+			err = cl.Get(ctx, types.NamespacedName{Name: expectedSecretName, Namespace: namespace}, secret)
 
 			if testData.expectedResultSecret == nil {
 				assert.Error(t, err)
@@ -844,9 +841,10 @@ func TestUpdateSecretHandler(t *testing.T) {
 				assert.Equal(t, testData.expectedResultSecret.Annotations[VersionAnnotation], secret.Annotations[VersionAnnotation])
 			}
 
-			//check if deployment has been restarted
+			// check if deployment has been restarted
 			deployment := &appsv1.Deployment{}
-			err = cl.Get(context.TODO(), types.NamespacedName{Name: testData.existingWorkload.(client.Object).GetName(), Namespace: namespace}, deployment)
+			err = cl.Get(ctx, types.NamespacedName{Name: testData.existingWorkload.(client.Object).GetName(), Namespace: namespace}, deployment)
+			assert.NoError(t, err)
 
 			_, ok := deployment.Spec.Template.Annotations[RestartAnnotation]
 			if ok {
@@ -888,16 +886,23 @@ func TestIsUpdatedSecret(t *testing.T) {
 	assert.True(t, isUpdatedSecret(secretName, updatedSecrets))
 }
 
-func generateFields(username, password string) []*onepassword.ItemField {
-	fields := []*onepassword.ItemField{
-		{
-			Label: "username",
-			Value: username,
+func createItem() *model.Item {
+	return &model.Item{
+		ID:      itemId,
+		VaultID: vaultId,
+		Version: itemVersion,
+		Tags:    []string{"tag1", "tag2"},
+		Fields: []model.ItemField{
+			{
+				Label: "username",
+				Value: username,
+			},
+			{
+				Label: "password",
+				Value: password,
+			},
 		},
-		{
-			Label: "password",
-			Value: password,
-		},
+		Files:     []model.File{},
+		CreatedAt: time.Now(),
 	}
-	return fields
 }

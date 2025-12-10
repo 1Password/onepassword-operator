@@ -72,33 +72,42 @@ spec:
         - /manager
         args:
         - --leader-elect
+        - --health-probe-bind-address=:8081
         image: 1password/onepassword-operator:latest
         name: manager
         env:
-          - name: WATCH_NAMESPACE
-            value: "default"
+          - name: OPERATOR_NAME
+            value: "onepassword-connect-operator"
           - name: POD_NAME
             valueFrom:
               fieldRef:
                 fieldPath: metadata.name
-          - name: OPERATOR_NAME
-            value: "onepassword-connect-operator"
-          - name: OP_CONNECT_HOST
-            value: "http://onepassword-connect:8080"
+          - name: WATCH_NAMESPACE
+            value: "default"
           - name: POLLING_INTERVAL
             value: "10"
+          - name: AUTO_RESTART
+            value: "false"
+          - name: OP_CONNECT_HOST
+            value: "http://onepassword-connect:8080"
           - name: OP_CONNECT_TOKEN
             valueFrom:
               secretKeyRef:
                 name: onepassword-token
                 key: token
-          - name: AUTO_RESTART
+          - name: MANAGE_CONNECT
             value: "false"
+#            Uncomment the following lines to enable service account token and comment out the OP_CONNECT_TOKEN, OP_CONNECT_HOST and MANAGE_CONNECT env vars.
+#          - name: OP_SERVICE_ACCOUNT_TOKEN
+#            valueFrom:
+#              secretKeyRef:
+#                name: onepassword-service-account-token
+#                key: token
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
             drop:
-              - "ALL"
+            - "ALL"
         livenessProbe:
           httpGet:
             path: /healthz
@@ -116,9 +125,9 @@ spec:
         resources:
           limits:
             cpu: 500m
-            memory: 128Mi
+            memory: 512Mi
           requests:
-            cpu: 10m
-            memory: 64Mi
+            cpu: 100m
+            memory: 128Mi
       serviceAccountName: onepassword-connect-operator
       terminationGracePeriodSeconds: 10

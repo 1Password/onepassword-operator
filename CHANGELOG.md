@@ -12,6 +12,45 @@
 
 ---
 
+[//]: # (START/v1.10.0)
+# v1.10.0
+
+## Fixes
+  * Improved stability and compatibility by upgrading the Operator SDK to v1.41.1. {#211}
+  * Update README to cover multiple items usage. {#60}
+  * Fix annotation regexp pattern. {#156}
+
+## Features
+  * Display READY column for onepassword CRD. {#223}
+  * Introduce '--enable-annotations' flag add custom annotations on generated k8s secrets. {#114}
+  * Allow to create secrets with empty value fields. {#145}
+
+---
+
+[//]: # (START/v1.9.1)
+# v1.9.1
+
+## Fixes
+ * Operator no longer panics when handling 1Password items containing files. {#209}
+
+## Security
+ * HTTP Proxy bypass using IPv6 Zone IDs in golang.org/x/net. {#210}
+ * golang.org/x/net vulnerable to Cross-site Scripting. {#210}
+
+---
+
+[//]: # (START/v1.9.0)
+# v1.9.0
+
+## Features
+  * Enable the Operator to authenticate to 1Password using service accounts. {#160}
+
+## Fixes
+ * Update Operator to use SDK v1.34.1. {#185}
+ * Pass Kubernetes context down to SDK/Connect. {#199}
+
+---
+
 [//]: # (START/v1.8.1)
 # v1.8.1
 

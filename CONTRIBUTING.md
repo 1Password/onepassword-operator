@@ -4,7 +4,17 @@ Thank you for your interest in contributing to the 1Password Kubernetes Operator
 
 ## Testing
 
-- For functional testing, run the local version of the operator. From the project root:
+All contributions must include tests where applicable.
+
+- **Unit tests** for pure Go logic.
+- **Integration tests** for controller/reconciler logic using envtest.
+- **E2E tests** for full cluster behavior with kind.
+
+👉 See the [Testing Guide](docs/testing.md) for details on when to use each, how to run them locally, and how they are run in CI. 
+
+----
+
+For functional testing, run the local version of the operator. From the project root:
 
   ```sh
   # Go to the K8s environment (e.g. minikube)
@@ -19,7 +29,13 @@ Thank you for your interest in contributing to the 1Password Kubernetes Operator
   # Remove the operator from K8s
   make undeploy
   ```
-  
+
+- After making changes to the code:
+1. Rebuild the Docker image by running `make docker-build`
+2. Restart deployment `make restart`
+
+----
+
 - For testing the changes made to the `OnePasswordItem` Custom Resource Definition (CRD), you need to re-generate the object:
   ```sh
   make manifests

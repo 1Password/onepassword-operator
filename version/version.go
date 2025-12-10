@@ -1,6 +1,6 @@
 package version
 
 var (
-	OperatorVersion    = "1.8.1"
-	OperatorSDKVersion = "1.34.1"
+	OperatorVersion    = "1.10.0"
+	OperatorSDKVersion = "1.41.1"
 )

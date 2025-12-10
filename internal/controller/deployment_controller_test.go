@@ -2,9 +2,6 @@ package controller
 
 import (
 	"context"
-	"github.com/1Password/connect-sdk-go/onepassword"
-	"github.com/1Password/onepassword-operator/pkg/mocks"
-	op "github.com/1Password/onepassword-operator/pkg/onepassword"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -17,6 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
+	op "github.com/1Password/onepassword-operator/pkg/onepassword"
 )
 
 const (
@@ -26,14 +24,13 @@ const (
 )
 
 var _ = Describe("Deployment controller", func() {
-	var ctx context.Context
+	ctx := context.Background()
 	var deploymentKey types.NamespacedName
 	var secretKey types.NamespacedName
 	var deploymentResource *appsv1.Deployment
 	createdSecret := &v1.Secret{}
 
 	makeDeployment := func() {
-		ctx = context.Background()
 
 		deploymentKey = types.NamespacedName{
 			Name:      deploymentName,
@@ -85,38 +82,26 @@ var _ = Describe("Deployment controller", func() {
 		time.Sleep(time.Millisecond * 100)
 		Eventually(func() bool {
 			err := k8sClient.Get(ctx, secretKey, createdSecret)
-			if err != nil {
-				return false
-			}
-			return true
+			return err == nil
 		}, timeout, interval).Should(BeTrue())
 		Expect(createdSecret.Data).Should(Equal(item1.SecretData))
 	}
 
 	cleanK8sResources := func() {
 		// failed test runs that don't clean up leave resources behind.
-		err := k8sClient.DeleteAllOf(context.Background(), &onepasswordv1.OnePasswordItem{}, client.InNamespace(namespace))
+		err := k8sClient.DeleteAllOf(ctx, &onepasswordv1.OnePasswordItem{}, client.InNamespace(namespace))
 		Expect(err).ToNot(HaveOccurred())
 
-		err = k8sClient.DeleteAllOf(context.Background(), &v1.Secret{}, client.InNamespace(namespace))
+		err = k8sClient.DeleteAllOf(ctx, &v1.Secret{}, client.InNamespace(namespace))
 		Expect(err).ToNot(HaveOccurred())
 
-		err = k8sClient.DeleteAllOf(context.Background(), &appsv1.Deployment{}, client.InNamespace(namespace))
+		err = k8sClient.DeleteAllOf(ctx, &appsv1.Deployment{}, client.InNamespace(namespace))
 		Expect(err).ToNot(HaveOccurred())
 	}
 
 	mockGetItemFunc := func() {
-		mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-			item := onepassword.Item{}
-			item.Fields = []*onepassword.ItemField{}
-			for k, v := range item1.Data {
-				item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
-			}
-			item.Version = item1.Version
-			item.Vault.ID = vaultUUID
-			item.ID = uuid
-			return &item, nil
-		}
+		// mock GetItemByID to return test item 'item1'
+		mockGetItemByIDFunc.Return(item1.ToModel(), nil)
 	}
 
 	BeforeEach(func() {
@@ -151,17 +136,10 @@ var _ = Describe("Deployment controller", func() {
 
 		It("Should update existing K8s Secret using deployment", func() {
 			By("Updating secret")
-			mocks.DoGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-				item := onepassword.Item{}
-				item.Fields = []*onepassword.ItemField{}
-				for k, v := range item2.Data {
-					item.Fields = append(item.Fields, &onepassword.ItemField{Label: k, Value: v})
-				}
-				item.Version = item2.Version
-				item.Vault.ID = vaultUUID
-				item.ID = uuid
-				return &item, nil
-			}
+
+			// mock GetItemByID to return test item 'item2'
+			mockGetItemByIDFunc.Return(item2.ToModel(), nil)
+
 			Eventually(func() error {
 				updatedDeployment := &appsv1.Deployment{
 					TypeMeta: metav1.TypeMeta{
@@ -209,10 +187,7 @@ var _ = Describe("Deployment controller", func() {
 			updatedSecret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, secretKey, updatedSecret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(updatedSecret.Data).Should(Equal(item2.SecretData))
 		})
@@ -266,10 +241,7 @@ var _ = Describe("Deployment controller", func() {
 			updatedSecret := &v1.Secret{}
 			Eventually(func() bool {
 				err := k8sClient.Get(ctx, secretKey, updatedSecret)
-				if err != nil {
-					return false
-				}
-				return true
+				return err == nil
 			}, timeout, interval).Should(BeTrue())
 			Expect(updatedSecret.Data).Should(Equal(item1.SecretData))
 		})
