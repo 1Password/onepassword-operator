@@ -3,8 +3,9 @@ package onepassword
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/api/meta"
 	"time"
+
+	"k8s.io/apimachinery/pkg/api/meta"
 
 	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
@@ -28,10 +29,10 @@ func NewManager(
 	kubernetesClient client.Client,
 	opClient opclient.Client,
 	shouldAutoRestartWorkloadsGlobally bool,
-	) *SecretUpdateHandler {
+) *SecretUpdateHandler {
 	return &SecretUpdateHandler{
 		client:                             kubernetesClient,
-		opClient:                    opClient,
+		opClient:                           opClient,
 		shouldAutoRestartWorkloadsGlobally: shouldAutoRestartWorkloadsGlobally,
 	}
 }
@@ -106,27 +107,25 @@ func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(
 
 			for _, secret := range matchedSecrets {
 				if isSecretSetForAutoRestart(secret, workload, setForAutoRestartByNamespaceMap) {
-					h.restartWorkload(ctx, workload)
+					if err := h.restartWorkload(ctx, workload); err != nil {
+						log.Error(err, "Failed to restart workload", "workload", workload.GetName(), "namespace", workload.GetNamespace())
+					}
 					break
 				}
 			}
 
-			log.V(logs.DebugLevel).Info(fmt.Sprintf("%q %q at namespace %q is up to date", workload.GetObjectKind().GroupVersionKind().Kind, workload.GetName(), workload.GetNamespace()))
+			log.V(logs.DebugLevel).Info(fmt.Sprintf("%T %q at namespace %q is up to date", workload, workload.GetName(), workload.GetNamespace()))
 		}
 	}
 
 	return nil
 }
 
-func (h *SecretUpdateHandler) restartWorkload(ctx context.Context, workload client.Object) {
-	var podTemplate *corev1.PodTemplateSpec
-
-	switch obj := workload.(type) {
-	case *appsv1.Deployment:
-		podTemplate = &obj.Spec.Template
-	default:
-		log.Info("Unsupported workload type for restart", "type", fmt.Sprintf("%T", obj))
-		return
+func (h *SecretUpdateHandler) restartWorkload(ctx context.Context, workload client.Object) error {
+	podTemplate, err := GetPodTemplate(workload)
+	if err != nil {
+		log.Error(err, "Unsupported workload type for restart", "type", fmt.Sprintf("%T", workload))
+		return err
 	}
 
 	log.Info(fmt.Sprintf("%T %q in namespace %q references an updated secret. Restarting", workload, workload.GetName(), workload.GetNamespace()))
@@ -136,10 +135,11 @@ func (h *SecretUpdateHandler) restartWorkload(ctx context.Context, workload clie
 	}
 	podTemplate.Annotations[RestartAnnotation] = time.Now().Format(time.RFC3339)
 
-	err := h.client.Update(ctx, workload)
-	if err != nil {
+	if err := h.client.Update(ctx, workload); err != nil {
 		log.Error(err, "Problem restarting workload", "name", workload.GetName())
+		return err
 	}
+	return nil
 }
 
 func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (
@@ -277,10 +277,10 @@ func isSecretSetForAutoRestart(
 	return restartBool
 }
 
-func isWorkloadSetForAutoRestart(obj client.Object, setForAutoRestartByNamespace map[string]bool) bool {
-	annotations := obj.GetAnnotations()
-	namespace := obj.GetNamespace()
-	name := obj.GetName()
+func isWorkloadSetForAutoRestart(workload client.Object, setForAutoRestartByNamespace map[string]bool) bool {
+	annotations := workload.GetAnnotations()
+	namespace := workload.GetNamespace()
+	name := workload.GetName()
 
 	restartAnnotation := annotations[AutoRestartWorkloadAnnotation]
 	if restartAnnotation == "" {
@@ -291,7 +291,7 @@ func isWorkloadSetForAutoRestart(obj client.Object, setForAutoRestartByNamespace
 	if err != nil {
 		log.Error(err, fmt.Sprintf(
 			"Error parsing %s annotation on %s %s. Must be true or false. Defaulting to false.",
-			AutoRestartWorkloadAnnotation, obj, name,
+			AutoRestartWorkloadAnnotation, workload, name,
 		))
 		return false
 	}
@@ -301,7 +301,7 @@ func isWorkloadSetForAutoRestart(obj client.Object, setForAutoRestartByNamespace
 
 func (h *SecretUpdateHandler) isNamespaceSetToAutoRestart(namespace *corev1.Namespace) bool {
 	restartWorkload := namespace.Annotations[AutoRestartWorkloadAnnotation]
-	//If annotation for auto restarts for deployment is not set. Check environment variable set on the operator
+	//If annotation for auto restarts for workload is not set. Check environment variable set on the operator
 	if restartWorkload == "" {
 		return h.shouldAutoRestartWorkloadsGlobally
 	}
@@ -330,14 +330,11 @@ func GetUpdatedSecretsForPodTemplate(annotations map[string]string, podTemplate 
 		return nil
 	}
 
-	volumes := podTemplate.Spec.Volumes
-	containers := append([]corev1.Container{}, podTemplate.Spec.Containers...)
-	containers = append(containers, podTemplate.Spec.InitContainers...)
-
+	allContainers := append(podTemplate.Spec.Containers, podTemplate.Spec.InitContainers...)
 	updatedSecrets := map[string]*corev1.Secret{}
 	AppendAnnotationUpdatedSecret(annotations, secrets, updatedSecrets)
-	AppendUpdatedContainerSecrets(containers, secrets, updatedSecrets)
-	AppendUpdatedVolumeSecrets(volumes, secrets, updatedSecrets)
+	AppendUpdatedContainerSecrets(allContainers, secrets, updatedSecrets)
+	AppendUpdatedVolumeSecrets(podTemplate.Spec.Volumes, secrets, updatedSecrets)
 
 	return updatedSecrets
 }
