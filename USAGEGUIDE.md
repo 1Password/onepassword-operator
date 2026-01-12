@@ -31,7 +31,9 @@ There are 2 ways 1Password Operator can talk to 1Password servers:
 
 ##  Use Kubernetes Operator with Service Account
 
-### 1. [Create a service account](https://developer.1password.com/docs/service-accounts/get-started#create-a-service-account)
+### 1. Create a service account
+- For instructions on creating and managing Service Accounts, refer to the [official 1Password Service Accounts documentation](https://developer.1password.com/docs/service-accounts/).
+
 ### 2. Create a Kubernetes secret for the Service Account
 - Set `OP_SERVICE_ACCOUNT_TOKEN` environment variable to the service account token you created in the previous step. This token will be used by the operator to access 1Password items.
 - Create Kubernetes secret:
