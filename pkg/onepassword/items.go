@@ -23,22 +23,31 @@ func GetOnePasswordItemByPath(ctx context.Context, opClient opclient.Client, pat
 		return nil, fmt.Errorf("failed to 'getVaultID' for vaultNameOrID='%s': %w", vaultNameOrID, err)
 	}
 
-	itemID, err := getItemID(ctx, opClient, vaultID, itemNameOrID)
-	if err != nil {
-		return nil, fmt.Errorf("faild to 'getItemID' for vaultID='%s' and itemNameOrID='%s': %w", vaultID, itemNameOrID, err)
-	}
+	var item *model.Item
 
-	item, err := opClient.GetItemByID(ctx, vaultID, itemID)
-	if err != nil {
-		return nil, fmt.Errorf("faield to 'GetItemByID' for vaultID='%s' and itemID='%s': %w", vaultID, itemID, err)
-	}
-
-	for i, file := range item.Files {
-		content, err := opClient.GetFileContent(ctx, vaultID, itemID, file.ID)
-		if err != nil {
-			return nil, err
+	// If it looks like a UUID, try fetching by ID first
+	if IsValidClientUUID(itemNameOrID) {
+		item, err = opClient.GetItemByID(ctx, vaultID, itemNameOrID)
+		if err == nil {
+			// Success, load files and return
+			item, err = loadItemFiles(ctx, opClient, vaultID, item)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load item files for vaultID='%s' and itemNameOrID='%s': %w", vaultID, itemNameOrID, err)
+			}
+			return item, nil
 		}
-		item.Files[i].SetContent(content)
+		// If UUID lookup failed, fallback to title lookup
+	}
+
+	// Try to fetch item by title
+	item, err = getItemFromTitle(ctx, opClient, vaultID, itemNameOrID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get item for vaultID='%s' and itemNameOrID='%s': %w", vaultID, itemNameOrID, err)
+	}
+
+	item, err = loadItemFiles(ctx, opClient, vaultID, item)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load item files for vaultID='%s' and itemNameOrID='%s': %w", vaultID, itemNameOrID, err)
 	}
 
 	return item, nil
@@ -82,29 +91,38 @@ func getVaultID(ctx context.Context, client opclient.Client, vaultNameOrID strin
 	return vaultNameOrID, nil
 }
 
-func getItemID(ctx context.Context, client opclient.Client, vaultId, itemNameOrID string) (string, error) {
-	if !IsValidClientUUID(itemNameOrID) {
-		items, err := client.GetItemsByTitle(ctx, vaultId, itemNameOrID)
-		if err != nil {
-			return "", err
-		}
-
-		if len(items) == 0 {
-			return "", fmt.Errorf("no items found with identifier %q", itemNameOrID)
-		}
-
-		oldestItem := items[0]
-		if len(items) > 1 {
-			for _, returnedItem := range items {
-				if returnedItem.CreatedAt.Before(oldestItem.CreatedAt) {
-					oldestItem = returnedItem
-				}
-			}
-			logger.Info(fmt.Sprintf("%v 1Password items found with the title %q. Will use item %q as it is the oldest.",
-				len(items), itemNameOrID, oldestItem.ID,
-			))
-		}
-		itemNameOrID = oldestItem.ID
+func getItemFromTitle(ctx context.Context, client opclient.Client, vaultId, itemNameOrID string) (*model.Item, error) {
+	items, err := client.GetItemsByTitle(ctx, vaultId, itemNameOrID)
+	if err != nil {
+		return nil, err
 	}
-	return itemNameOrID, nil
+
+	if len(items) == 0 {
+		return nil, fmt.Errorf("no items found with identifier %q", itemNameOrID)
+	}
+
+	oldestItem := items[0]
+	if len(items) > 1 {
+		for _, returnedItem := range items {
+			if returnedItem.CreatedAt.Before(oldestItem.CreatedAt) {
+				oldestItem = returnedItem
+			}
+		}
+		logger.Info(fmt.Sprintf("%v 1Password items found with the title %q. Will use item %q as it is the oldest.",
+			len(items), itemNameOrID, oldestItem.ID,
+		))
+	}
+
+	return &oldestItem, nil
+}
+
+func loadItemFiles(ctx context.Context, opClient opclient.Client, vaultID string, item *model.Item) (*model.Item, error) {
+	for i, file := range item.Files {
+		content, err := opClient.GetFileContent(ctx, vaultID, item.ID, file.ID)
+		if err != nil {
+			return nil, err
+		}
+		item.Files[i].SetContent(content)
+	}
+	return item, nil
 }
