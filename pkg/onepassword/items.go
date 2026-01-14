@@ -32,7 +32,8 @@ func GetOnePasswordItemByPath(ctx context.Context, opClient opclient.Client, pat
 			// Success, load files and return
 			item, err = loadItemFiles(ctx, opClient, vaultID, item)
 			if err != nil {
-				return nil, fmt.Errorf("failed to load item files for vaultID='%s' and itemNameOrID='%s': %w", vaultID, itemNameOrID, err)
+				return nil, fmt.Errorf("failed to load item files for vaultID='%s' and itemNameOrID='%s': %w",
+					vaultID, itemNameOrID, err)
 			}
 			return item, nil
 		}
@@ -47,7 +48,8 @@ func GetOnePasswordItemByPath(ctx context.Context, opClient opclient.Client, pat
 
 	item, err = loadItemFiles(ctx, opClient, vaultID, item)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load item files for vaultID='%s' and itemNameOrID='%s': %w", vaultID, itemNameOrID, err)
+		return nil, fmt.Errorf("failed to load item files for vaultID='%s' and itemNameOrID='%s': %w",
+			vaultID, itemNameOrID, err)
 	}
 
 	return item, nil
@@ -116,7 +118,8 @@ func getItemFromTitle(ctx context.Context, client opclient.Client, vaultId, item
 	return &oldestItem, nil
 }
 
-func loadItemFiles(ctx context.Context, opClient opclient.Client, vaultID string, item *model.Item) (*model.Item, error) {
+func loadItemFiles(ctx context.Context, opClient opclient.Client, vaultID string,
+	item *model.Item) (*model.Item, error) {
 	for i, file := range item.Files {
 		content, err := opClient.GetFileContent(ctx, vaultID, item.ID, file.ID)
 		if err != nil {
