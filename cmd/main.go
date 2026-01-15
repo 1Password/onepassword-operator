@@ -307,6 +307,7 @@ func main() {
 		Scheme:             mgr.GetScheme(),
 		OpClient:           opClient,
 		OpAnnotationRegExp: r,
+		Recorder:           mgr.GetEventRecorderFor("onepassword-operator-deployment"),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Deployment")
 		os.Exit(1)
