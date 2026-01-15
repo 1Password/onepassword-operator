@@ -235,39 +235,32 @@ func runCommonTestCases(ctx context.Context) {
 	})
 
 	It("Should create kubernetes secret from 1Password item with 26-character title that looks like UUID", func() {
-		secretName := "secret-26char-title"
-
-		By("Creating secret `" + secretName + "` from 1Password item with 26-character title")
+		By("Creating secret `secret-26char-title` from 1Password item with 26-character title")
 		kubeClient.Apply(ctx, "secret-26char-title.yaml")
-		kubeClient.Secret(secretName).CheckIfExists(ctx)
+		kubeClient.Secret("secret-26char-title").CheckIfExists(ctx)
 
 		By("Verifying secret has data from the item")
-		secret := kubeClient.Secret(secretName).Get(ctx)
-		// Verify the secret was created and has at least one field
+		secret := kubeClient.Secret("secret-26char-title").Get(ctx)
 		Expect(secret.Data).NotTo(BeEmpty(), "secret should have data from 1Password item")
 	})
 
 	It("Should create kubernetes secret from 1Password item using UUID", func() {
-		secretName := "secret-by-uuid"
-
-		By("Creating secret `" + secretName + "` from 1Password item using UUID")
+		By("Creating secret `secret-by-uuid` from 1Password item using UUID")
 		kubeClient.Apply(ctx, "secret-by-uuid.yaml")
-		kubeClient.Secret(secretName).CheckIfExists(ctx)
+		kubeClient.Secret("secret-by-uuid").CheckIfExists(ctx)
 
 		By("Verifying secret has data from the item")
-		secret := kubeClient.Secret(secretName).Get(ctx)
+		secret := kubeClient.Secret("secret-by-uuid").Get(ctx)
 		Expect(secret.Data).NotTo(BeEmpty(), "secret should have data from 1Password item")
 	})
 
 	It("Should create kubernetes secret with file content from 1Password item", func() {
-		secretName := "secret-with-file"
-
-		By("Creating secret `" + secretName + "` from 1Password item with file attachment")
+		By("Creating secret `secret-with-file` from 1Password item with file attachment")
 		kubeClient.Apply(ctx, "secret-with-file.yaml")
-		kubeClient.Secret(secretName).CheckIfExists(ctx)
+		kubeClient.Secret("secret-with-file").CheckIfExists(ctx)
 
 		By("Verifying secret contains file content")
-		secret := kubeClient.Secret(secretName).Get(ctx)
+		secret := kubeClient.Secret("secret-with-file").Get(ctx)
 		Expect(secret.Data).NotTo(BeEmpty(), "secret should have data")
 
 		// Verify the file content is present
