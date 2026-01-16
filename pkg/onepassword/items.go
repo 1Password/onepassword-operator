@@ -29,7 +29,7 @@ func GetOnePasswordItemByPath(ctx context.Context, opClient opclient.Client, pat
 		item, err = opClient.GetItemByID(ctx, vaultID, itemNameOrID)
 		if err == nil {
 			// Success, load files and return
-			item, err = loadItemFiles(ctx, opClient, vaultID, item)
+			err = loadItemFiles(ctx, opClient, vaultID, item)
 			if err != nil {
 				return nil, fmt.Errorf("failed to load item files for vaultID='%s' and itemNameOrID='%s': %w",
 					vaultID, itemNameOrID, err)
@@ -40,7 +40,7 @@ func GetOnePasswordItemByPath(ctx context.Context, opClient opclient.Client, pat
 	}
 
 	// Try to fetch item by title to get the ID
-	itemID, err := getItemIDFromTitle(ctx, opClient, vaultID, itemNameOrID)
+	itemID, err := getItemIDByTitle(ctx, opClient, vaultID, itemNameOrID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get item for vaultID='%s' and itemNameOrID='%s': %w", vaultID, itemNameOrID, err)
 	}
@@ -50,7 +50,7 @@ func GetOnePasswordItemByPath(ctx context.Context, opClient opclient.Client, pat
 		return nil, fmt.Errorf("failed to get item by ID for vaultID='%s' and itemID='%s': %w", vaultID, itemID, err)
 	}
 
-	item, err = loadItemFiles(ctx, opClient, vaultID, item)
+	err = loadItemFiles(ctx, opClient, vaultID, item)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load item files for vaultID='%s' and itemID='%s': %w", vaultID, itemID, err)
 	}
@@ -96,7 +96,7 @@ func getVaultID(ctx context.Context, client opclient.Client, vaultNameOrID strin
 	return vaultNameOrID, nil
 }
 
-func getItemIDFromTitle(ctx context.Context, client opclient.Client, vaultId, itemNameOrID string) (string, error) {
+func getItemIDByTitle(ctx context.Context, client opclient.Client, vaultId, itemNameOrID string) (string, error) {
 	items, err := client.GetItemsByTitle(ctx, vaultId, itemNameOrID)
 	if err != nil {
 		return "", fmt.Errorf("failed to GetItemsByTitle for vaultID='%s' and itemTitle='%s': %w", vaultId, itemNameOrID, err)
@@ -123,13 +123,13 @@ func getItemIDFromTitle(ctx context.Context, client opclient.Client, vaultId, it
 }
 
 func loadItemFiles(ctx context.Context, client opclient.Client, vaultID string,
-	item *model.Item) (*model.Item, error) {
+	item *model.Item) error {
 	for i, file := range item.Files {
 		content, err := client.GetFileContent(ctx, vaultID, item.ID, file.ID)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		item.Files[i].SetContent(content)
 	}
-	return item, nil
+	return nil
 }

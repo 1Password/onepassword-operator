@@ -91,12 +91,12 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 				},
 			}, []string{"OP_SERVICE_ACCOUNT_TOKEN"})
 
-			kubeClient.Secret("login").Delete(ctx)               // remove secret crated in previous test
-			kubeClient.Secret("secret-ignored").Delete(ctx)      // remove secret crated in previous test
-			kubeClient.Secret("secret-for-update").Delete(ctx)   // remove secret crated in previous test
-			kubeClient.Secret("secret-26char-title").Delete(ctx) // remove secret crated in previous test
-			kubeClient.Secret("secret-by-uuid").Delete(ctx)      // remove secret crated in previous test
-			kubeClient.Secret("secret-with-file").Delete(ctx)    // remove secret crated in previous test
+			kubeClient.Secret("login").Delete(ctx)               // remove secret created in previous test
+			kubeClient.Secret("secret-ignored").Delete(ctx)      // remove secret created in previous test
+			kubeClient.Secret("secret-for-update").Delete(ctx)   // remove secret created in previous test
+			kubeClient.Secret("secret-26char-title").Delete(ctx) // remove secret created in previous test
+			kubeClient.Secret("secret-by-uuid").Delete(ctx)      // remove secret created in previous test
+			kubeClient.Secret("secret-with-file").Delete(ctx)    // remove secret created in previous test
 
 			kubeClient.Pod(map[string]string{"app": "onepassword-connect"}).WaitingForRunningPod(ctx)
 		})
