@@ -137,12 +137,8 @@ func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, f
 		secretData[key] = []byte(fields[i].Value)
 	}
 
-	for _, url := range urls {
-		if !url.Primary {
-			// skip non-primary URLs
-			continue
-		}
-		key := formatSecretDataName(url.Label)
+	urlsByLabel := processURLsByLabel(urls)
+	for key, url := range urlsByLabel {
 		secretData[key] = []byte(url.URL)
 	}
 
@@ -213,4 +209,25 @@ func createValidSecretDataName(value string) string {
 	}
 
 	return result
+}
+
+// processURLsByLabel processes all urls, preferring primary when multiple urls share the same label
+func processURLsByLabel(urls []model.ItemURL) map[string]model.ItemURL {
+	urlsByLabel := make(map[string]model.ItemURL)
+	for _, url := range urls {
+		key := formatSecretDataName(url.Label)
+		existingURL, exists := urlsByLabel[key]
+
+		if !exists {
+			// First url with this label
+			urlsByLabel[key] = url
+		} else if url.Primary {
+			// Current url is primary so overwrite the existing one
+			urlsByLabel[key] = url
+		} else if !existingURL.Primary {
+			// Neither is primary, use the current one
+			urlsByLabel[key] = url
+		}
+	}
+	return urlsByLabel
 }
