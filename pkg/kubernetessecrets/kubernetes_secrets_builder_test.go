@@ -155,7 +155,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 func TestBuildKubernetesSecretData(t *testing.T) {
 	fields := generateFields(5)
 
-	secretData := BuildKubernetesSecretData(fields, nil)
+	secretData := BuildKubernetesSecretData(fields, nil, nil)
 	if len(secretData) != len(fields) {
 		t.Errorf("Unexpected number of secret fields returned. Expected 3, got %v", len(secretData))
 	}
@@ -170,7 +170,7 @@ func TestBuildKubernetesSecretDataWithEmptyValues(t *testing.T) {
 		{Label: "empty-field-2", Value: ""},
 	}
 
-	secretData := BuildKubernetesSecretData(fields, nil)
+	secretData := BuildKubernetesSecretData(fields, nil, nil)
 
 	// Verify all fields are present, including empty ones
 	if len(secretData) != len(fields) {
@@ -218,6 +218,32 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 		t.Errorf("Expected namespace value: %v but got: %v", namespace, kubeSecret.Namespace)
 	}
 	compareFields(item.Fields, kubeSecret.Data, t)
+}
+
+func TestBuildKubernetesSecretDataWithURLs(t *testing.T) {
+	fields := generateFields(2)
+	urls := []model.ItemURL{
+		{URL: "https://example.com", Label: "website", Primary: true},
+		{URL: "https://support.example.com", Label: "support", Primary: false},
+		{URL: "https://another.example.com", Label: "website", Primary: false},
+	}
+
+	secretData := BuildKubernetesSecretData(fields, urls, nil)
+
+	// Should have fields + all URLs (both have different labels)
+	if len(secretData) != 4 {
+		t.Errorf("Expected 4 keys (2 fields + 2 URLs), got %d", len(secretData))
+	}
+
+	// Check primary URL is present and not the non-primary URL
+	if string(secretData["website"]) != "https://example.com" {
+		t.Errorf("Expected website URL, got %s", string(secretData["website"]))
+	}
+
+	// Check non-primary URL is also present (different label)
+	if string(secretData["support"]) != "https://support.example.com" {
+		t.Errorf("Expected support URL, got %s", string(secretData["support"]))
+	}
 }
 
 func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
