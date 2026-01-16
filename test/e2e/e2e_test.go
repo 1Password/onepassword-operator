@@ -110,6 +110,21 @@ func runCommonTestCases(ctx context.Context) {
 		kubeClient.Secret("login").CheckIfExists(ctx)
 	})
 
+	It("Should create kubernetes secret from manifest file with URL", func() {
+		By("Creating secret `login` from 1Password item")
+		kubeClient.Apply(ctx, "secret.yaml")
+		kubeClient.Secret("login").CheckIfExists(ctx)
+
+		By("Verifying secret contains website URL")
+		secret := kubeClient.Secret("login").Get(ctx)
+		Expect(secret.Data).NotTo(BeEmpty(), "secret should have data")
+
+		// Verify the website URL is present
+		websiteURL, ok := secret.Data["website"]
+		Expect(ok).To(BeTrue(), "secret should contain website URL")
+		Expect(string(websiteURL)).NotTo(BeEmpty(), "website URL should not be empty")
+	})
+
 	It("Kubernetes secret is updated after POOLING_INTERVAL, when updating item in 1Password", func() {
 		itemName := "secret-for-update"
 		secretName := itemName
@@ -230,4 +245,5 @@ func runCommonTestCases(ctx context.Context) {
 		By("Checking the operator is restarted")
 		kubeClient.Deployment("onepassword-connect-operator").WaitDeploymentRolledOut(ctx)
 	})
+
 }
