@@ -125,16 +125,25 @@ func BuildKubernetesSecretFromOnePasswordItem(
 			Labels:          labels,
 			OwnerReferences: ownerRefs,
 		},
-		Data: BuildKubernetesSecretData(item.Fields, item.Files),
+		Data: BuildKubernetesSecretData(item.Fields, item.URLs, item.Files),
 		Type: corev1.SecretType(secretType),
 	}
 }
 
-func BuildKubernetesSecretData(fields []model.ItemField, files []model.File) map[string][]byte {
+func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, files []model.File) map[string][]byte {
 	secretData := map[string][]byte{}
 	for i := 0; i < len(fields); i++ {
 		key := formatSecretDataName(fields[i].Label)
 		secretData[key] = []byte(fields[i].Value)
+	}
+
+	for _, url := range urls {
+		if !url.Primary {
+			// skip non-primary URLs
+			continue
+		}
+		key := formatSecretDataName(url.Label)
+		secretData[key] = []byte(url.URL)
 	}
 
 	// populate unpopulated fields from files

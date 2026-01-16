@@ -155,7 +155,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 func TestBuildKubernetesSecretData(t *testing.T) {
 	fields := generateFields(5)
 
-	secretData := BuildKubernetesSecretData(fields, nil)
+	secretData := BuildKubernetesSecretData(fields, nil, nil)
 	if len(secretData) != len(fields) {
 		t.Errorf("Unexpected number of secret fields returned. Expected 3, got %v", len(secretData))
 	}
@@ -170,7 +170,7 @@ func TestBuildKubernetesSecretDataWithEmptyValues(t *testing.T) {
 		{Label: "empty-field-2", Value: ""},
 	}
 
-	secretData := BuildKubernetesSecretData(fields, nil)
+	secretData := BuildKubernetesSecretData(fields, nil, nil)
 
 	// Verify all fields are present, including empty ones
 	if len(secretData) != len(fields) {
@@ -218,6 +218,31 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 		t.Errorf("Expected namespace value: %v but got: %v", namespace, kubeSecret.Namespace)
 	}
 	compareFields(item.Fields, kubeSecret.Data, t)
+}
+
+func TestBuildKubernetesSecretDataWithURLs(t *testing.T) {
+	fields := generateFields(2)
+	urls := []model.ItemURL{
+		{URL: "https://example.com", Label: "website", Primary: true},
+		{URL: "https://support.example.com", Label: "support", Primary: false},
+	}
+
+	secretData := BuildKubernetesSecretData(fields, urls, nil)
+
+	// Should have fields + 1 primary URL
+	if len(secretData) != 3 {
+		t.Errorf("Expected 3 keys (2 fields + 1 URL), got %d", len(secretData))
+	}
+
+	// Check primary URL is present
+	if string(secretData["website"]) != "https://example.com" {
+		t.Errorf("Expected website URL, got %s", string(secretData["website"]))
+	}
+
+	// Check non-primary URL is NOT present
+	if _, exists := secretData["support"]; exists {
+		t.Errorf("Non-primary URL should not be included")
+	}
 }
 
 func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
