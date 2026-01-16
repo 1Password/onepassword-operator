@@ -42,6 +42,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
@@ -57,6 +58,7 @@ type DeploymentReconciler struct {
 	Scheme             *runtime.Scheme
 	OpClient           opclient.Client
 	OpAnnotationRegExp *regexp.Regexp
+	Recorder           record.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
@@ -105,10 +107,11 @@ func (r *DeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Request) 
 		if err = r.handleApplyingDeployment(ctx, deployment, deployment.Namespace, annotations, req); err != nil {
 			if strings.Contains(err.Error(), "rate limit") {
 				reqLogger.V(logs.InfoLevel).Info("1Password rate limit hit. Requeuing after 15 minutes.")
+				r.Recorder.Event(deployment, corev1.EventTypeWarning, "RateLimited", "1Password rate limit hit. Requeuing after 15 minutes.")
 				return ctrl.Result{RequeueAfter: 15 * time.Minute}, nil
-			} else {
-				return ctrl.Result{}, err
 			}
+			r.Recorder.Event(deployment, corev1.EventTypeWarning, "ReconcileError", fmt.Sprintf("Failed to sync secret from 1Password: %s", err.Error()))
+			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
