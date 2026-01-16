@@ -115,14 +115,28 @@ func runCommonTestCases(ctx context.Context) {
 		kubeClient.Apply(ctx, "secret.yaml")
 		kubeClient.Secret("login").CheckIfExists(ctx)
 
-		By("Verifying secret contains website URL")
+		By("Verifying secret contains website URLs")
 		secret := kubeClient.Secret("login").Get(ctx)
 		Expect(secret.Data).NotTo(BeEmpty(), "secret should have data")
 
-		// Verify the website URL is present
+		// Verify the primary website url is present
 		websiteURL, ok := secret.Data["website"]
 		Expect(ok).To(BeTrue(), "secret should contain website URL")
 		Expect(string(websiteURL)).NotTo(BeEmpty(), "website URL should not be empty")
+
+		// Verify the test-website url is present
+		testWebsiteURL, ok := secret.Data["test-website"]
+		Expect(ok).To(BeTrue(), "secret should contain test-website URL")
+		Expect(string(testWebsiteURL)).NotTo(BeEmpty(), "test-website URL should not be empty")
+
+		// Verify that only one website key exists
+		websiteCount := 0
+		for key := range secret.Data {
+			if key == "website" {
+				websiteCount++
+			}
+		}
+		Expect(websiteCount).To(Equal(1), "should have exactly one 'website' key (the primary one)")
 	})
 
 	It("Kubernetes secret is updated after POOLING_INTERVAL, when updating item in 1Password", func() {

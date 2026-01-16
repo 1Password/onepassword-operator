@@ -225,23 +225,24 @@ func TestBuildKubernetesSecretDataWithURLs(t *testing.T) {
 	urls := []model.ItemURL{
 		{URL: "https://example.com", Label: "website", Primary: true},
 		{URL: "https://support.example.com", Label: "support", Primary: false},
+		{URL: "https://another.example.com", Label: "website", Primary: false},
 	}
 
 	secretData := BuildKubernetesSecretData(fields, urls, nil)
 
-	// Should have fields + 1 primary URL
-	if len(secretData) != 3 {
-		t.Errorf("Expected 3 keys (2 fields + 1 URL), got %d", len(secretData))
+	// Should have fields + all URLs (both have different labels)
+	if len(secretData) != 4 {
+		t.Errorf("Expected 4 keys (2 fields + 2 URLs), got %d", len(secretData))
 	}
 
-	// Check primary URL is present
+	// Check primary URL is present and not the non-primary URL
 	if string(secretData["website"]) != "https://example.com" {
 		t.Errorf("Expected website URL, got %s", string(secretData["website"]))
 	}
 
-	// Check non-primary URL is NOT present
-	if _, exists := secretData["support"]; exists {
-		t.Errorf("Non-primary URL should not be included")
+	// Check non-primary URL is also present (different label)
+	if string(secretData["support"]) != "https://support.example.com" {
+		t.Errorf("Expected support URL, got %s", string(secretData["support"]))
 	}
 }
 
