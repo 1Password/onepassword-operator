@@ -23,22 +23,36 @@ func GetOnePasswordItemByPath(ctx context.Context, opClient opclient.Client, pat
 		return nil, fmt.Errorf("failed to 'getVaultID' for vaultNameOrID='%s': %w", vaultNameOrID, err)
 	}
 
-	itemID, err := getItemID(ctx, opClient, vaultID, itemNameOrID)
-	if err != nil {
-		return nil, fmt.Errorf("faild to 'getItemID' for vaultID='%s' and itemNameOrID='%s': %w", vaultID, itemNameOrID, err)
-	}
-
-	item, err := opClient.GetItemByID(ctx, vaultID, itemID)
-	if err != nil {
-		return nil, fmt.Errorf("faield to 'GetItemByID' for vaultID='%s' and itemID='%s': %w", vaultID, itemID, err)
-	}
-
-	for i, file := range item.Files {
-		content, err := opClient.GetFileContent(ctx, vaultID, itemID, file.ID)
-		if err != nil {
-			return nil, err
+	var item *model.Item
+	// If it looks like a UUID, try fetching by ID first
+	if IsValidClientUUID(itemNameOrID) {
+		item, err = opClient.GetItemByID(ctx, vaultID, itemNameOrID)
+		if err == nil {
+			// Success, load files and return
+			err = loadItemFiles(ctx, opClient, vaultID, item)
+			if err != nil {
+				return nil, fmt.Errorf("failed to load item files for vaultID='%s' and itemNameOrID='%s': %w",
+					vaultID, itemNameOrID, err)
+			}
+			return item, nil
 		}
-		item.Files[i].SetContent(content)
+		// If UUID lookup failed, fallback to title lookup
+	}
+
+	// Try to fetch item by title to get the ID
+	itemID, err := getItemIDByTitle(ctx, opClient, vaultID, itemNameOrID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get item for vaultID='%s' and itemNameOrID='%s': %w", vaultID, itemNameOrID, err)
+	}
+
+	item, err = opClient.GetItemByID(ctx, vaultID, itemID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get item by ID for vaultID='%s' and itemID='%s': %w", vaultID, itemID, err)
+	}
+
+	err = loadItemFiles(ctx, opClient, vaultID, item)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load item files for vaultID='%s' and itemID='%s': %w", vaultID, itemID, err)
 	}
 
 	return item, nil
@@ -82,29 +96,40 @@ func getVaultID(ctx context.Context, client opclient.Client, vaultNameOrID strin
 	return vaultNameOrID, nil
 }
 
-func getItemID(ctx context.Context, client opclient.Client, vaultId, itemNameOrID string) (string, error) {
-	if !IsValidClientUUID(itemNameOrID) {
-		items, err := client.GetItemsByTitle(ctx, vaultId, itemNameOrID)
-		if err != nil {
-			return "", err
-		}
-
-		if len(items) == 0 {
-			return "", fmt.Errorf("no items found with identifier %q", itemNameOrID)
-		}
-
-		oldestItem := items[0]
-		if len(items) > 1 {
-			for _, returnedItem := range items {
-				if returnedItem.CreatedAt.Before(oldestItem.CreatedAt) {
-					oldestItem = returnedItem
-				}
-			}
-			logger.Info(fmt.Sprintf("%v 1Password items found with the title %q. Will use item %q as it is the oldest.",
-				len(items), itemNameOrID, oldestItem.ID,
-			))
-		}
-		itemNameOrID = oldestItem.ID
+func getItemIDByTitle(ctx context.Context, client opclient.Client, vaultId, itemNameOrID string) (string, error) {
+	items, err := client.GetItemsByTitle(ctx, vaultId, itemNameOrID)
+	if err != nil {
+		return "", fmt.Errorf("failed to GetItemsByTitle for vaultID='%s' and itemTitle='%s': %w", vaultId, itemNameOrID, err)
 	}
-	return itemNameOrID, nil
+
+	if len(items) == 0 {
+		return "", fmt.Errorf("no items found with identifier %q in vault %q", itemNameOrID, vaultId)
+	}
+
+	oldestItem := items[0]
+	if len(items) > 1 {
+		for i := range items {
+			returnedItem := items[i]
+			if returnedItem.CreatedAt.Before(oldestItem.CreatedAt) {
+				oldestItem = returnedItem
+			}
+		}
+		logger.Info(fmt.Sprintf("%v 1Password items found with the title %q. Will use item %q as it is the oldest.",
+			len(items), itemNameOrID, oldestItem.ID,
+		))
+	}
+
+	return oldestItem.ID, nil
+}
+
+func loadItemFiles(ctx context.Context, client opclient.Client, vaultID string,
+	item *model.Item) error {
+	for i, file := range item.Files {
+		content, err := client.GetFileContent(ctx, vaultID, item.ID, file.ID)
+		if err != nil {
+			return err
+		}
+		item.Files[i].SetContent(content)
+	}
+	return nil
 }

@@ -198,6 +198,7 @@ var _ = BeforeSuite(func() {
 		Scheme:             k8sManager.GetScheme(),
 		OpClient:           mockOpClient,
 		OpAnnotationRegExp: r,
+		Recorder:           k8sManager.GetEventRecorderFor("onepassword-operator-deployment"),
 	}
 	err = (deploymentReconciler).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
