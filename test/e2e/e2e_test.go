@@ -91,9 +91,12 @@ var _ = Describe("Onepassword Operator e2e", Ordered, func() {
 				},
 			}, []string{"OP_SERVICE_ACCOUNT_TOKEN"})
 
-			kubeClient.Secret("login").Delete(ctx)             // remove secret crated in previous test
-			kubeClient.Secret("secret-ignored").Delete(ctx)    // remove secret crated in previous test
-			kubeClient.Secret("secret-for-update").Delete(ctx) // remove secret crated in previous test
+			kubeClient.Secret("login").Delete(ctx)               // remove secret created in previous test
+			kubeClient.Secret("secret-ignored").Delete(ctx)      // remove secret created in previous test
+			kubeClient.Secret("secret-for-update").Delete(ctx)   // remove secret created in previous test
+			kubeClient.Secret("secret-26char-title").Delete(ctx) // remove secret created in previous test
+			kubeClient.Secret("secret-by-uuid").Delete(ctx)      // remove secret created in previous test
+			kubeClient.Secret("secret-with-file").Delete(ctx)    // remove secret created in previous test
 
 			kubeClient.Pod(map[string]string{"app": "onepassword-connect"}).WaitingForRunningPod(ctx)
 		})
@@ -229,5 +232,40 @@ func runCommonTestCases(ctx context.Context) {
 
 		By("Checking the operator is restarted")
 		kubeClient.Deployment("onepassword-connect-operator").WaitDeploymentRolledOut(ctx)
+	})
+
+	It("Should create kubernetes secret from 1Password item with 26-character title that looks like UUID", func() {
+		By("Creating secret `secret-26char-title` from 1Password item with 26-character title")
+		kubeClient.Apply(ctx, "secret-26char-title.yaml")
+		kubeClient.Secret("secret-26char-title").CheckIfExists(ctx)
+
+		By("Verifying secret has data from the item")
+		secret := kubeClient.Secret("secret-26char-title").Get(ctx)
+		Expect(secret.Data).NotTo(BeEmpty(), "secret should have data from 1Password item")
+	})
+
+	It("Should create kubernetes secret from 1Password item using UUID", func() {
+		By("Creating secret `secret-by-uuid` from 1Password item using UUID")
+		kubeClient.Apply(ctx, "secret-by-uuid.yaml")
+		kubeClient.Secret("secret-by-uuid").CheckIfExists(ctx)
+
+		By("Verifying secret has data from the item")
+		secret := kubeClient.Secret("secret-by-uuid").Get(ctx)
+		Expect(secret.Data).NotTo(BeEmpty(), "secret should have data from 1Password item")
+	})
+
+	It("Should create kubernetes secret with file content from 1Password item", func() {
+		By("Creating secret `secret-with-file` from 1Password item with file attachment")
+		kubeClient.Apply(ctx, "secret-with-file.yaml")
+		kubeClient.Secret("secret-with-file").CheckIfExists(ctx)
+
+		By("Verifying secret contains file content")
+		secret := kubeClient.Secret("secret-with-file").Get(ctx)
+		Expect(secret.Data).NotTo(BeEmpty(), "secret should have data")
+
+		// Verify the file content is present
+		fileContent, ok := secret.Data["test.txt"]
+		Expect(ok).To(BeTrue(), "secret should contain file 'test.txt'")
+		Expect(fileContent).NotTo(BeEmpty(), "file content should not be empty")
 	})
 }
