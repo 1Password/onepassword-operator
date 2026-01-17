@@ -290,7 +290,7 @@ func isWorkloadSetForAutoRestart(workload client.Object, setForAutoRestartByName
 	restartBool, err := utils.StringToBool(restartAnnotation)
 	if err != nil {
 		log.Error(err, fmt.Sprintf(
-			"Error parsing %s annotation on %s %s. Must be true or false. Defaulting to false.",
+			"Error parsing %s annotation on %T %s. Must be true or false. Defaulting to false.",
 			AutoRestartWorkloadAnnotation, workload, name,
 		))
 		return false
