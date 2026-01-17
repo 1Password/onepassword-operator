@@ -70,10 +70,10 @@ var (
 )
 
 const (
-	envPollingIntervalVariable    = "POLLING_INTERVAL"
-	manageConnect                 = "MANAGE_CONNECT"
-	restartDeploymentsEnvVariable = "AUTO_RESTART"
-	defaultPollingInterval        = 600
+	envPollingIntervalVariable  = "POLLING_INTERVAL"
+	manageConnect               = "MANAGE_CONNECT"
+	restartWorkloadsEnvVariable = "AUTO_RESTART"
+	defaultPollingInterval      = 600
 
 	annotationRegExpString = "^operator\\.1password\\.io\\/[a-zA-Z\\.]+"
 )
@@ -336,7 +336,7 @@ func main() {
 	}
 
 	// Setup update secrets task
-	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opClient, shouldAutoRestartDeployments())
+	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opClient, shouldAutoRestartWorkloads())
 	done := make(chan bool)
 	ticker := time.NewTicker(getPollingIntervalForUpdatingSecrets())
 	go func(ctx context.Context) {
@@ -405,15 +405,15 @@ func shouldManageConnect() bool {
 	return false
 }
 
-func shouldAutoRestartDeployments() bool {
-	shouldAutoRestartDeployments, found := os.LookupEnv(restartDeploymentsEnvVariable)
+func shouldAutoRestartWorkloads() bool {
+	value, found := os.LookupEnv(restartWorkloadsEnvVariable)
 	if found {
-		shouldAutoRestartDeploymentsBool, err := strconv.ParseBool(strings.ToLower(shouldAutoRestartDeployments))
+		shouldAutoRestartWorkloadsBool, err := strconv.ParseBool(strings.ToLower(value))
 		if err != nil {
 			setupLog.Error(err, "")
 			os.Exit(1)
 		}
-		return shouldAutoRestartDeploymentsBool
+		return shouldAutoRestartWorkloadsBool
 	}
 	return false
 }
