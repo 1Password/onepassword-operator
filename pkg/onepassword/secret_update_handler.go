@@ -89,7 +89,7 @@ func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(
 				continue
 			}
 
-			podTemplate, err := GetPodTemplate(workload)
+			podTemplate, err := getPodTemplate(workload)
 			if err != nil {
 				log.Error(err, "Failed to get pod template", "workload", workload.GetName())
 				continue
@@ -100,7 +100,7 @@ func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(
 				continue
 			}
 
-			matchedSecrets := GetUpdatedSecretsForPodTemplate(workload.GetAnnotations(), podTemplate, updatedSecrets)
+			matchedSecrets := getUpdatedSecretsForPodTemplate(workload.GetAnnotations(), podTemplate, updatedSecrets)
 			if len(matchedSecrets) == 0 {
 				continue
 			}
@@ -122,7 +122,7 @@ func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(
 }
 
 func (h *SecretUpdateHandler) restartWorkload(ctx context.Context, workload client.Object) error {
-	podTemplate, err := GetPodTemplate(workload)
+	podTemplate, err := getPodTemplate(workload)
 	if err != nil {
 		log.Error(err, "Unsupported workload type for restart", "type", fmt.Sprintf("%T", workload))
 		return err
@@ -316,7 +316,7 @@ func (h *SecretUpdateHandler) isNamespaceSetToAutoRestart(namespace *corev1.Name
 	return restartWorkloadBool
 }
 
-func GetPodTemplate(obj client.Object) (*corev1.PodTemplateSpec, error) {
+func getPodTemplate(obj client.Object) (*corev1.PodTemplateSpec, error) {
 	switch o := obj.(type) {
 	case *appsv1.Deployment:
 		return &o.Spec.Template, nil
@@ -325,7 +325,7 @@ func GetPodTemplate(obj client.Object) (*corev1.PodTemplateSpec, error) {
 	}
 }
 
-func GetUpdatedSecretsForPodTemplate(annotations map[string]string, podTemplate *corev1.PodTemplateSpec, secrets map[string]*corev1.Secret) map[string]*corev1.Secret {
+func getUpdatedSecretsForPodTemplate(annotations map[string]string, podTemplate *corev1.PodTemplateSpec, secrets map[string]*corev1.Secret) map[string]*corev1.Secret {
 	if podTemplate == nil {
 		return nil
 	}
