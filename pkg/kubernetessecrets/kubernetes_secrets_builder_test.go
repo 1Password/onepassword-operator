@@ -246,6 +246,39 @@ func TestBuildKubernetesSecretDataWithURLs(t *testing.T) {
 	}
 }
 
+func TestBuildKubernetesSecretDataWithFieldURLConflict(t *testing.T) {
+	fields := []model.ItemField{
+		{Label: "website", Value: "field-value-for-website"},
+		{Label: "other-field", Value: "other-value"},
+	}
+
+	// Create a url with the same label "website" as field above - should be ignored
+	urls := []model.ItemURL{
+		{URL: "https://example.com", Label: "website", Primary: true},
+		{URL: "https://support.example.com", Label: "support", Primary: false},
+	}
+
+	secretData := BuildKubernetesSecretData(fields, urls, nil)
+
+	// Should have 2 fields + 1 url
+	if len(secretData) != 3 {
+		t.Errorf("Expected 3 keys (2 fields + 1 URL), got %d", len(secretData))
+	}
+
+	// Verify the field value is kept and not overwritten by url
+	if string(secretData["website"]) != "field-value-for-website" {
+		t.Errorf("Expected field value 'field-value-for-website', got %s", string(secretData["website"]))
+	}
+
+	if string(secretData["other-field"]) != "other-value" {
+		t.Errorf("Expected 'other-value', got %s", string(secretData["other-field"]))
+	}
+
+	if string(secretData["support"]) != "https://support.example.com" {
+		t.Errorf("Expected support URL, got %s", string(secretData["support"]))
+	}
+}
+
 func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 	name := "inV@l1d k8s secret%name"
 	expectedName := "inv-l1d-k8s-secret-name"
