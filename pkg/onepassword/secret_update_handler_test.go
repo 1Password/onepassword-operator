@@ -809,6 +809,8 @@ func TestUpdateSecretHandler(t *testing.T) {
 
 			mockOpClient := &mocks.TestClient{}
 			mockOpClient.On("GetItemByID", mock.Anything, mock.Anything).Return(createItem(), nil)
+			// Mock GetVaultsByTitle to return empty slice for any call (so UUID fallback works)
+			mockOpClient.On("GetVaultsByTitle", mock.Anything).Return([]model.Vault{}, nil)
 			h := &SecretUpdateHandler{
 				client:                             cl,
 				opClient:                           mockOpClient,

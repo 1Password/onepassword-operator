@@ -184,6 +184,9 @@ var _ = BeforeSuite(func() {
 	mockOpClient := &mocks.TestClient{}
 	mockGetItemByIDFunc = mockOpClient.On("GetItemByID", mock.Anything, mock.Anything)
 
+	// Mock GetVaultsByTitle to return empty slice for any call so UUID fallback works
+	mockOpClient.On("GetVaultsByTitle", mock.Anything).Return([]model.Vault{}, nil)
+
 	onePasswordItemReconciler = &OnePasswordItemReconciler{
 		Client:   k8sManager.GetClient(),
 		Scheme:   k8sManager.GetScheme(),
