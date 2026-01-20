@@ -114,7 +114,9 @@ func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(
 				}
 			}
 
-			log.V(logs.DebugLevel).Info(fmt.Sprintf("%T %q at namespace %q is up to date", workload, workload.GetName(), workload.GetNamespace()))
+			log.V(logs.DebugLevel).Info(
+				fmt.Sprintf("%T %q at namespace %q is up to date", workload, workload.GetName(), workload.GetNamespace()),
+			)
 		}
 	}
 
@@ -128,7 +130,14 @@ func (h *SecretUpdateHandler) restartWorkload(ctx context.Context, workload clie
 		return err
 	}
 
-	log.Info(fmt.Sprintf("%T %q in namespace %q references an updated secret. Restarting", workload, workload.GetName(), workload.GetNamespace()))
+	log.Info(
+		fmt.Sprintf(
+			"%T %q in namespace %q references an updated secret. Restarting",
+			workload,
+			workload.GetName(),
+			workload.GetNamespace(),
+		),
+	)
 
 	if podTemplate.Annotations == nil {
 		podTemplate.Annotations = map[string]string{}
@@ -270,7 +279,14 @@ func isSecretSetForAutoRestart(
 
 	restartBool, err := utils.StringToBool(restartAnnotation)
 	if err != nil {
-		log.Error(err, fmt.Sprintf("Error parsing %s annotation on Secret %s. Must be true or false. Defaulting to false.", AutoRestartWorkloadAnnotation, secret.Name))
+		log.Error(
+			err,
+			fmt.Sprintf(
+				"Error parsing %s annotation on Secret %s. Must be true or false. Defaulting to false.",
+				AutoRestartWorkloadAnnotation,
+				secret.Name,
+			),
+		)
 		return false
 	}
 
@@ -301,7 +317,7 @@ func isWorkloadSetForAutoRestart(workload client.Object, setForAutoRestartByName
 
 func (h *SecretUpdateHandler) isNamespaceSetToAutoRestart(namespace *corev1.Namespace) bool {
 	restartWorkload := namespace.Annotations[AutoRestartWorkloadAnnotation]
-	//If annotation for auto restarts for workload is not set. Check environment variable set on the operator
+	// If annotation for auto restarts for workload is not set. Check environment variable set on the operator
 	if restartWorkload == "" {
 		return h.shouldAutoRestartWorkloadsGlobally
 	}
@@ -325,7 +341,11 @@ func getPodTemplate(obj client.Object) (*corev1.PodTemplateSpec, error) {
 	}
 }
 
-func getUpdatedSecretsForPodTemplate(annotations map[string]string, podTemplate *corev1.PodTemplateSpec, secrets map[string]*corev1.Secret) map[string]*corev1.Secret {
+func getUpdatedSecretsForPodTemplate(
+	annotations map[string]string,
+	podTemplate *corev1.PodTemplateSpec,
+	secrets map[string]*corev1.Secret,
+) map[string]*corev1.Secret {
 	if podTemplate == nil {
 		return nil
 	}

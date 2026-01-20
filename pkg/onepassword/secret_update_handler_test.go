@@ -843,7 +843,10 @@ func TestUpdateSecretHandler(t *testing.T) {
 
 			// check if deployment has been restarted
 			deployment := &appsv1.Deployment{}
-			err = cl.Get(ctx, types.NamespacedName{Name: testData.existingWorkload.(client.Object).GetName(), Namespace: namespace}, deployment)
+			err = cl.Get(ctx, types.NamespacedName{
+				Name:      testData.existingWorkload.(client.Object).GetName(),
+				Namespace: namespace,
+			}, deployment)
 			assert.NoError(t, err)
 
 			_, ok := deployment.Spec.Template.Annotations[RestartAnnotation]
