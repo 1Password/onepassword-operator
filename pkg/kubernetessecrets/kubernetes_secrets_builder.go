@@ -132,18 +132,15 @@ func BuildKubernetesSecretFromOnePasswordItem(
 
 func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, files []model.File) map[string][]byte {
 	secretData := map[string][]byte{}
-	for i := 0; i < len(fields); i++ {
-		key := formatSecretDataName(fields[i].Label)
-		secretData[key] = []byte(fields[i].Value)
-	}
 
 	urlsByLabel := processURLsByLabel(urls)
 	for key, url := range urlsByLabel {
-		if secretData[key] != nil {
-			log.Info(fmt.Sprintf("URL '%s' ignored because of a field with the same label '%s'", url.URL, key))
-			continue
-		}
 		secretData[key] = []byte(url.URL)
+	}
+
+	for i := 0; i < len(fields); i++ {
+		key := formatSecretDataName(fields[i].Label)
+		secretData[key] = []byte(fields[i].Value)
 	}
 
 	// populate unpopulated fields from files
