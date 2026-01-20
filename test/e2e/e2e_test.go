@@ -268,4 +268,14 @@ func runCommonTestCases(ctx context.Context) {
 		Expect(ok).To(BeTrue(), "secret should contain file 'test.txt'")
 		Expect(fileContent).NotTo(BeEmpty(), "file content should not be empty")
 	})
+
+	It("Should resolve vault case-insensitively", func() {
+		By("Creating secret `login-case` from 1Password item with mixed-case vault")
+		kubeClient.Apply(ctx, "secret-vault-case.yaml")
+		kubeClient.Secret("login-case").CheckIfExists(ctx)
+
+		By("Verifying secret has data from the item")
+		secret := kubeClient.Secret("login-case").Get(ctx)
+		Expect(secret.Data).NotTo(BeEmpty(), "secret should have data from 1Password item")
+	})
 }

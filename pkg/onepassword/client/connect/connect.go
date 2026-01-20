@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/1Password/connect-sdk-go/connect"
@@ -94,7 +95,7 @@ func (c *Connect) GetVaultsByTitle(ctx context.Context, vaultQuery string) ([]mo
 
 	var vaults []model.Vault
 	for _, connectVault := range connectVaults {
-		if vaultQuery == connectVault.Name {
+		if strings.EqualFold(connectVault.Name, vaultQuery) {
 			var vault model.Vault
 			vault.FromConnectVault(&connectVault)
 			vaults = append(vaults, vault)
