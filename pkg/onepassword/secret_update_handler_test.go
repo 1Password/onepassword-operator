@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubectl/pkg/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -38,7 +39,7 @@ const (
 
 type testUpdateSecretTask struct {
 	testName                 string
-	existingDeployment       *appsv1.Deployment
+	existingWorkload         runtime.Object
 	existingNamespace        *corev1.Namespace
 	existingSecret           *corev1.Secret
 	expectedError            error
@@ -69,7 +70,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          "Test unrelated deployment is not restarted with an updated secret",
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -116,7 +117,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          "OP item has new version. Secret needs update. Deployment is restarted based on containers",
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -185,7 +186,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          "OP item has new version. Secret needs update. Deployment is restarted based on annotation",
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -232,7 +233,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          "OP item has new version. Secret needs update. Deployment is restarted based on volume",
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -294,7 +295,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          "No secrets need update. No deployment is restarted",
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -342,7 +343,7 @@ var tests = []testUpdateSecretTask{
 		testName: `Deployment is not restarted when no auto restart is set to true for all
 		deployments and is not overwritten by by a namespace or deployment annotation`,
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -411,7 +412,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          `Secret autostart true value takes precedence over false deployment value`,
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -420,7 +421,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "false",
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -455,9 +456,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            "old version",
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "true",
+					VersionAnnotation:             "old version",
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Data: expectedSecretData,
@@ -468,9 +469,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            fmt.Sprint(itemVersion),
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "true",
+					VersionAnnotation:             fmt.Sprint(itemVersion),
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Data: expectedSecretData,
@@ -485,7 +486,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          `Secret autostart true value takes precedence over false deployment value`,
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -494,7 +495,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -529,9 +530,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            "old version",
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "false",
+					VersionAnnotation:             "old version",
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Data: expectedSecretData,
@@ -542,9 +543,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            fmt.Sprint(itemVersion),
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "false",
+					VersionAnnotation:             fmt.Sprint(itemVersion),
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Data: expectedSecretData,
@@ -559,7 +560,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          `Deployment autostart true value takes precedence over false global auto restart value`,
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -568,7 +569,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -635,11 +636,11 @@ var tests = []testUpdateSecretTask{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 		},
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -648,7 +649,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "false",
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -714,11 +715,11 @@ var tests = []testUpdateSecretTask{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 		},
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -792,11 +793,11 @@ func TestUpdateSecretHandler(t *testing.T) {
 			ctx := context.Background()
 			// Register operator types with the runtime scheme.
 			s := scheme.Scheme
-			s.AddKnownTypes(appsv1.SchemeGroupVersion, testData.existingDeployment)
+			s.AddKnownTypes(appsv1.SchemeGroupVersion, testData.existingWorkload)
 
 			// Objects to track in the fake client.
 			objs := []runtime.Object{
-				testData.existingDeployment,
+				testData.existingWorkload,
 				testData.existingNamespace,
 			}
 
@@ -812,7 +813,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 			h := &SecretUpdateHandler{
 				client:                             cl,
 				opClient:                           mockOpClient,
-				shouldAutoRestartDeploymentsGlobal: testData.globalAutoRestartEnabled,
+				shouldAutoRestartWorkloadsGlobally: testData.globalAutoRestartEnabled,
 			}
 
 			err := h.UpdateKubernetesSecretsTask(ctx)
@@ -821,7 +822,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 
 			var expectedSecretName string
 			if testData.expectedResultSecret == nil {
-				expectedSecretName = testData.existingDeployment.Name
+				expectedSecretName = testData.existingWorkload.(client.Object).GetName()
 			} else {
 				expectedSecretName = testData.expectedResultSecret.Name
 			}
@@ -842,7 +843,10 @@ func TestUpdateSecretHandler(t *testing.T) {
 
 			// check if deployment has been restarted
 			deployment := &appsv1.Deployment{}
-			err = cl.Get(ctx, types.NamespacedName{Name: testData.existingDeployment.Name, Namespace: namespace}, deployment)
+			err = cl.Get(ctx, types.NamespacedName{
+				Name:      testData.existingWorkload.(client.Object).GetName(),
+				Namespace: namespace,
+			}, deployment)
 			assert.NoError(t, err)
 
 			_, ok := deployment.Spec.Template.Annotations[RestartAnnotation]
@@ -852,7 +856,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 				assert.False(t, testData.expectedRestart, "Deployment was restarted but should not have been.")
 			}
 
-			oldPodTemplateAnnotations := testData.existingDeployment.Spec.Template.Annotations
+			oldPodTemplateAnnotations := getPodTemplateAnnotations(testData.existingWorkload)
 			newPodTemplateAnnotations := deployment.Spec.Template.Annotations
 			for name, expected := range oldPodTemplateAnnotations {
 				actual, ok := newPodTemplateAnnotations[name]
@@ -865,8 +869,16 @@ func TestUpdateSecretHandler(t *testing.T) {
 	}
 }
 
-func TestIsUpdatedSecret(t *testing.T) {
+func getPodTemplateAnnotations(obj runtime.Object) map[string]string {
+	switch o := obj.(type) {
+	case *appsv1.Deployment:
+		return o.Spec.Template.Annotations
+	default:
+		return map[string]string{}
+	}
+}
 
+func TestIsUpdatedSecret(t *testing.T) {
 	secretName := "test-secret"
 	updatedSecrets := map[string]*corev1.Secret{
 		"some_secret": {},
