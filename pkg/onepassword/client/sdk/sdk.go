@@ -3,6 +3,7 @@ package sdk
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 	sdk "github.com/1password/onepassword-sdk-go"
@@ -86,7 +87,7 @@ func (s *SDK) GetVaultsByTitle(ctx context.Context, title string) ([]model.Vault
 	// Filter vaults by title
 	var vaults []model.Vault
 	for _, sdkVault := range sdkVaults {
-		if sdkVault.Title == title {
+		if strings.EqualFold(sdkVault.Title, title) {
 			var vault model.Vault
 			vault.FromSDKVault(&sdkVault)
 			vaults = append(vaults, vault)
