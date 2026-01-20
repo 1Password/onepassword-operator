@@ -70,16 +70,10 @@ func ParseVaultAndItemFromPath(path string) (string, string, error) {
 }
 
 func getVaultID(ctx context.Context, client opclient.Client, vaultNameOrID string) (string, error) {
-	if !IsValidClientUUID(vaultNameOrID) {
-		vaults, err := client.GetVaultsByTitle(ctx, vaultNameOrID)
-		if err != nil {
-			return "", err
-		}
-
-		if len(vaults) == 0 {
-			return "", fmt.Errorf("no vaults found with identifier %q", vaultNameOrID)
-		}
-
+	// First try to get vault by title
+	vaults, err := client.GetVaultsByTitle(ctx, vaultNameOrID)
+	if err == nil && len(vaults) > 0 {
+		// Found vault by title use the oldest one
 		oldestVault := vaults[0]
 		if len(vaults) > 1 {
 			for _, returnedVault := range vaults {
@@ -87,13 +81,24 @@ func getVaultID(ctx context.Context, client opclient.Client, vaultNameOrID strin
 					oldestVault = returnedVault
 				}
 			}
+
 			logger.Info(fmt.Sprintf("%v 1Password vaults found with the title %q. Will use vault %q as it is the oldest.",
 				len(vaults), vaultNameOrID, oldestVault.ID,
 			))
 		}
-		vaultNameOrID = oldestVault.ID
+		return oldestVault.ID, nil
 	}
-	return vaultNameOrID, nil
+
+	// Title lookup failed or returned no results so try to use it as a UUID if it looks like one
+	if IsValidClientUUID(vaultNameOrID) {
+		return vaultNameOrID, nil
+	}
+
+	// Not found by title and doesn't look like a UUID
+	if err != nil {
+		return "", fmt.Errorf("failed to get vault by title %q: %w", vaultNameOrID, err)
+	}
+	return "", fmt.Errorf("no vaults found with identifier %q", vaultNameOrID)
 }
 
 func getItemIDByTitle(ctx context.Context, client opclient.Client, vaultId, itemNameOrID string) (string, error) {
