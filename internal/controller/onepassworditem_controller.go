@@ -163,7 +163,7 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 	secretName := resource.GetName()
 	labels := resource.Labels
 	secretType := resource.Type
-	autoRestart := resource.Annotations[op.RestartDeploymentsAnnotation]
+	autoRestart := resource.Annotations[op.AutoRestartWorkloadAnnotation]
 	var annotations map[string]string
 	if r.EnableAnnotations {
 		annotations = resource.Annotations
