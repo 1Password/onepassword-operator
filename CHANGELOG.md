@@ -12,6 +12,17 @@
 
 ---
 
+[//]: # (START/v1.10.1)
+# v1.10.1
+
+## Fixes
+ * Deployment that uses 1Password annotations shows errors that happened with 1Password managed secrets. {#88}
+ * Operator correctly handles item and vault names that match UUID pattern format. {#226}
+ * Restore case-insensitive vault name lookup. {#239}
+ * Secret now contains values from item websites section. {#187}
+
+---
+
 [//]: # (START/v1.10.0)
 # v1.10.0
 
