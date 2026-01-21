@@ -11,6 +11,10 @@ on:
       - '.gitignore'
       - '.dockerignore'
       - 'LICENSE'
+      - 'version/version.go'
+      - '.VERSION'
+      - 'Makefile'
+      - 'Dockerfile'
   push:
     branches: [main]
     paths-ignore: *ignore_paths
