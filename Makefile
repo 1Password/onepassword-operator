@@ -5,7 +5,7 @@ export MAIN_BRANCH ?= main
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 1.10.0
+VERSION ?= 1.10.1
 
 # DEPLOYMENT_NAME defines Kubernetes deployment name for the operator.
 # It should be the same as in 'config/manager/manager.yaml'
