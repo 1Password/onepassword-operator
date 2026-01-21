@@ -279,6 +279,27 @@ func TestBuildKubernetesSecretDataWithFieldURLConflict(t *testing.T) {
 	}
 }
 
+func TestBuildKubernetesSecretData_ShouldSkipEmptyLabels(t *testing.T) {
+	fields := []model.ItemField{
+		{Label: "", Value: "value1"},
+	}
+
+	urls := []model.ItemURL{
+		{URL: "https://example.com", Label: "", Primary: true},
+	}
+
+	files := []model.File{
+		{Name: "", ContentPath: "content1.txt"},
+	}
+	files[0].SetContent([]byte("content1"))
+
+	secretData := BuildKubernetesSecretData(fields, urls, files)
+
+	if len(secretData) != 0 {
+		t.Errorf("Expected 0 keys, got %d", len(secretData))
+	}
+}
+
 func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 	name := "inV@l1d k8s secret%name"
 	expectedName := "inv-l1d-k8s-secret-name"

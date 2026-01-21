@@ -135,11 +135,19 @@ func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, f
 
 	urlsByLabel := processURLsByLabel(urls)
 	for key, url := range urlsByLabel {
+		if key == "" {
+			// URLs with empty labels must be skipped because Kubernetes rejects secrets with empty keys.
+			continue
+		}
 		secretData[key] = []byte(url.URL)
 	}
 
 	for i := 0; i < len(fields); i++ {
 		key := formatSecretDataName(fields[i].Label)
+		if key == "" {
+			// Fields with empty labels must be skipped because Kubernetes rejects secrets with empty keys.
+			continue
+		}
 		secretData[key] = []byte(fields[i].Value)
 	}
 
@@ -152,6 +160,11 @@ func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, f
 		}
 		if content != nil {
 			key := file.Name
+			if key == "" {
+				// Files with empty names must be skipped because Kubernetes rejects secrets with empty keys.
+				continue
+			}
+
 			if secretData[key] == nil {
 				secretData[key] = content
 			} else {
