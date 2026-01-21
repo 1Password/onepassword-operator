@@ -13,9 +13,16 @@ type Item struct {
 	VaultID   string
 	Version   int
 	Tags      []string
+	URLs      []ItemURL
 	Fields    []ItemField
 	Files     []File
 	CreatedAt time.Time
+}
+
+type ItemURL struct {
+	URL     string
+	Label   string
+	Primary bool
 }
 
 // FromConnectItem populates the Item from a Connect item.
@@ -25,6 +32,14 @@ func (i *Item) FromConnectItem(item *connect.Item) {
 	i.Version = item.Version
 
 	i.Tags = append(i.Tags, item.Tags...)
+
+	for _, url := range item.URLs {
+		i.URLs = append(i.URLs, ItemURL{
+			URL:     url.URL,
+			Label:   url.Label,
+			Primary: url.Primary,
+		})
+	}
 
 	for _, field := range item.Fields {
 		i.Fields = append(i.Fields, ItemField{
@@ -52,6 +67,14 @@ func (i *Item) FromSDKItem(item *sdk.Item) {
 
 	i.Tags = make([]string, len(item.Tags))
 	copy(i.Tags, item.Tags)
+
+	for idx, url := range item.Websites {
+		i.URLs = append(i.URLs, ItemURL{
+			URL:     url.URL,
+			Label:   url.Label,
+			Primary: idx == 0,
+		})
+	}
 
 	for _, field := range item.Fields {
 		i.Fields = append(i.Fields, ItemField{

@@ -125,13 +125,19 @@ func BuildKubernetesSecretFromOnePasswordItem(
 			Labels:          labels,
 			OwnerReferences: ownerRefs,
 		},
-		Data: BuildKubernetesSecretData(item.Fields, item.Files),
+		Data: BuildKubernetesSecretData(item.Fields, item.URLs, item.Files),
 		Type: corev1.SecretType(secretType),
 	}
 }
 
-func BuildKubernetesSecretData(fields []model.ItemField, files []model.File) map[string][]byte {
+func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, files []model.File) map[string][]byte {
 	secretData := map[string][]byte{}
+
+	urlsByLabel := processURLsByLabel(urls)
+	for key, url := range urlsByLabel {
+		secretData[key] = []byte(url.URL)
+	}
+
 	for i := 0; i < len(fields); i++ {
 		key := formatSecretDataName(fields[i].Label)
 		secretData[key] = []byte(fields[i].Value)
@@ -204,4 +210,25 @@ func createValidSecretDataName(value string) string {
 	}
 
 	return result
+}
+
+// processURLsByLabel processes all urls preferring primary when multiple urls share the same label
+func processURLsByLabel(urls []model.ItemURL) map[string]model.ItemURL {
+	urlsByLabel := make(map[string]model.ItemURL)
+	for _, url := range urls {
+		key := formatSecretDataName(url.Label)
+		existingURL, exists := urlsByLabel[key]
+
+		if !exists {
+			// First url with this label
+			urlsByLabel[key] = url
+		} else if url.Primary {
+			// Current url is primary so overwrite the existing one
+			urlsByLabel[key] = url
+		} else if !existingURL.Primary {
+			// Use the current one when neither is primary
+			urlsByLabel[key] = url
+		}
+	}
+	return urlsByLabel
 }
