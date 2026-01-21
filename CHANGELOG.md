@@ -17,9 +17,9 @@
 
 ## Fixes
  * Deployment that uses 1Password annotations shows errors that happened with 1Password managed secrets. {#88}
- * Operator can handle correctly item and vault names that matche UUID pattern. {#226}
+ * Operator correctly handles item and vault names that match UUID pattern format. {#226}
  * Restore case-insensitive vault name lookup. {#239}
- * Secret now contaions values from item websites section. {#187}
+ * Secret now contains values from item websites section. {#187}
 
 ---
 
