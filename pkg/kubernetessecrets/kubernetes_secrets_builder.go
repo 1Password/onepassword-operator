@@ -135,23 +135,37 @@ func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, f
 
 	urlsByLabel := processURLsByLabel(urls)
 	for key, url := range urlsByLabel {
-		secretData[key] = []byte(url.URL)
+		formattedKey := formatSecretDataName(key)
+		if formattedKey == "" {
+			log.Info(fmt.Sprintf("Skipping URL with invalid label %q because it must match [-._a-zA-Z0-9]+", url.Label))
+			continue
+		}
+		secretData[formattedKey] = []byte(url.URL)
 	}
 
 	for i := 0; i < len(fields); i++ {
 		key := formatSecretDataName(fields[i].Label)
+		if key == "" {
+			log.Info(fmt.Sprintf("Skipping field with invalid label %q because it must match [-._a-zA-Z0-9]+", fields[i].Label))
+			continue
+		}
 		secretData[key] = []byte(fields[i].Value)
 	}
 
 	// populate unpopulated fields from files
 	for _, file := range files {
+		key := formatSecretDataName(file.Name)
+		if key == "" {
+			log.Info(fmt.Sprintf("Skipping file with invalid name %q because it must match [-._a-zA-Z0-9]+", file.Name))
+			continue
+		}
+
 		content, err := file.Content()
 		if err != nil {
 			log.Error(err, fmt.Sprintf("Could not load contents of file %s", file.Name))
 			continue
 		}
 		if content != nil {
-			key := file.Name
 			if secretData[key] == nil {
 				secretData[key] = content
 			} else {
@@ -216,18 +230,16 @@ func createValidSecretDataName(value string) string {
 func processURLsByLabel(urls []model.ItemURL) map[string]model.ItemURL {
 	urlsByLabel := make(map[string]model.ItemURL)
 	for _, url := range urls {
-		key := formatSecretDataName(url.Label)
-		existingURL, exists := urlsByLabel[key]
-
+		existingURL, exists := urlsByLabel[url.Label]
 		if !exists {
 			// First url with this label
-			urlsByLabel[key] = url
+			urlsByLabel[url.Label] = url
 		} else if url.Primary {
 			// Current url is primary so overwrite the existing one
-			urlsByLabel[key] = url
+			urlsByLabel[url.Label] = url
 		} else if !existingURL.Primary {
 			// Use the current one when neither is primary
-			urlsByLabel[key] = url
+			urlsByLabel[url.Label] = url
 		}
 	}
 	return urlsByLabel
