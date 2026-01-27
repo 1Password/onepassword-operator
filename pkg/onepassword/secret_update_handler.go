@@ -27,11 +27,13 @@ var log = logf.Log.WithName("update_op_kubernetes_secrets_task")
 
 func NewManager(
 	kubernetesClient client.Client,
+	apiReader client.Reader,
 	opClient opclient.Client,
 	shouldAutoRestartWorkloadsGlobally bool,
 ) *SecretUpdateHandler {
 	return &SecretUpdateHandler{
 		client:                             kubernetesClient,
+		apiReader:                          apiReader,
 		opClient:                           opClient,
 		shouldAutoRestartWorkloadsGlobally: shouldAutoRestartWorkloadsGlobally,
 	}
@@ -39,6 +41,7 @@ func NewManager(
 
 type SecretUpdateHandler struct {
 	client                             client.Client
+	apiReader                          client.Reader
 	opClient                           opclient.Client
 	shouldAutoRestartWorkloadsGlobally bool
 }
@@ -65,7 +68,7 @@ func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(
 		&appsv1.DeploymentList{},
 	}
 
-	setForAutoRestartByNamespaceMap, err := h.getIsSetForAutoRestartByNamespaceMap(ctx)
+	setForAutoRestartByNamespaceMap, err := h.getIsSetForAutoRestartByNamespaceMap(ctx, updatedSecretsByNamespace)
 	if err != nil {
 		return err
 	}
@@ -234,19 +237,27 @@ func isUpdatedSecret(secretName string, updatedSecrets map[string]*corev1.Secret
 	return ok
 }
 
-func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap(ctx context.Context) (map[string]bool, error) {
-	namespaces := &corev1.NamespaceList{}
-	err := h.client.List(ctx, namespaces)
-	if err != nil {
-		log.Error(err, "Failed to list kubernetes namespaces")
-		return nil, err
-	}
-
+func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap(
+	ctx context.Context,
+	updatedSecretsByNamespace map[string]map[string]*corev1.Secret,
+) (map[string]bool, error) {
 	namespacesMap := map[string]bool{}
 
-	for _, namespace := range namespaces.Items {
-		namespacesMap[namespace.Name] = h.isNamespaceSetToAutoRestart(&namespace)
+	// Try to get namespace objects for each namespace where secrets were updated
+	for namespaceName := range updatedSecretsByNamespace {
+		namespace := &corev1.Namespace{}
+		err := h.apiReader.Get(ctx, client.ObjectKey{Name: namespaceName}, namespace)
+
+		if err == nil {
+			// Successfully got the namespace
+			namespacesMap[namespaceName] = h.isNamespaceSetToAutoRestart(namespace)
+		} else {
+			// If we can't get the namespace default to global AUTO_RESTART setting
+			log.V(logs.DebugLevel).Info(fmt.Sprintf("Could not get namespace %s to check auto-restart settings, defaulting to global AUTO_RESTART setting", namespaceName))
+			namespacesMap[namespaceName] = h.shouldAutoRestartWorkloadsGlobally
+		}
 	}
+
 	return namespacesMap, nil
 }
 
