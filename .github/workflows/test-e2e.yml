@@ -67,6 +67,7 @@ jobs:
             if [ -n "$SHA_PARAM" ] && [[ "$PR_HEAD_SHA" == *"$SHA_PARAM"* ]]; then
               echo "condition=dispatch-event" >> $GITHUB_OUTPUT
               echo "Setting condition=dispatch-event (sha matches)"
+              echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
             else
               echo "condition=skip" >> $GITHUB_OUTPUT
               echo "Setting condition=skip (sha does not match or empty)"
