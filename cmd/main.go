@@ -336,7 +336,7 @@ func main() {
 	}
 
 	// Setup update secrets task
-	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opClient, shouldAutoRestartWorkloads())
+	updatedSecretsPoller := op.NewManager(mgr.GetClient(), mgr.GetAPIReader(), opClient, shouldAutoRestartWorkloads())
 	done := make(chan bool)
 	ticker := time.NewTicker(getPollingIntervalForUpdatingSecrets())
 	go func(ctx context.Context) {
