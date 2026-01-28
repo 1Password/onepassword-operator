@@ -2,7 +2,7 @@ name: E2E Tests [reusable]
 
 on:
   workflow_call:
-  inputs:
+    inputs:
       ref:
         description: "Git ref to checkout"
         required: true
