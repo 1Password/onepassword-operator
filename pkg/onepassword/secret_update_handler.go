@@ -68,10 +68,7 @@ func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(
 		&appsv1.DeploymentList{},
 	}
 
-	setForAutoRestartByNamespaceMap, err := h.getIsSetForAutoRestartByNamespaceMap(ctx, updatedSecretsByNamespace)
-	if err != nil {
-		return err
-	}
+	setForAutoRestartByNamespaceMap := h.getIsSetForAutoRestartByNamespaceMap(ctx, updatedSecretsByNamespace)
 
 	for _, list := range workloadTypes {
 		if err := h.client.List(ctx, list); err != nil {
@@ -240,7 +237,7 @@ func isUpdatedSecret(secretName string, updatedSecrets map[string]*corev1.Secret
 func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap(
 	ctx context.Context,
 	updatedSecretsByNamespace map[string]map[string]*corev1.Secret,
-) (map[string]bool, error) {
+) map[string]bool {
 	namespacesMap := map[string]bool{}
 
 	// Try to get namespace objects for each namespace where secrets were updated
@@ -253,12 +250,18 @@ func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap(
 			namespacesMap[namespaceName] = h.isNamespaceSetToAutoRestart(namespace)
 		} else {
 			// If we can't get the namespace default to global AUTO_RESTART setting
-			log.V(logs.DebugLevel).Info(fmt.Sprintf("Could not get namespace %s to check auto-restart settings, defaulting to global AUTO_RESTART setting", namespaceName))
+			log.V(logs.DebugLevel).Info(
+				fmt.Sprintf(
+					"Could not get namespace %s to check auto-restart settings, "+
+						"defaulting to global AUTO_RESTART setting",
+					namespaceName,
+				),
+			)
 			namespacesMap[namespaceName] = h.shouldAutoRestartWorkloadsGlobally
 		}
 	}
 
-	return namespacesMap, nil
+	return namespacesMap
 }
 
 func (h *SecretUpdateHandler) getPathFromOnePasswordItem(secret corev1.Secret) string {

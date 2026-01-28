@@ -785,6 +785,79 @@ var tests = []testUpdateSecretTask{
 		expectedRestart:          true,
 		globalAutoRestartEnabled: false,
 	},
+	{
+		testName: "Secret updated and deployment restarted and only checks namespace with updated secrets",
+		existingNamespace: &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: namespace,
+				Annotations: map[string]string{
+					AutoRestartWorkloadAnnotation: "true",
+				},
+			},
+		},
+		existingWorkload: &appsv1.Deployment{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       deploymentKind,
+				APIVersion: deploymentAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Env: []corev1.EnvVar{
+									{
+										Name: name,
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: name,
+												},
+												Key: passKey,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          true,
+		globalAutoRestartEnabled: false,
+	},
 }
 
 func TestUpdateSecretHandler(t *testing.T) {
@@ -814,6 +887,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 			mockOpClient.On("GetVaultsByTitle", mock.Anything).Return([]model.Vault{}, nil)
 			h := &SecretUpdateHandler{
 				client:                             cl,
+				apiReader:                          cl,
 				opClient:                           mockOpClient,
 				shouldAutoRestartWorkloadsGlobally: testData.globalAutoRestartEnabled,
 			}
@@ -869,6 +943,138 @@ func TestUpdateSecretHandler(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetIsSetForAutoRestartByNamespaceMap(t *testing.T) {
+	ctx := context.Background()
+	s := scheme.Scheme
+
+	tests := []struct {
+		name                      string
+		updatedSecretsByNamespace map[string]map[string]*corev1.Secret
+		existingNamespaces        []*corev1.Namespace
+		globalAutoRestartEnabled  bool
+		expectedNamespacesMap     map[string]bool
+		expectNamespaceGetCall    bool
+	}{
+		{
+			name: "Only checks namespaces in updatedSecretsByNamespace",
+			updatedSecretsByNamespace: map[string]map[string]*corev1.Secret{
+				"default": {
+					"secret1": &corev1.Secret{},
+				},
+			},
+			existingNamespaces: []*corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "true",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "production",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "true",
+						},
+					},
+				},
+			},
+			globalAutoRestartEnabled: false,
+			expectedNamespacesMap: map[string]bool{
+				"default": true,
+			},
+			expectNamespaceGetCall: true,
+		},
+		{
+			name: "Falls back to global setting when namespace Get fails",
+			updatedSecretsByNamespace: map[string]map[string]*corev1.Secret{
+				"default": {
+					"secret1": &corev1.Secret{},
+				},
+			},
+			// Don't add "default" namespace to simulate Get failure
+			existingNamespaces:       []*corev1.Namespace{},
+			globalAutoRestartEnabled: true,
+			expectedNamespacesMap: map[string]bool{
+				"default": true,
+			},
+			expectNamespaceGetCall: true,
+		},
+		{
+			name: "Uses namespace annotation when available",
+			updatedSecretsByNamespace: map[string]map[string]*corev1.Secret{
+				"default": {
+					"secret1": &corev1.Secret{},
+				},
+			},
+			existingNamespaces: []*corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "false",
+						},
+					},
+				},
+			},
+			// Global is true, but namespace annotation should override
+			globalAutoRestartEnabled: true,
+			expectedNamespacesMap: map[string]bool{
+				"default": false,
+			},
+			expectNamespaceGetCall: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			objs := []runtime.Object{}
+			for _, ns := range tt.existingNamespaces {
+				objs = append(objs, ns)
+			}
+
+			cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+
+			h := &SecretUpdateHandler{
+				client:                             cl,
+				apiReader:                          cl,
+				shouldAutoRestartWorkloadsGlobally: tt.globalAutoRestartEnabled,
+			}
+
+			result := h.getIsSetForAutoRestartByNamespaceMap(ctx, tt.updatedSecretsByNamespace)
+
+			assert.Equal(t, tt.expectedNamespacesMap, result)
+			// Verify that only namespaces in updatedSecretsByNamespace were checked
+			assert.Equal(t, len(tt.updatedSecretsByNamespace), len(result), "Should only check namespaces with updated secrets")
+		})
+	}
+}
+
+func TestGetIsSetForAutoRestartByNamespaceMap_RBACFailure(t *testing.T) {
+	ctx := context.Background()
+	s := scheme.Scheme
+
+	// Create a client that doesn't have the namespace to simulate RBAC failure
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects().Build()
+
+	h := &SecretUpdateHandler{
+		client:                             cl,
+		apiReader:                          cl,
+		shouldAutoRestartWorkloadsGlobally: true,
+	}
+
+	updatedSecretsByNamespace := map[string]map[string]*corev1.Secret{
+		"default": {
+			"secret1": &corev1.Secret{},
+		},
+	}
+
+	result := h.getIsSetForAutoRestartByNamespaceMap(ctx, updatedSecretsByNamespace)
+	// Should fall back to global setting when namespace Get fails
+	assert.Equal(t, map[string]bool{"default": true}, result)
 }
 
 func getPodTemplateAnnotations(obj runtime.Object) map[string]string {
