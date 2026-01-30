@@ -225,7 +225,9 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	labels := map[string]string{}
 	secretType := ""
 
-	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, secretType, item, nil, false)
+	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(
+		name, namespace, annotations, labels, secretType, item, nil, false,
+	)
 	if kubeSecret.Name != strings.ToLower(name) {
 		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
 	}
@@ -350,7 +352,9 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 		},
 	}
 
-	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, secretType, item, nil, false)
+	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(
+		name, namespace, annotations, labels, secretType, item, nil, false,
+	)
 
 	// Assert Secret's meta.name was fixed
 	if kubeSecret.Name != expectedName {

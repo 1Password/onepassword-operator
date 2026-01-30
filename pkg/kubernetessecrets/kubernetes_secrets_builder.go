@@ -132,7 +132,9 @@ func BuildKubernetesSecretFromOnePasswordItem(
 	}
 }
 
-func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, files []model.File, allowEmptyValues bool) map[string][]byte {
+func BuildKubernetesSecretData(
+	fields []model.ItemField, urls []model.ItemURL, files []model.File, allowEmptyValues bool,
+) map[string][]byte {
 	secretData := map[string][]byte{}
 
 	urlsByLabel := processURLsByLabel(urls)
@@ -143,7 +145,10 @@ func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, f
 			continue
 		}
 		if emptyValueIsNotAllowed(allowEmptyValues, url.URL) {
-			log.Info(fmt.Sprintf("Skipping URL with empty value for label %q (use --allow-empty-values flag to include)", url.Label))
+			log.Info(fmt.Sprintf(
+				"Skipping URL with empty value for label %q (use --allow-empty-values flag to include)",
+				url.Label,
+			))
 			continue
 		}
 		secretData[formattedKey] = []byte(url.URL)
@@ -156,7 +161,10 @@ func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, f
 			continue
 		}
 		if emptyValueIsNotAllowed(allowEmptyValues, fields[i].Value) {
-			log.Info(fmt.Sprintf("Skipping field with empty value for label %q (use --allow-empty-values flag to include)", fields[i].Label))
+			log.Info(fmt.Sprintf(
+				"Skipping field with empty value for label %q (use --allow-empty-values flag to include)",
+				fields[i].Label,
+			))
 			continue
 		}
 		secretData[key] = []byte(fields[i].Value)
@@ -176,7 +184,12 @@ func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, f
 			continue
 		}
 		if emptyValueIsNotAllowed(allowEmptyValues, content) {
-			log.Info(fmt.Sprintf("Skipping file with empty content for name %q (use --allow-empty-values flag to include)", file.Name))
+			log.Info(
+				fmt.Sprintf(
+					"Skipping file with empty content for name %q (use --allow-empty-values flag to include)",
+					file.Name,
+				),
+			)
 			continue
 		}
 		if content != nil {
