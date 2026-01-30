@@ -315,7 +315,9 @@ func main() {
 		OpAnnotationRegExp: r,
 		Recorder:           mgr.GetEventRecorderFor("onepassword-operator-deployment"),
 		Config: controller.ReconcilerConfig{
-			// EnableAnnotations: enableAnnotations, // should be implemented similar to OnePasswordItemReconciler to allow for custom annotations to be used for deployments
+			// to allow for custom annotations to be used for deployments
+			// can be implemented in the future PR
+			// EnableAnnotations: enableAnnotations,
 			AllowEmptyValues: allowEmptyValues,
 		},
 	}).SetupWithManager(mgr); err != nil {
