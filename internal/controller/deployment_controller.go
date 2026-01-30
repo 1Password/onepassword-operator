@@ -59,6 +59,7 @@ type DeploymentReconciler struct {
 	OpClient           opclient.Client
 	OpAnnotationRegExp *regexp.Regexp
 	Recorder           record.EventRecorder
+	Config             ReconcilerConfig
 }
 
 // +kubebuilder:rbac:groups=apps,resources=deployments,verbs=get;list;watch;create;update;patch;delete
@@ -222,5 +223,5 @@ func (r *DeploymentReconciler) handleApplyingDeployment(ctx context.Context, dep
 		UID:        deployment.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, namespace, item, annotations[op.AutoRestartWorkloadAnnotation], secretLabels, annotations, secretType, ownerRef)
+	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, namespace, item, annotations[op.AutoRestartWorkloadAnnotation], secretLabels, annotations, secretType, ownerRef, r.Config.AllowEmptyValues)
 }

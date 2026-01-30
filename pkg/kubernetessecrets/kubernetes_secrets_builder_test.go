@@ -40,7 +40,7 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 		"testAnnotation": "exists",
 	}
 	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
-		secretLabels, secretAnnotations, secretType, nil)
+		secretLabels, secretAnnotations, secretType, nil, false)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -79,7 +79,7 @@ func TestKubernetesSecretFromOnePasswordItemOwnerReferences(t *testing.T) {
 		UID:        types.UID("test-uid"),
 	}
 	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
-		secretLabels, secretAnnotations, secretType, ownerRef)
+		secretLabels, secretAnnotations, secretType, ownerRef, false)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -126,7 +126,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	}
 
 	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
-		secretLabels, secretAnnotations, secretType, nil)
+		secretLabels, secretAnnotations, secretType, nil, false)
 
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -139,7 +139,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	newItem.VaultID = testVaultUUID
 	newItem.ID = testItemUUID
 	err = CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation,
-		secretLabels, secretAnnotations, secretType, nil)
+		secretLabels, secretAnnotations, secretType, nil, false)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -155,14 +155,14 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 func TestBuildKubernetesSecretData(t *testing.T) {
 	fields := generateFields(5)
 
-	secretData := BuildKubernetesSecretData(fields, nil, nil)
+	secretData := BuildKubernetesSecretData(fields, nil, nil, false)
 	if len(secretData) != len(fields) {
-		t.Errorf("Unexpected number of secret fields returned. Expected 3, got %v", len(secretData))
+		t.Errorf("Unexpected number of secret fields returned. Expected 5, got %v", len(secretData))
 	}
 	compareFields(fields, secretData, t)
 }
 
-func TestBuildKubernetesSecretDataWithEmptyValues(t *testing.T) {
+func TestBuildKubernetesSecretDataWithEmptyValues_Allowed(t *testing.T) {
 	fields := []model.ItemField{
 		{Label: "token", Value: "secret-token"},
 		{Label: "runner-token", Value: ""},
@@ -170,7 +170,7 @@ func TestBuildKubernetesSecretDataWithEmptyValues(t *testing.T) {
 		{Label: "empty-field-2", Value: ""},
 	}
 
-	secretData := BuildKubernetesSecretData(fields, nil, nil)
+	secretData := BuildKubernetesSecretData(fields, nil, nil, true)
 
 	// Verify all fields are present, including empty ones
 	if len(secretData) != len(fields) {
@@ -194,6 +194,24 @@ func TestBuildKubernetesSecretDataWithEmptyValues(t *testing.T) {
 	}
 }
 
+func TestBuildKubernetesSecretDataWithEmptyValues_Skipped(t *testing.T) {
+	fields := []model.ItemField{
+		{Label: "token", Value: "secret-token"},
+		{Label: "runner-token", Value: ""},
+		{Label: "another-field", Value: "value"},
+		{Label: "empty-field-2", Value: ""},
+	}
+
+	// Test with allowEmptyValues = false (should skip empty fields)
+	secretData := BuildKubernetesSecretData(fields, nil, nil, false)
+
+	// Verify only non-empty fields are present
+	expectedNonEmptyFields := 2
+	if len(secretData) != expectedNonEmptyFields {
+		t.Errorf("Expected %d fields (non-empty only), got %d", expectedNonEmptyFields, len(secretData))
+	}
+}
+
 func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	annotationKey := "annotationKey"
 	annotationValue := "annotationValue"
@@ -207,7 +225,9 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	labels := map[string]string{}
 	secretType := ""
 
-	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, secretType, item, nil)
+	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(
+		name, namespace, annotations, labels, secretType, item, nil, false,
+	)
 	if kubeSecret.Name != strings.ToLower(name) {
 		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
 	}
@@ -228,7 +248,7 @@ func TestBuildKubernetesSecretDataWithURLs(t *testing.T) {
 		{URL: "https://another.example.com", Label: "website", Primary: false},
 	}
 
-	secretData := BuildKubernetesSecretData(fields, urls, nil)
+	secretData := BuildKubernetesSecretData(fields, urls, nil, false)
 
 	// Should have fields + all URLs (both have different labels)
 	if len(secretData) != 4 {
@@ -258,7 +278,7 @@ func TestBuildKubernetesSecretDataWithFieldURLConflict(t *testing.T) {
 		{URL: "https://support.example.com", Label: "support", Primary: false},
 	}
 
-	secretData := BuildKubernetesSecretData(fields, urls, nil)
+	secretData := BuildKubernetesSecretData(fields, urls, nil, false)
 
 	// Should have 2 fields + 1 url
 	if len(secretData) != 3 {
@@ -303,7 +323,7 @@ func TestBuildKubernetesSecretData_InvalidLabels(t *testing.T) {
 	files[1].SetContent([]byte("content2"))
 	files[2].SetContent([]byte("content3"))
 
-	secretData := BuildKubernetesSecretData(fields, urls, files)
+	secretData := BuildKubernetesSecretData(fields, urls, files, false)
 
 	if len(secretData) != 0 {
 		t.Errorf("Expected 0 keys, got %d: %v", len(secretData), secretData)
@@ -332,7 +352,9 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 		},
 	}
 
-	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(name, namespace, annotations, labels, secretType, item, nil)
+	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(
+		name, namespace, annotations, labels, secretType, item, nil, false,
+	)
 
 	// Assert Secret's meta.name was fixed
 	if kubeSecret.Name != expectedName {
@@ -369,7 +391,7 @@ func TestCreateKubernetesTLSSecretFromOnePasswordItem(t *testing.T) {
 	}
 
 	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
-		secretLabels, secretAnnotations, secretType, nil)
+		secretLabels, secretAnnotations, secretType, nil, false)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
