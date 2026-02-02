@@ -40,6 +40,7 @@ func CreateKubernetesSecretFromItem(
 	secretAnnotations map[string]string,
 	secretType string,
 	ownerRef *metav1.OwnerReference,
+	allowEmptyValues bool,
 ) error {
 	itemVersion := fmt.Sprint(item.Version)
 	if secretAnnotations == nil {
@@ -60,7 +61,7 @@ func CreateKubernetesSecretFromItem(
 
 	// "Opaque" and "" secret types are treated the same by Kubernetes.
 	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels,
-		secretType, *item, ownerRef)
+		secretType, *item, ownerRef, allowEmptyValues)
 
 	currentSecret := &corev1.Secret{}
 	err := kubeClient.Get(ctx, types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
@@ -111,6 +112,7 @@ func BuildKubernetesSecretFromOnePasswordItem(
 	secretType string,
 	item model.Item,
 	ownerRef *metav1.OwnerReference,
+	allowEmptyValues bool,
 ) *corev1.Secret {
 	var ownerRefs []metav1.OwnerReference
 	if ownerRef != nil {
@@ -125,12 +127,14 @@ func BuildKubernetesSecretFromOnePasswordItem(
 			Labels:          labels,
 			OwnerReferences: ownerRefs,
 		},
-		Data: BuildKubernetesSecretData(item.Fields, item.URLs, item.Files),
+		Data: BuildKubernetesSecretData(item.Fields, item.URLs, item.Files, allowEmptyValues),
 		Type: corev1.SecretType(secretType),
 	}
 }
 
-func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, files []model.File) map[string][]byte {
+func BuildKubernetesSecretData(
+	fields []model.ItemField, urls []model.ItemURL, files []model.File, allowEmptyValues bool,
+) map[string][]byte {
 	secretData := map[string][]byte{}
 
 	urlsByLabel := processURLsByLabel(urls)
@@ -140,6 +144,13 @@ func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, f
 			log.Info(fmt.Sprintf("Skipping URL with invalid label %q because it must match [-._a-zA-Z0-9]+", url.Label))
 			continue
 		}
+		if emptyValueIsNotAllowed(allowEmptyValues, url.URL) {
+			log.Info(fmt.Sprintf(
+				"Skipping URL with empty value for label %q (use --allow-empty-values flag to include)",
+				url.Label,
+			))
+			continue
+		}
 		secretData[formattedKey] = []byte(url.URL)
 	}
 
@@ -147,6 +158,13 @@ func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, f
 		key := formatSecretDataName(fields[i].Label)
 		if key == "" {
 			log.Info(fmt.Sprintf("Skipping field with invalid label %q because it must match [-._a-zA-Z0-9]+", fields[i].Label))
+			continue
+		}
+		if emptyValueIsNotAllowed(allowEmptyValues, fields[i].Value) {
+			log.Info(fmt.Sprintf(
+				"Skipping field with empty value for label %q (use --allow-empty-values flag to include)",
+				fields[i].Label,
+			))
 			continue
 		}
 		secretData[key] = []byte(fields[i].Value)
@@ -165,6 +183,15 @@ func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, f
 			log.Error(err, fmt.Sprintf("Could not load contents of file %s", file.Name))
 			continue
 		}
+		if emptyValueIsNotAllowed(allowEmptyValues, content) {
+			log.Info(
+				fmt.Sprintf(
+					"Skipping file with empty content for name %q (use --allow-empty-values flag to include)",
+					file.Name,
+				),
+			)
+			continue
+		}
 		if content != nil {
 			if secretData[key] == nil {
 				secretData[key] = content
@@ -174,6 +201,11 @@ func BuildKubernetesSecretData(fields []model.ItemField, urls []model.ItemURL, f
 		}
 	}
 	return secretData
+}
+
+// emptyValueIsNotAllowed checks if the value is empty and empty values are not allowed.
+func emptyValueIsNotAllowed[T string | []byte](allowEmptyValues bool, value T) bool {
+	return !allowEmptyValues && len(value) == 0
 }
 
 // formatSecretName rewrites a value to be a valid Secret name.

@@ -101,6 +101,7 @@ func main() {
 	var secureMetrics bool
 	var enableHTTP2 bool
 	var enableAnnotations bool
+	var allowEmptyValues bool
 	var tlsOpts []func(*tls.Config)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080",
 		"The address the metrics endpoint binds to. "+
@@ -122,6 +123,9 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics")
 	flag.BoolVar(&enableAnnotations, "enable-annotations", false,
 		"If set, operator will add annotations to resources it manages.")
+	// NOTE: Empty values are available only when using the Connect. SDK doesn't return fields with empty values.
+	flag.BoolVar(&allowEmptyValues, "allow-empty-values", false,
+		"(Connect Only) If set, empty field values from 1Password items will be included in Kubernetes secrets.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -292,10 +296,13 @@ func main() {
 	}
 
 	if err = (&controller.OnePasswordItemReconciler{
-		Client:            mgr.GetClient(),
-		Scheme:            mgr.GetScheme(),
-		OpClient:          opClient,
-		EnableAnnotations: enableAnnotations,
+		Client:   mgr.GetClient(),
+		Scheme:   mgr.GetScheme(),
+		OpClient: opClient,
+		Config: controller.ReconcilerConfig{
+			EnableAnnotations: enableAnnotations,
+			AllowEmptyValues:  allowEmptyValues,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "OnePasswordItem")
 		os.Exit(1)
@@ -308,6 +315,12 @@ func main() {
 		OpClient:           opClient,
 		OpAnnotationRegExp: r,
 		Recorder:           mgr.GetEventRecorderFor("onepassword-operator-deployment"),
+		Config: controller.ReconcilerConfig{
+			// to allow for custom annotations to be used for deployments
+			// can be implemented in the future PR
+			// EnableAnnotations: enableAnnotations,
+			AllowEmptyValues: allowEmptyValues,
+		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Deployment")
 		os.Exit(1)
@@ -336,7 +349,10 @@ func main() {
 	}
 
 	// Setup update secrets task
-	updatedSecretsPoller := op.NewManager(mgr.GetClient(), opClient, shouldAutoRestartWorkloads())
+	updatedSecretsPoller := op.NewSecretUpdateHandler(mgr.GetClient(), opClient, op.SecretUpdateHandlerConfig{
+		ShouldAutoRestartWorkloadsGlobally: shouldAutoRestartWorkloads(),
+		AllowEmptyValues:                   allowEmptyValues,
+	})
 	done := make(chan bool)
 	ticker := time.NewTicker(getPollingIntervalForUpdatingSecrets())
 	go func(ctx context.Context) {
