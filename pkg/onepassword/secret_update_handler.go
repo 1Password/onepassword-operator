@@ -25,25 +25,28 @@ const lockTag = "operator.1password.io:ignore-secret"
 
 var log = logf.Log.WithName("update_op_kubernetes_secrets_task")
 
-func NewManager(
+type SecretUpdateHandlerConfig struct {
+	ShouldAutoRestartWorkloadsGlobally bool
+	AllowEmptyValues                   bool
+}
+
+func NewSecretUpdateHandler(
 	kubernetesClient client.Client,
 	apiReader client.Reader,
 	opClient opclient.Client,
-	shouldAutoRestartWorkloadsGlobally bool,
+	config SecretUpdateHandlerConfig,
 ) *SecretUpdateHandler {
 	return &SecretUpdateHandler{
-		client:                             kubernetesClient,
-		apiReader:                          apiReader,
-		opClient:                           opClient,
-		shouldAutoRestartWorkloadsGlobally: shouldAutoRestartWorkloadsGlobally,
+		client:   kubernetesClient,
+		opClient: opClient,
+		config:   config,
 	}
 }
 
 type SecretUpdateHandler struct {
-	client                             client.Client
-	apiReader                          client.Reader
-	opClient                           opclient.Client
-	shouldAutoRestartWorkloadsGlobally bool
+	client   client.Client
+	opClient opclient.Client
+	config   SecretUpdateHandlerConfig
 }
 
 func (h *SecretUpdateHandler) UpdateKubernetesSecretsTask(ctx context.Context) error {
@@ -202,7 +205,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (
 			log.Info(fmt.Sprintf("Updating kubernetes secret '%v'", secret.GetName()))
 			secret.Annotations[VersionAnnotation] = itemVersion
 			secret.Annotations[ItemPathAnnotation] = itemPathString
-			secret.Data = kubeSecrets.BuildKubernetesSecretData(item.Fields, item.URLs, item.Files)
+			secret.Data = kubeSecrets.BuildKubernetesSecretData(item.Fields, item.URLs, item.Files, h.config.AllowEmptyValues)
 			log.V(logs.DebugLevel).Info(fmt.Sprintf("New secret path: %v and version: %v",
 				secret.Annotations[ItemPathAnnotation], secret.Annotations[VersionAnnotation],
 			))
@@ -333,7 +336,7 @@ func (h *SecretUpdateHandler) isNamespaceSetToAutoRestart(namespace *corev1.Name
 	restartWorkload := namespace.Annotations[AutoRestartWorkloadAnnotation]
 	// If annotation for auto restarts for workload is not set. Check environment variable set on the operator
 	if restartWorkload == "" {
-		return h.shouldAutoRestartWorkloadsGlobally
+		return h.config.ShouldAutoRestartWorkloadsGlobally
 	}
 
 	restartWorkloadBool, err := utils.StringToBool(restartWorkload)

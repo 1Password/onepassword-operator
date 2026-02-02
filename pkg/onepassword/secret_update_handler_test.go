@@ -886,10 +886,11 @@ func TestUpdateSecretHandler(t *testing.T) {
 			// Mock GetVaultsByTitle to return empty slice for any call (so UUID fallback works)
 			mockOpClient.On("GetVaultsByTitle", mock.Anything).Return([]model.Vault{}, nil)
 			h := &SecretUpdateHandler{
-				client:                             cl,
-				apiReader:                          cl,
-				opClient:                           mockOpClient,
-				shouldAutoRestartWorkloadsGlobally: testData.globalAutoRestartEnabled,
+				client:   cl,
+				opClient: mockOpClient,
+				config: SecretUpdateHandlerConfig{
+					ShouldAutoRestartWorkloadsGlobally: testData.globalAutoRestartEnabled,
+				},
 			}
 
 			err := h.UpdateKubernetesSecretsTask(ctx)
@@ -1083,6 +1084,103 @@ func getPodTemplateAnnotations(obj runtime.Object) map[string]string {
 		return o.Spec.Template.Annotations
 	default:
 		return map[string]string{}
+	}
+}
+
+func TestUpdateSecretHandlerAllowEmptyValues(t *testing.T) {
+	tests := map[string]struct {
+		allowEmptyValues   bool
+		itemFields         []model.ItemField
+		expectedSecretData map[string][]byte
+	}{
+		"should skips empty fields": {
+			allowEmptyValues: false,
+			itemFields: []model.ItemField{
+				{Label: "username", Value: "test-user"},
+				{Label: "password", Value: ""},
+				{Label: "api-key", Value: "secret123"},
+				{Label: "empty-field", Value: ""},
+			},
+			expectedSecretData: map[string][]byte{
+				"username": []byte("test-user"),
+				"api-key":  []byte("secret123"),
+			},
+		},
+		"should include empty fields": {
+			allowEmptyValues: true,
+			itemFields: []model.ItemField{
+				{Label: "username", Value: "test-user"},
+				{Label: "password", Value: ""},
+				{Label: "api-key", Value: "secret123"},
+				{Label: "empty-field", Value: ""},
+			},
+			expectedSecretData: map[string][]byte{
+				"username":    []byte("test-user"),
+				"password":    []byte(""),
+				"api-key":     []byte("secret123"),
+				"empty-field": []byte(""),
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			s := scheme.Scheme
+
+			existingSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+					Annotations: map[string]string{
+						VersionAnnotation:  "old-version",
+						ItemPathAnnotation: itemPath,
+					},
+				},
+				Data: map[string][]byte{
+					"old-key": []byte("old-value"),
+				},
+			}
+
+			objs := []runtime.Object{
+				defaultNamespace,
+				existingSecret,
+			}
+
+			cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+
+			mockOpClient := &mocks.TestClient{}
+			mockOpClient.On("GetItemByID", mock.Anything, mock.Anything).Return(&model.Item{
+				ID:        itemId,
+				VaultID:   vaultId,
+				Version:   itemVersion + 1, // New version to trigger update
+				Tags:      []string{},
+				Fields:    tt.itemFields,
+				Files:     []model.File{},
+				CreatedAt: time.Now(),
+			}, nil)
+			mockOpClient.On("GetVaultsByTitle", mock.Anything).Return([]model.Vault{}, nil)
+
+			h := &SecretUpdateHandler{
+				client:   cl,
+				opClient: mockOpClient,
+				config: SecretUpdateHandlerConfig{
+					ShouldAutoRestartWorkloadsGlobally: false,
+					AllowEmptyValues:                   tt.allowEmptyValues,
+				},
+			}
+
+			err := h.UpdateKubernetesSecretsTask(ctx)
+			assert.NoError(t, err)
+
+			// Verify secret was updated with expected data
+			updatedSecret := &corev1.Secret{}
+			err = cl.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, updatedSecret)
+			assert.NoError(t, err)
+
+			assert.Equal(t, tt.expectedSecretData, updatedSecret.Data,
+				"Secret data mismatch for allowEmptyValues=%v", tt.allowEmptyValues)
+		})
 	}
 }
 
