@@ -123,8 +123,9 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics")
 	flag.BoolVar(&enableAnnotations, "enable-annotations", false,
 		"If set, operator will add annotations to resources it manages.")
+	// NOTE: Empty values are available only when using the Connect. SDK doesn't return fields with empty values.
 	flag.BoolVar(&allowEmptyValues, "allow-empty-values", false,
-		"If set, empty field values from 1Password items will be included in Kubernetes secrets.")
+		"(Connect Only) If set, empty field values from 1Password items will be included in Kubernetes secrets.")
 	opts := zap.Options{
 		Development: true,
 	}
