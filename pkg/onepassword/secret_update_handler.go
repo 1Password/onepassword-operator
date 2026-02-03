@@ -253,6 +253,10 @@ func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap(
 		for _, namespaceName := range h.config.WatchedNamespaces {
 			namespace := &corev1.Namespace{}
 
+			// Use the API reader to avoid the cached client: the cache fills namespace data
+			// via a list of namespaces which requires list permission. With RBAC that
+			// only allows get on specific namespaces, that list fails. apiReader does a
+			// direct get and only needs get permission.
 			err := h.apiReader.Get(ctx, client.ObjectKey{Name: namespaceName}, namespace)
 			if err != nil {
 				return nil, err
