@@ -352,11 +352,13 @@ func main() {
 	}
 
 	// Setup update secrets task
-	updatedSecretsPoller := op.NewSecretUpdateHandler(mgr.GetClient(), mgr.GetAPIReader(), opClient, op.SecretUpdateHandlerConfig{
-		ShouldAutoRestartWorkloadsGlobally: shouldAutoRestartWorkloads(),
-		AllowEmptyValues:                   allowEmptyValues,
-		WatchedNamespaces:                  watchedNamespaces,
-	})
+	updatedSecretsPoller := op.NewSecretUpdateHandler(
+		mgr.GetClient(), mgr.GetAPIReader(), opClient,
+		op.SecretUpdateHandlerConfig{
+			ShouldAutoRestartWorkloadsGlobally: shouldAutoRestartWorkloads(),
+			AllowEmptyValues:                   allowEmptyValues,
+			WatchedNamespaces:                  watchedNamespaces,
+		})
 	done := make(chan bool)
 	ticker := time.NewTicker(getPollingIntervalForUpdatingSecrets())
 	go func(ctx context.Context) {
