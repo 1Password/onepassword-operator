@@ -886,8 +886,9 @@ func TestUpdateSecretHandler(t *testing.T) {
 			// Mock GetVaultsByTitle to return empty slice for any call (so UUID fallback works)
 			mockOpClient.On("GetVaultsByTitle", mock.Anything).Return([]model.Vault{}, nil)
 			h := &SecretUpdateHandler{
-				client:   cl,
-				opClient: mockOpClient,
+				client:    cl,
+				apiReader: cl,
+				opClient:  mockOpClient,
 				config: SecretUpdateHandlerConfig{
 					ShouldAutoRestartWorkloadsGlobally: testData.globalAutoRestartEnabled,
 				},
@@ -957,9 +958,10 @@ func TestGetIsSetForAutoRestartByNamespaceMap(t *testing.T) {
 		globalAutoRestartEnabled  bool
 		expectedNamespacesMap     map[string]bool
 		expectNamespaceGetCall    bool
+		watchedNamespaces         []string
 	}{
 		{
-			name: "Only checks namespaces in updatedSecretsByNamespace",
+			name: "When no WatchedNamespaces result includes all namespaces from cluster using List",
 			updatedSecretsByNamespace: map[string]map[string]*corev1.Secret{
 				"default": {
 					"secret1": &corev1.Secret{},
@@ -985,24 +987,22 @@ func TestGetIsSetForAutoRestartByNamespaceMap(t *testing.T) {
 			},
 			globalAutoRestartEnabled: false,
 			expectedNamespacesMap: map[string]bool{
-				"default": true,
+				"default":    true,
+				"production": true,
 			},
 			expectNamespaceGetCall: true,
 		},
 		{
-			name: "Falls back to global setting when namespace Get fails",
+			name: "When no namespaces exist, result is empty",
 			updatedSecretsByNamespace: map[string]map[string]*corev1.Secret{
 				"default": {
 					"secret1": &corev1.Secret{},
 				},
 			},
-			// Don't add "default" namespace to simulate Get failure
 			existingNamespaces:       []*corev1.Namespace{},
 			globalAutoRestartEnabled: true,
-			expectedNamespacesMap: map[string]bool{
-				"default": true,
-			},
-			expectNamespaceGetCall: true,
+			expectedNamespacesMap:    map[string]bool{},
+			expectNamespaceGetCall:   true,
 		},
 		{
 			name: "Uses namespace annotation when available",
@@ -1028,6 +1028,31 @@ func TestGetIsSetForAutoRestartByNamespaceMap(t *testing.T) {
 			},
 			expectNamespaceGetCall: true,
 		},
+		{
+			name: "When WatchedNamespaces is set only those namespaces are checked via Get",
+			existingNamespaces: []*corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "true",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "production",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "true",
+						},
+					},
+				},
+			},
+			globalAutoRestartEnabled: false,
+			watchedNamespaces:        []string{"default"},
+			// production must not appear in the result as it is not in the watched namespaces
+			expectedNamespacesMap: map[string]bool{"default": true},
+		},
 	}
 
 	for _, tt := range tests {
@@ -1040,42 +1065,24 @@ func TestGetIsSetForAutoRestartByNamespaceMap(t *testing.T) {
 			cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
 			h := &SecretUpdateHandler{
-				client:                             cl,
-				apiReader:                          cl,
-				shouldAutoRestartWorkloadsGlobally: tt.globalAutoRestartEnabled,
+				client:    cl,
+				apiReader: cl,
+				config: SecretUpdateHandlerConfig{
+					ShouldAutoRestartWorkloadsGlobally: tt.globalAutoRestartEnabled,
+					WatchedNamespaces:                  tt.watchedNamespaces,
+				},
 			}
 
-			result := h.getIsSetForAutoRestartByNamespaceMap(ctx, tt.updatedSecretsByNamespace)
+			result, err := h.getIsSetForAutoRestartByNamespaceMap(ctx)
+			if err != nil {
+				t.Fatalf("Failed to get is set for auto restart by namespace map: %v", err)
+			}
 
 			assert.Equal(t, tt.expectedNamespacesMap, result)
-			// Verify that only namespaces in updatedSecretsByNamespace were checked
-			assert.Equal(t, len(tt.updatedSecretsByNamespace), len(result), "Should only check namespaces with updated secrets")
+			// Verify that the number of namespaces in the result matches the expected number
+			assert.Equal(t, len(tt.expectedNamespacesMap), len(result), "Result should match expected namespaces")
 		})
 	}
-}
-
-func TestGetIsSetForAutoRestartByNamespaceMap_RBACFailure(t *testing.T) {
-	ctx := context.Background()
-	s := scheme.Scheme
-
-	// Create a client that doesn't have the namespace to simulate RBAC failure
-	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects().Build()
-
-	h := &SecretUpdateHandler{
-		client:                             cl,
-		apiReader:                          cl,
-		shouldAutoRestartWorkloadsGlobally: true,
-	}
-
-	updatedSecretsByNamespace := map[string]map[string]*corev1.Secret{
-		"default": {
-			"secret1": &corev1.Secret{},
-		},
-	}
-
-	result := h.getIsSetForAutoRestartByNamespaceMap(ctx, updatedSecretsByNamespace)
-	// Should fall back to global setting when namespace Get fails
-	assert.Equal(t, map[string]bool{"default": true}, result)
 }
 
 func getPodTemplateAnnotations(obj runtime.Object) map[string]string {
@@ -1162,8 +1169,9 @@ func TestUpdateSecretHandlerAllowEmptyValues(t *testing.T) {
 			mockOpClient.On("GetVaultsByTitle", mock.Anything).Return([]model.Vault{}, nil)
 
 			h := &SecretUpdateHandler{
-				client:   cl,
-				opClient: mockOpClient,
+				client:    cl,
+				apiReader: cl,
+				opClient:  mockOpClient,
 				config: SecretUpdateHandlerConfig{
 					ShouldAutoRestartWorkloadsGlobally: false,
 					AllowEmptyValues:                   tt.allowEmptyValues,
