@@ -786,7 +786,7 @@ var tests = []testUpdateSecretTask{
 		globalAutoRestartEnabled: false,
 	},
 	{
-		testName: "Secret updated and deployment restarted and only checks namespace with updated secrets",
+		testName: "Secret updated and deployment restarted and only checks watched namespaces",
 		existingNamespace: &corev1.Namespace{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namespace,
