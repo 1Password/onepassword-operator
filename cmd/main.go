@@ -267,10 +267,13 @@ func main() {
 	}
 
 	// Add support for MultiNamespace set in WATCH_NAMESPACE (e.g ns1,ns2)
+	// Store the watched namespaces for use in the secret update handler
+	var watchedNamespaces []string
 	if watchNamespace != "" {
 		namespaces := strings.Split(watchNamespace, ",")
 		namespaceMap := make(map[string]cache.Config)
 		for _, namespace := range namespaces {
+			watchedNamespaces = append(watchedNamespaces, namespace)
 			namespaceMap[namespace] = cache.Config{}
 		}
 		options.NewCache = func(config *rest.Config, opts cache.Options) (cache.Cache, error) {
@@ -349,10 +352,13 @@ func main() {
 	}
 
 	// Setup update secrets task
-	updatedSecretsPoller := op.NewSecretUpdateHandler(mgr.GetClient(), opClient, op.SecretUpdateHandlerConfig{
-		ShouldAutoRestartWorkloadsGlobally: shouldAutoRestartWorkloads(),
-		AllowEmptyValues:                   allowEmptyValues,
-	})
+	updatedSecretsPoller := op.NewSecretUpdateHandler(
+		mgr.GetClient(), mgr.GetAPIReader(), opClient,
+		op.SecretUpdateHandlerConfig{
+			ShouldAutoRestartWorkloadsGlobally: shouldAutoRestartWorkloads(),
+			AllowEmptyValues:                   allowEmptyValues,
+			WatchedNamespaces:                  watchedNamespaces,
+		})
 	done := make(chan bool)
 	ticker := time.NewTicker(getPollingIntervalForUpdatingSecrets())
 	go func(ctx context.Context) {

@@ -28,24 +28,28 @@ var log = logf.Log.WithName("update_op_kubernetes_secrets_task")
 type SecretUpdateHandlerConfig struct {
 	ShouldAutoRestartWorkloadsGlobally bool
 	AllowEmptyValues                   bool
+	WatchedNamespaces                  []string
 }
 
 func NewSecretUpdateHandler(
 	kubernetesClient client.Client,
+	apiReader client.Reader,
 	opClient opclient.Client,
 	config SecretUpdateHandlerConfig,
 ) *SecretUpdateHandler {
 	return &SecretUpdateHandler{
-		client:   kubernetesClient,
-		opClient: opClient,
-		config:   config,
+		client:    kubernetesClient,
+		apiReader: apiReader,
+		opClient:  opClient,
+		config:    config,
 	}
 }
 
 type SecretUpdateHandler struct {
-	client   client.Client
-	opClient opclient.Client
-	config   SecretUpdateHandlerConfig
+	client    client.Client
+	apiReader client.Reader
+	opClient  opclient.Client
+	config    SecretUpdateHandlerConfig
 }
 
 func (h *SecretUpdateHandler) UpdateKubernetesSecretsTask(ctx context.Context) error {
@@ -239,15 +243,38 @@ func isUpdatedSecret(secretName string, updatedSecrets map[string]*corev1.Secret
 	return ok
 }
 
-func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap(ctx context.Context) (map[string]bool, error) {
+func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap(
+	ctx context.Context,
+) (map[string]bool, error) {
+	namespacesMap := map[string]bool{}
+
+	// If watched namespaces are set get the auto-restart setting for each watched namespace
+	if len(h.config.WatchedNamespaces) > 0 {
+		for _, namespaceName := range h.config.WatchedNamespaces {
+			namespace := &corev1.Namespace{}
+
+			// Use the API reader to avoid the cached client: the cache fills namespace data
+			// via a list of namespaces which requires list permission. With RBAC that
+			// only allows get on specific namespaces, that list fails. apiReader does a
+			// direct get and only needs get permission.
+			err := h.apiReader.Get(ctx, client.ObjectKey{Name: namespaceName}, namespace)
+			if err != nil {
+				log.V(logs.WarnLevel).Info("Failed to get kubernetes namespace", "namespace", namespaceName, "error", err)
+				continue
+			}
+
+			namespacesMap[namespaceName] = h.isNamespaceSetToAutoRestart(namespace)
+		}
+		return namespacesMap, nil
+	}
+
+	// If watched namespaces are not set get the auto-restart setting for all namespaces
 	namespaces := &corev1.NamespaceList{}
 	err := h.client.List(ctx, namespaces)
 	if err != nil {
 		log.Error(err, "Failed to list kubernetes namespaces")
 		return nil, err
 	}
-
-	namespacesMap := map[string]bool{}
 
 	for _, namespace := range namespaces.Items {
 		namespacesMap[namespace.Name] = h.isNamespaceSetToAutoRestart(&namespace)
