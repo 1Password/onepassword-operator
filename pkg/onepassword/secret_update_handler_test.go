@@ -1053,6 +1053,23 @@ func TestGetIsSetForAutoRestartByNamespaceMap(t *testing.T) {
 			// production must not appear in the result as it is not in the watched namespaces
 			expectedNamespacesMap: map[string]bool{"default": true},
 		},
+		{
+			name: "When Get fails for a watched namespace, log and continue (namespace omitted from result)",
+			existingNamespaces: []*corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "true",
+						},
+					},
+				},
+			},
+			globalAutoRestartEnabled: false,
+			watchedNamespaces:        []string{"default", "missing"},
+			// "missing" is not in the client so Get fails and we continue and only default is in result
+			expectedNamespacesMap: map[string]bool{"default": true},
+		},
 	}
 
 	for _, tt := range tests {
