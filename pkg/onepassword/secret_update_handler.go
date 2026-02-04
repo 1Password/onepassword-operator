@@ -259,7 +259,7 @@ func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap(
 			// direct get and only needs get permission.
 			err := h.apiReader.Get(ctx, client.ObjectKey{Name: namespaceName}, namespace)
 			if err != nil {
-				log.Error(err, "Failed to get kubernetes namespace", "namespace", namespaceName)
+				log.V(logs.WarnLevel).Info("Failed to get kubernetes namespace", "namespace", namespaceName, "error", err)
 				continue
 			}
 
