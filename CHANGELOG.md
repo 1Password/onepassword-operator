@@ -16,7 +16,7 @@
 # v1.11.0
 
 ## Features
-  * Operator skips empty item field values in secrets by default again. Use `--allow-empty-values=true` to include them. {#246}
+  * Operator supports `--allow-empty-values=true` flag that controls skipping empty item field values in secrets. Empty values are skipped by default. {#246}
 
 ## Fixes
   * Operator skips fields, URLs, or files with invalid secret key labels instead of erroring. {#243}
