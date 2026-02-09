@@ -15,9 +15,11 @@
 [//]: # (START/v1.11.0)
 # v1.11.0
 
+## Features
+  * Operator skips empty item field values in secrets by default again. Use `--allow-empty-values=true` to include them. {#246}
+
 ## Fixes
   * Operator skips fields, URLs, or files with invalid secret key labels instead of erroring. {#243}
-  * Operator skips empty item fields in secrets by default again. Use `--allow-empty-values=true` to include them. {#246}
   * Operator avoids cluster-scope namespace list when `WATCH_NAMESPACE` is set so deployments can auto-restart under restricted RBAC. {#245}
   * Fix expired dev Slack link in README. {#251}
 
