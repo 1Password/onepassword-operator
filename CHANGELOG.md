@@ -12,8 +12,8 @@
 
 ---
 
-[//]: # (START/v1.10.2)
-# v1.10.2
+[//]: # (START/v1.11.0)
+# v1.11.0
 
 ## Fixes
   * Operator skips fields, URLs, or files with invalid secret key labels instead of erroring. {#243}
