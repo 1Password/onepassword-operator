@@ -12,6 +12,19 @@
 
 ---
 
+[//]: # (START/v1.11.0)
+# v1.11.0
+
+## Features
+  * Operator supports `--allow-empty-values=true` flag that controls skipping empty item field values in secrets. Empty values are skipped by default. {#246}
+
+## Fixes
+  * Operator skips fields, URLs, or files with invalid secret key labels instead of erroring. {#243}
+  * Operator avoids cluster-scope namespace list when `WATCH_NAMESPACE` is set so deployments can auto-restart under restricted RBAC. {#245}
+  * Fix expired dev Slack link in README. {#251}
+
+---
+
 [//]: # (START/v1.10.1)
 # v1.10.1
 
@@ -101,10 +114,10 @@
 [//]: # (START/v1.6.0)
 # v1.6.0
 
-This version of the operator highlights the migration of the operator 
+This version of the operator highlights the migration of the operator
 to use the latest version of the `operator-sdk` (`1.25.0` at the time of this release).
 
-For the users, this shouldn't affect the functionality of the operator. 
+For the users, this shouldn't affect the functionality of the operator.
 
 This migration enables us to use the new project structure, as well as updated packages that enables
 the team (as well as the contributors) to develop the operator more effective.
