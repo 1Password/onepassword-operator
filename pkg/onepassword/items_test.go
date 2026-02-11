@@ -5,6 +5,9 @@ import (
 	"testing"
 )
 
+const badPathErrFmt = "%q is not an acceptable path for One Password item. " +
+	"Must be of the format: `vaults/{vault_id}/items/{item_id}`"
+
 func TestParseVaultAndItemFromPath(t *testing.T) {
 	cases := []struct {
 		Path  string
@@ -34,7 +37,7 @@ func TestParseVaultAndItemFromPath(t *testing.T) {
 			"foo/bar",
 			"",
 			"",
-			fmt.Errorf("\"foo/bar\" is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`"),
+			fmt.Errorf(badPathErrFmt, "foo/bar"),
 		},
 		{
 			"vaults/foo1/items/bar1/vaults/foo2/items/bar2",
@@ -46,13 +49,13 @@ func TestParseVaultAndItemFromPath(t *testing.T) {
 			"items/bar/vaults/foo",
 			"",
 			"",
-			fmt.Errorf("\"items/bar/vaults/foo\" is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`"),
+			fmt.Errorf(badPathErrFmt, "items/bar/vaults/foo"),
 		},
 		{
 			"vaults/foo",
 			"",
 			"",
-			fmt.Errorf("\"vaults/foo\" is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`"),
+			fmt.Errorf(badPathErrFmt, "vaults/foo"),
 		},
 		{
 			"vaults/foo/items/bar/",
@@ -76,7 +79,7 @@ func TestParseVaultAndItemFromPath(t *testing.T) {
 			"",
 			"",
 			"",
-			fmt.Errorf("\"\" is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`"),
+			fmt.Errorf(badPathErrFmt, ""),
 		},
 		{
 			"vaults//foo/items/bar",
@@ -94,7 +97,7 @@ func TestParseVaultAndItemFromPath(t *testing.T) {
 			"vaults/items",
 			"",
 			"",
-			fmt.Errorf("\"vaults/items\" is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`"),
+			fmt.Errorf(badPathErrFmt, "vaults/items"),
 		},
 		{
 			"vaults/foo bar/items/baz",
