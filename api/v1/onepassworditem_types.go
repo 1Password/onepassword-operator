@@ -71,6 +71,7 @@ type OnePasswordItemStatus struct {
 // +kubebuilder:subresource:status
 // +kubebuilder:printcolumn:name="Age",type=date,JSONPath=`.metadata.creationTimestamp`
 // +kubebuilder:printcolumn:name="Ready",type=string,JSONPath=`.status.conditions[?(@.type=="Ready")].status`
+// +kubebuilder:resource:shortName=opi
 
 // OnePasswordItem is the Schema for the onepassworditems API
 type OnePasswordItem struct {
