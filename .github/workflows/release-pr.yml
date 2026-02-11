@@ -14,9 +14,10 @@ jobs:
     outputs:
       result: ${{ steps.is_release_branch_without_pr.outputs.result }}
     steps:
-      - id: is_release_branch_without_pr
+      -
+        id: is_release_branch_without_pr
         name: Find matching PR
-        uses: actions/github-script@v3
+        uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -27,7 +28,7 @@ jobs:
 
             if(!releaseBranchName) { return false }
 
-            const {data: prs} = await github.pulls.list({
+            const {data: prs} = await github.rest.pulls.list({
                 ...context.repo,
                 state: 'open',
                 head: `1Password:${releaseBranchName}`,
@@ -42,19 +43,20 @@ jobs:
     name: Create Release Pull Request
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v5
 
       - name: Parse release version
         id: get_version
-        run: echo "::set-output name=version::$(echo $GITHUB_REF | sed 's|^refs/heads/release/v?*||g')"
+        run: echo "version=$(echo "$GITHUB_REF" | sed 's|^refs/heads/release/v?*||g')" >> $GITHUB_OUTPUT
 
       - name: Prepare Pull Request
         id: prep_pr
         run: |
           CHANGELOG_PATH=$(printf "%s/CHANGELOG.md" "${GITHUB_WORKSPACE}")
-
           LOG_ENTRY=$(awk '/START\/v[0-9]+\.[0-9]+\.[0-9]+*/{f=1; next} /---/{if (f == 1) exit} f' "${CHANGELOG_PATH}")
-          export PR_BODY=$(cat <<EOF
+          DELIMITER="$(openssl rand -hex 8)" # DELIMITER is randomly generated and unique for each run. For more information, see https://docs.github.com/en/actions/security-guides/security-hardening-for-github-actions#understanding-the-risk-of-script-injections.
+          
+          PR_BODY_CONTENT="
           This is an automated PR for a new release.
 
           Please check the following before approving:
@@ -63,14 +65,9 @@ jobs:
           ---
           ## Release Changelog Preview
           ${LOG_ENTRY}
-          EOF
-          )
+          "
 
-          # Sanitizes multiline strings for action outputs (https://medium.com/agorapulse-stories/23f56447d209)
-          PR_BODY="${PR_BODY//'%'/'%25'}"
-          PR_BODY="${PR_BODY//$'\n'/'%0A'}"
-          PR_BODY="${PR_BODY//$'\r'/'%0D'}"
-          echo "::set-output name=pr_body::$(echo "$PR_BODY")"
+          echo "pr_body<<${DELIMITER}${PR_BODY_CONTENT}${DELIMITER}" >> "${GITHUB_OUTPUT}"
 
       - name: Create Pull Request via API
         id: post_pr

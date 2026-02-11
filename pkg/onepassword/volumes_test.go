@@ -8,17 +8,27 @@ import (
 
 func TestAreVolmesUsingSecrets(t *testing.T) {
 	secretNamesToSearch := map[string]*corev1.Secret{
-		"onepassword-database-secret": &corev1.Secret{},
-		"onepassword-api-key":         &corev1.Secret{},
+		"onepassword-database-secret":  {},
+		"onepassword-api-key":          {},
+		"onepassword-app-token":        {},
+		"onepassword-user-credentials": {},
 	}
 
 	volumeSecretNames := []string{
 		"onepassword-database-secret",
 		"onepassword-api-key",
-		"some_other_key",
 	}
 
 	volumes := generateVolumes(volumeSecretNames)
+
+	volumeProjectedSecretNames := []string{
+		"onepassword-app-token",
+		"onepassword-user-credentials",
+	}
+
+	volumeProjected := generateVolumesProjected(volumeProjectedSecretNames)
+
+	volumes = append(volumes, volumeProjected)
 
 	if !AreVolumesUsingSecrets(volumes, secretNamesToSearch) {
 		t.Errorf("Expected that volumes were using secrets but they were not detected.")
@@ -27,8 +37,8 @@ func TestAreVolmesUsingSecrets(t *testing.T) {
 
 func TestAreVolumesNotUsingSecrets(t *testing.T) {
 	secretNamesToSearch := map[string]*corev1.Secret{
-		"onepassword-database-secret": &corev1.Secret{},
-		"onepassword-api-key":         &corev1.Secret{},
+		"onepassword-database-secret": {},
+		"onepassword-api-key":         {},
 	}
 
 	volumeSecretNames := []string{

@@ -4,11 +4,14 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 
 	"github.com/1Password/onepassword-operator/pkg/mocks"
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 
-	"github.com/1Password/connect-sdk-go/onepassword"
-	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	errors2 "k8s.io/apimachinery/pkg/api/errors"
@@ -16,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/kubectl/pkg/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -35,12 +39,11 @@ const (
 
 type testUpdateSecretTask struct {
 	testName                 string
-	existingDeployment       *appsv1.Deployment
+	existingWorkload         runtime.Object
 	existingNamespace        *corev1.Namespace
 	existingSecret           *corev1.Secret
 	expectedError            error
 	expectedResultSecret     *corev1.Secret
-	expectedEvents           []string
 	opItem                   map[string]string
 	expectedRestart          bool
 	globalAutoRestartEnabled bool
@@ -60,11 +63,14 @@ var defaultNamespace = &corev1.Namespace{
 	},
 }
 
+// TODO: Refactor test cases to avoid duplication.
+//
+//nolint:dupl
 var tests = []testUpdateSecretTask{
 	{
 		testName:          "Test unrelated deployment is not restarted with an updated secret",
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -111,7 +117,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          "OP item has new version. Secret needs update. Deployment is restarted based on containers",
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -180,7 +186,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          "OP item has new version. Secret needs update. Deployment is restarted based on annotation",
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -227,7 +233,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          "OP item has new version. Secret needs update. Deployment is restarted based on volume",
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -289,7 +295,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          "No secrets need update. No deployment is restarted",
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -337,7 +343,7 @@ var tests = []testUpdateSecretTask{
 		testName: `Deployment is not restarted when no auto restart is set to true for all
 		deployments and is not overwritten by by a namespace or deployment annotation`,
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -406,7 +412,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          `Secret autostart true value takes precedence over false deployment value`,
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -415,7 +421,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "false",
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -450,9 +456,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            "old version",
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "true",
+					VersionAnnotation:             "old version",
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Data: expectedSecretData,
@@ -463,9 +469,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            fmt.Sprint(itemVersion),
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "true",
+					VersionAnnotation:             fmt.Sprint(itemVersion),
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Data: expectedSecretData,
@@ -480,7 +486,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          `Secret autostart true value takes precedence over false deployment value`,
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -489,7 +495,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -524,9 +530,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            "old version",
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "false",
+					VersionAnnotation:             "old version",
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Data: expectedSecretData,
@@ -537,9 +543,9 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					VersionAnnotation:            fmt.Sprint(itemVersion),
-					ItemPathAnnotation:           itemPath,
-					RestartDeploymentsAnnotation: "false",
+					VersionAnnotation:             fmt.Sprint(itemVersion),
+					ItemPathAnnotation:            itemPath,
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Data: expectedSecretData,
@@ -554,7 +560,7 @@ var tests = []testUpdateSecretTask{
 	{
 		testName:          `Deployment autostart true value takes precedence over false global auto restart value`,
 		existingNamespace: defaultNamespace,
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -563,7 +569,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -630,11 +636,11 @@ var tests = []testUpdateSecretTask{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 		},
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -643,7 +649,7 @@ var tests = []testUpdateSecretTask{
 				Name:      name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "false",
+					AutoRestartWorkloadAnnotation: "false",
 				},
 			},
 			Spec: appsv1.DeploymentSpec{
@@ -709,11 +715,11 @@ var tests = []testUpdateSecretTask{
 			ObjectMeta: metav1.ObjectMeta{
 				Name: namespace,
 				Annotations: map[string]string{
-					RestartDeploymentsAnnotation: "true",
+					AutoRestartWorkloadAnnotation: "true",
 				},
 			},
 		},
-		existingDeployment: &appsv1.Deployment{
+		existingWorkload: &appsv1.Deployment{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       deploymentKind,
 				APIVersion: deploymentAPIVersion,
@@ -779,19 +785,92 @@ var tests = []testUpdateSecretTask{
 		expectedRestart:          true,
 		globalAutoRestartEnabled: false,
 	},
+	{
+		testName: "Secret updated and deployment restarted and only checks watched namespaces",
+		existingNamespace: &corev1.Namespace{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: namespace,
+				Annotations: map[string]string{
+					AutoRestartWorkloadAnnotation: "true",
+				},
+			},
+		},
+		existingWorkload: &appsv1.Deployment{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       deploymentKind,
+				APIVersion: deploymentAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Spec: appsv1.DeploymentSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Env: []corev1.EnvVar{
+									{
+										Name: name,
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: name,
+												},
+												Key: passKey,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          true,
+		globalAutoRestartEnabled: false,
+	},
 }
 
 func TestUpdateSecretHandler(t *testing.T) {
 	for _, testData := range tests {
 		t.Run(testData.testName, func(t *testing.T) {
-
+			ctx := context.Background()
 			// Register operator types with the runtime scheme.
 			s := scheme.Scheme
-			s.AddKnownTypes(appsv1.SchemeGroupVersion, testData.existingDeployment)
+			s.AddKnownTypes(appsv1.SchemeGroupVersion, testData.existingWorkload)
 
 			// Objects to track in the fake client.
 			objs := []runtime.Object{
-				testData.existingDeployment,
+				testData.existingWorkload,
 				testData.existingNamespace,
 			}
 
@@ -800,38 +879,35 @@ func TestUpdateSecretHandler(t *testing.T) {
 			}
 
 			// Create a fake client to mock API calls.
-			cl := fake.NewFakeClientWithScheme(s, objs...)
+			cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
 
-			opConnectClient := &mocks.TestClient{}
-			mocks.GetGetItemFunc = func(uuid string, vaultUUID string) (*onepassword.Item, error) {
-
-				item := onepassword.Item{}
-				item.Fields = generateFields(testData.opItem["username"], testData.opItem["password"])
-				item.Version = itemVersion
-				item.Vault.ID = vaultUUID
-				item.ID = uuid
-				return &item, nil
-			}
+			mockOpClient := &mocks.TestClient{}
+			mockOpClient.On("GetItemByID", mock.Anything, mock.Anything).Return(createItem(), nil)
+			// Mock GetVaultsByTitle to return empty slice for any call (so UUID fallback works)
+			mockOpClient.On("GetVaultsByTitle", mock.Anything).Return([]model.Vault{}, nil)
 			h := &SecretUpdateHandler{
-				client:                             cl,
-				opConnectClient:                    opConnectClient,
-				shouldAutoRestartDeploymentsGlobal: testData.globalAutoRestartEnabled,
+				client:    cl,
+				apiReader: cl,
+				opClient:  mockOpClient,
+				config: SecretUpdateHandlerConfig{
+					ShouldAutoRestartWorkloadsGlobally: testData.globalAutoRestartEnabled,
+				},
 			}
 
-			err := h.UpdateKubernetesSecretsTask()
+			err := h.UpdateKubernetesSecretsTask(ctx)
 
 			assert.Equal(t, testData.expectedError, err)
 
 			var expectedSecretName string
 			if testData.expectedResultSecret == nil {
-				expectedSecretName = testData.existingDeployment.Name
+				expectedSecretName = testData.existingWorkload.(client.Object).GetName()
 			} else {
 				expectedSecretName = testData.expectedResultSecret.Name
 			}
 
 			// Check if Secret has been created and has the correct data
 			secret := &corev1.Secret{}
-			err = cl.Get(context.TODO(), types.NamespacedName{Name: expectedSecretName, Namespace: namespace}, secret)
+			err = cl.Get(ctx, types.NamespacedName{Name: expectedSecretName, Namespace: namespace}, secret)
 
 			if testData.expectedResultSecret == nil {
 				assert.Error(t, err)
@@ -843,9 +919,13 @@ func TestUpdateSecretHandler(t *testing.T) {
 				assert.Equal(t, testData.expectedResultSecret.Annotations[VersionAnnotation], secret.Annotations[VersionAnnotation])
 			}
 
-			//check if deployment has been restarted
+			// check if deployment has been restarted
 			deployment := &appsv1.Deployment{}
-			err = cl.Get(context.TODO(), types.NamespacedName{Name: testData.existingDeployment.Name, Namespace: namespace}, deployment)
+			err = cl.Get(ctx, types.NamespacedName{
+				Name:      testData.existingWorkload.(client.Object).GetName(),
+				Namespace: namespace,
+			}, deployment)
+			assert.NoError(t, err)
 
 			_, ok := deployment.Spec.Template.Annotations[RestartAnnotation]
 			if ok {
@@ -854,7 +934,7 @@ func TestUpdateSecretHandler(t *testing.T) {
 				assert.False(t, testData.expectedRestart, "Deployment was restarted but should not have been.")
 			}
 
-			oldPodTemplateAnnotations := testData.existingDeployment.Spec.Template.ObjectMeta.Annotations
+			oldPodTemplateAnnotations := getPodTemplateAnnotations(testData.existingWorkload)
 			newPodTemplateAnnotations := deployment.Spec.Template.Annotations
 			for name, expected := range oldPodTemplateAnnotations {
 				actual, ok := newPodTemplateAnnotations[name]
@@ -867,11 +947,272 @@ func TestUpdateSecretHandler(t *testing.T) {
 	}
 }
 
-func TestIsUpdatedSecret(t *testing.T) {
+func TestGetIsSetForAutoRestartByNamespaceMap(t *testing.T) {
+	ctx := context.Background()
+	s := scheme.Scheme
 
+	tests := []struct {
+		name                      string
+		updatedSecretsByNamespace map[string]map[string]*corev1.Secret
+		existingNamespaces        []*corev1.Namespace
+		globalAutoRestartEnabled  bool
+		expectedNamespacesMap     map[string]bool
+		expectNamespaceGetCall    bool
+		watchedNamespaces         []string
+	}{
+		{
+			name: "When no WatchedNamespaces result includes all namespaces from cluster using List",
+			updatedSecretsByNamespace: map[string]map[string]*corev1.Secret{
+				"default": {
+					"secret1": &corev1.Secret{},
+				},
+			},
+			existingNamespaces: []*corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "true",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "production",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "true",
+						},
+					},
+				},
+			},
+			globalAutoRestartEnabled: false,
+			expectedNamespacesMap: map[string]bool{
+				"default":    true,
+				"production": true,
+			},
+			expectNamespaceGetCall: true,
+		},
+		{
+			name: "When no namespaces exist, result is empty",
+			updatedSecretsByNamespace: map[string]map[string]*corev1.Secret{
+				"default": {
+					"secret1": &corev1.Secret{},
+				},
+			},
+			existingNamespaces:       []*corev1.Namespace{},
+			globalAutoRestartEnabled: true,
+			expectedNamespacesMap:    map[string]bool{},
+			expectNamespaceGetCall:   true,
+		},
+		{
+			name: "Uses namespace annotation when available",
+			updatedSecretsByNamespace: map[string]map[string]*corev1.Secret{
+				"default": {
+					"secret1": &corev1.Secret{},
+				},
+			},
+			existingNamespaces: []*corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "false",
+						},
+					},
+				},
+			},
+			// Global is true, but namespace annotation should override
+			globalAutoRestartEnabled: true,
+			expectedNamespacesMap: map[string]bool{
+				"default": false,
+			},
+			expectNamespaceGetCall: true,
+		},
+		{
+			name: "When WatchedNamespaces is set only those namespaces are checked via Get",
+			existingNamespaces: []*corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "true",
+						},
+					},
+				},
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "production",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "true",
+						},
+					},
+				},
+			},
+			globalAutoRestartEnabled: false,
+			watchedNamespaces:        []string{"default"},
+			// production must not appear in the result as it is not in the watched namespaces
+			expectedNamespacesMap: map[string]bool{"default": true},
+		},
+		{
+			name: "When Get fails for a watched namespace, log and continue (namespace omitted from result)",
+			existingNamespaces: []*corev1.Namespace{
+				{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "default",
+						Annotations: map[string]string{
+							AutoRestartWorkloadAnnotation: "true",
+						},
+					},
+				},
+			},
+			globalAutoRestartEnabled: false,
+			watchedNamespaces:        []string{"default", "missing"},
+			// "missing" is not in the client so Get fails and we continue and only default is in result
+			expectedNamespacesMap: map[string]bool{"default": true},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			objs := []runtime.Object{}
+			for _, ns := range tt.existingNamespaces {
+				objs = append(objs, ns)
+			}
+
+			cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+
+			h := &SecretUpdateHandler{
+				client:    cl,
+				apiReader: cl,
+				config: SecretUpdateHandlerConfig{
+					ShouldAutoRestartWorkloadsGlobally: tt.globalAutoRestartEnabled,
+					WatchedNamespaces:                  tt.watchedNamespaces,
+				},
+			}
+
+			result, err := h.getIsSetForAutoRestartByNamespaceMap(ctx)
+			if err != nil {
+				t.Fatalf("Failed to get is set for auto restart by namespace map: %v", err)
+			}
+
+			assert.Equal(t, tt.expectedNamespacesMap, result)
+			// Verify that the number of namespaces in the result matches the expected number
+			assert.Equal(t, len(tt.expectedNamespacesMap), len(result), "Result should match expected namespaces")
+		})
+	}
+}
+
+func getPodTemplateAnnotations(obj runtime.Object) map[string]string {
+	switch o := obj.(type) {
+	case *appsv1.Deployment:
+		return o.Spec.Template.Annotations
+	default:
+		return map[string]string{}
+	}
+}
+
+func TestUpdateSecretHandlerAllowEmptyValues(t *testing.T) {
+	tests := map[string]struct {
+		allowEmptyValues   bool
+		itemFields         []model.ItemField
+		expectedSecretData map[string][]byte
+	}{
+		"should skips empty fields": {
+			allowEmptyValues: false,
+			itemFields: []model.ItemField{
+				{Label: "username", Value: "test-user"},
+				{Label: "password", Value: ""},
+				{Label: "api-key", Value: "secret123"},
+				{Label: "empty-field", Value: ""},
+			},
+			expectedSecretData: map[string][]byte{
+				"username": []byte("test-user"),
+				"api-key":  []byte("secret123"),
+			},
+		},
+		"should include empty fields": {
+			allowEmptyValues: true,
+			itemFields: []model.ItemField{
+				{Label: "username", Value: "test-user"},
+				{Label: "password", Value: ""},
+				{Label: "api-key", Value: "secret123"},
+				{Label: "empty-field", Value: ""},
+			},
+			expectedSecretData: map[string][]byte{
+				"username":    []byte("test-user"),
+				"password":    []byte(""),
+				"api-key":     []byte("secret123"),
+				"empty-field": []byte(""),
+			},
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			ctx := context.Background()
+			s := scheme.Scheme
+
+			existingSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      name,
+					Namespace: namespace,
+					Annotations: map[string]string{
+						VersionAnnotation:  "old-version",
+						ItemPathAnnotation: itemPath,
+					},
+				},
+				Data: map[string][]byte{
+					"old-key": []byte("old-value"),
+				},
+			}
+
+			objs := []runtime.Object{
+				defaultNamespace,
+				existingSecret,
+			}
+
+			cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(objs...).Build()
+
+			mockOpClient := &mocks.TestClient{}
+			mockOpClient.On("GetItemByID", mock.Anything, mock.Anything).Return(&model.Item{
+				ID:        itemId,
+				VaultID:   vaultId,
+				Version:   itemVersion + 1, // New version to trigger update
+				Tags:      []string{},
+				Fields:    tt.itemFields,
+				Files:     []model.File{},
+				CreatedAt: time.Now(),
+			}, nil)
+			mockOpClient.On("GetVaultsByTitle", mock.Anything).Return([]model.Vault{}, nil)
+
+			h := &SecretUpdateHandler{
+				client:    cl,
+				apiReader: cl,
+				opClient:  mockOpClient,
+				config: SecretUpdateHandlerConfig{
+					ShouldAutoRestartWorkloadsGlobally: false,
+					AllowEmptyValues:                   tt.allowEmptyValues,
+				},
+			}
+
+			err := h.UpdateKubernetesSecretsTask(ctx)
+			assert.NoError(t, err)
+
+			// Verify secret was updated with expected data
+			updatedSecret := &corev1.Secret{}
+			err = cl.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, updatedSecret)
+			assert.NoError(t, err)
+
+			assert.Equal(t, tt.expectedSecretData, updatedSecret.Data,
+				"Secret data mismatch for allowEmptyValues=%v", tt.allowEmptyValues)
+		})
+	}
+}
+
+func TestIsUpdatedSecret(t *testing.T) {
 	secretName := "test-secret"
 	updatedSecrets := map[string]*corev1.Secret{
-		"some_secret": &corev1.Secret{},
+		"some_secret": {},
 	}
 	assert.False(t, isUpdatedSecret(secretName, updatedSecrets))
 
@@ -879,16 +1220,23 @@ func TestIsUpdatedSecret(t *testing.T) {
 	assert.True(t, isUpdatedSecret(secretName, updatedSecrets))
 }
 
-func generateFields(username, password string) []*onepassword.ItemField {
-	fields := []*onepassword.ItemField{
-		{
-			Label: "username",
-			Value: username,
+func createItem() *model.Item {
+	return &model.Item{
+		ID:      itemId,
+		VaultID: vaultId,
+		Version: itemVersion,
+		Tags:    []string{"tag1", "tag2"},
+		Fields: []model.ItemField{
+			{
+				Label: "username",
+				Value: username,
+			},
+			{
+				Label: "password",
+				Value: password,
+			},
 		},
-		{
-			Label: "password",
-			Value: password,
-		},
+		Files:     []model.File{},
+		CreatedAt: time.Now(),
 	}
-	return fields
 }

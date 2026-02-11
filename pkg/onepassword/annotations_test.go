@@ -7,7 +7,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 )
 
-const AnnotationRegExpString = "^operator.1password.io\\/[a-zA-Z\\.]+"
+const AnnotationRegExpString = "^operator\\.1password\\.io\\/[a-zA-Z\\.]+"
 
 func TestFilterAnnotations(t *testing.T) {
 	invalidAnnotation1 := "onepasswordconnect/vaultId"
@@ -80,7 +80,7 @@ func TestGetNoAnnotationsForDeployment(t *testing.T) {
 	}
 
 	numAnnotations := len(filteredAnnotations)
-	if 0 != numAnnotations {
+	if numAnnotations != 0 {
 		t.Errorf("Expected %v annotations got %v", 0, numAnnotations)
 	}
 }
