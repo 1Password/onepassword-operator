@@ -43,11 +43,12 @@ func GetOnePasswordItemByPath(opConnectClient connect.Client, path string) (*one
 
 func ParseVaultAndItemFromPath(path string) (string, string, error) {
 	r := regexp.MustCompile("vaults/(.*)/items/(.*)")
-	splitPath := r.FindAllStringSubmatch(path, -1)
+	splitPath := r.FindStringSubmatch(path)
 
-	if len(splitPath) == 1 && len(splitPath[0]) == 3 {
-		return splitPath[0][1], splitPath[0][2], nil
+	if len(splitPath) == 3 {
+		return splitPath[1], splitPath[2], nil
 	}
+
 	return "", "", fmt.Errorf("%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`", path)
 }
 
