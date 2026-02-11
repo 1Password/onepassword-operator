@@ -5,104 +5,166 @@ import (
 	"fmt"
 	"time"
 
-	v1 "github.com/1Password/onepassword-operator/pkg/apis/onepassword/v1"
+	"k8s.io/apimachinery/pkg/api/meta"
 
+	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
 	kubeSecrets "github.com/1Password/onepassword-operator/pkg/kubernetessecrets"
+	"github.com/1Password/onepassword-operator/pkg/logs"
+	opclient "github.com/1Password/onepassword-operator/pkg/onepassword/client"
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 
-	"github.com/1Password/connect-sdk-go/connect"
-	"github.com/1Password/connect-sdk-go/onepassword"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const envHostVariable = "OP_HOST"
+// const envHostVariable = "OP_HOST"
 const lockTag = "operator.1password.io:ignore-secret"
 
 var log = logf.Log.WithName("update_op_kubernetes_secrets_task")
 
-func NewManager(kubernetesClient client.Client, opConnectClient connect.Client, shouldAutoRestartDeploymentsGlobal bool) *SecretUpdateHandler {
+type SecretUpdateHandlerConfig struct {
+	ShouldAutoRestartWorkloadsGlobally bool
+	AllowEmptyValues                   bool
+	WatchedNamespaces                  []string
+}
+
+func NewSecretUpdateHandler(
+	kubernetesClient client.Client,
+	apiReader client.Reader,
+	opClient opclient.Client,
+	config SecretUpdateHandlerConfig,
+) *SecretUpdateHandler {
 	return &SecretUpdateHandler{
-		client:                             kubernetesClient,
-		opConnectClient:                    opConnectClient,
-		shouldAutoRestartDeploymentsGlobal: shouldAutoRestartDeploymentsGlobal,
+		client:    kubernetesClient,
+		apiReader: apiReader,
+		opClient:  opClient,
+		config:    config,
 	}
 }
 
 type SecretUpdateHandler struct {
-	client                             client.Client
-	opConnectClient                    connect.Client
-	shouldAutoRestartDeploymentsGlobal bool
+	client    client.Client
+	apiReader client.Reader
+	opClient  opclient.Client
+	config    SecretUpdateHandlerConfig
 }
 
-func (h *SecretUpdateHandler) UpdateKubernetesSecretsTask() error {
-	updatedKubernetesSecrets, err := h.updateKubernetesSecrets()
+func (h *SecretUpdateHandler) UpdateKubernetesSecretsTask(ctx context.Context) error {
+	updatedKubernetesSecrets, err := h.updateKubernetesSecrets(ctx)
 	if err != nil {
 		return err
 	}
 
-	return h.restartDeploymentsWithUpdatedSecrets(updatedKubernetesSecrets)
+	return h.restartWorkloadsWithUpdatedSecrets(ctx, updatedKubernetesSecrets)
 }
 
-func (h *SecretUpdateHandler) restartDeploymentsWithUpdatedSecrets(updatedSecretsByNamespace map[string]map[string]*corev1.Secret) error {
+func (h *SecretUpdateHandler) restartWorkloadsWithUpdatedSecrets(
+	ctx context.Context,
+	updatedSecretsByNamespace map[string]map[string]*corev1.Secret,
+) error {
 	// No secrets to update. Exit
 	if len(updatedSecretsByNamespace) == 0 || updatedSecretsByNamespace == nil {
 		return nil
 	}
 
-	deployments := &appsv1.DeploymentList{}
-	err := h.client.List(context.Background(), deployments)
-	if err != nil {
-		log.Error(err, "Failed to list kubernetes deployments")
-		return err
+	workloadTypes := []client.ObjectList{
+		&appsv1.DeploymentList{},
 	}
 
-	if len(deployments.Items) == 0 {
-		return nil
-	}
-
-	setForAutoRestartByNamespaceMap, err := h.getIsSetForAutoRestartByNamespaceMap()
+	setForAutoRestartByNamespaceMap, err := h.getIsSetForAutoRestartByNamespaceMap(ctx)
 	if err != nil {
 		return err
 	}
 
-	for i := 0; i < len(deployments.Items); i++ {
-		deployment := &deployments.Items[i]
-		updatedSecrets := updatedSecretsByNamespace[deployment.Namespace]
-
-		updatedDeploymentSecrets := GetUpdatedSecretsForDeployment(deployment, updatedSecrets)
-		if len(updatedDeploymentSecrets) == 0 {
-			continue
+	for _, list := range workloadTypes {
+		if err := h.client.List(ctx, list); err != nil {
+			log.Error(err, "Failed to list workloads", "type", fmt.Sprintf("%T", list))
+			return err
 		}
-		for _, secret := range updatedDeploymentSecrets {
-			if isSecretSetForAutoRestart(secret, deployment, setForAutoRestartByNamespaceMap) {
-				h.restartDeployment(deployment)
+
+		items, err := meta.ExtractList(list)
+		if err != nil {
+			log.Error(err, "Failed to extract list items", "type", fmt.Sprintf("%T", list))
+			return err
+		}
+
+		for _, obj := range items {
+			workload, ok := obj.(client.Object)
+			if !ok {
+				log.Error(fmt.Errorf("unexpected type %T", obj), "Skipping non-client.Object")
 				continue
 			}
+
+			podTemplate, err := getPodTemplate(workload)
+			if err != nil {
+				log.Error(err, "Failed to get pod template", "workload", workload.GetName())
+				continue
+			}
+
+			updatedSecrets := updatedSecretsByNamespace[workload.GetNamespace()]
+			if len(updatedSecrets) == 0 {
+				continue
+			}
+
+			matchedSecrets := getUpdatedSecretsForPodTemplate(workload.GetAnnotations(), podTemplate, updatedSecrets)
+			if len(matchedSecrets) == 0 {
+				continue
+			}
+
+			for _, secret := range matchedSecrets {
+				if isSecretSetForAutoRestart(secret, workload, setForAutoRestartByNamespaceMap) {
+					if err := h.restartWorkload(ctx, workload); err != nil {
+						log.Error(err, "Failed to restart workload", "workload", workload.GetName(), "namespace", workload.GetNamespace())
+					}
+					break
+				}
+			}
+
+			log.V(logs.DebugLevel).Info(
+				fmt.Sprintf("%T %q at namespace %q is up to date", workload, workload.GetName(), workload.GetNamespace()),
+			)
 		}
+	}
 
-		log.Info(fmt.Sprintf("Deployment %q at namespace %q is up to date", deployment.GetName(), deployment.Namespace))
+	return nil
+}
 
+func (h *SecretUpdateHandler) restartWorkload(ctx context.Context, workload client.Object) error {
+	podTemplate, err := getPodTemplate(workload)
+	if err != nil {
+		log.Error(err, "Unsupported workload type for restart", "type", fmt.Sprintf("%T", workload))
+		return err
+	}
+
+	log.Info(
+		fmt.Sprintf(
+			"%T %q in namespace %q references an updated secret. Restarting",
+			workload,
+			workload.GetName(),
+			workload.GetNamespace(),
+		),
+	)
+
+	if podTemplate.Annotations == nil {
+		podTemplate.Annotations = map[string]string{}
+	}
+	podTemplate.Annotations[RestartAnnotation] = time.Now().Format(time.RFC3339)
+
+	if err := h.client.Update(ctx, workload); err != nil {
+		log.Error(err, "Problem restarting workload", "name", workload.GetName())
+		return err
 	}
 	return nil
 }
 
-func (h *SecretUpdateHandler) restartDeployment(deployment *appsv1.Deployment) {
-	log.Info(fmt.Sprintf("Deployment %q at namespace %q references an updated secret. Restarting", deployment.GetName(), deployment.Namespace))
-	deployment.Spec.Template.Annotations = map[string]string{
-		RestartAnnotation: time.Now().String(),
-	}
-	err := h.client.Update(context.Background(), deployment)
-	if err != nil {
-		log.Error(err, "Problem restarting deployment")
-	}
-}
-
-func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*corev1.Secret, error) {
+func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (
+	map[string]map[string]*corev1.Secret, error,
+) {
 	secrets := &corev1.SecretList{}
-	err := h.client.List(context.Background(), secrets)
+	err := h.client.List(ctx, secrets)
 	if err != nil {
 		log.Error(err, "Failed to list kubernetes secrets")
 		return nil, err
@@ -120,22 +182,28 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 
 		OnePasswordItemPath := h.getPathFromOnePasswordItem(secret)
 
-		item, err := GetOnePasswordItemByPath(h.opConnectClient, OnePasswordItemPath)
+		item, err := GetOnePasswordItemByPath(ctx, h.opClient, OnePasswordItemPath)
 		if err != nil {
-			log.Error(err, "failed to retrieve 1Password item at path \"%s\" for secret \"%s\"", secret.Annotations[ItemPathAnnotation], secret.Name)
+			log.Error(err, fmt.Sprintf("failed to retrieve 1Password item at path %s for secret %s",
+				secret.Annotations[ItemPathAnnotation], secret.Name,
+			))
 			continue
 		}
 
 		itemVersion := fmt.Sprint(item.Version)
-		itemPathString := fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID)
+		itemPathString := fmt.Sprintf("vaults/%v/items/%v", item.VaultID, item.ID)
 
 		if currentVersion != itemVersion || secret.Annotations[ItemPathAnnotation] != itemPathString {
 			if isItemLockedForForcedRestarts(item) {
-				log.Info(fmt.Sprintf("Secret '%v' has been updated in 1Password but is set to be ignored. Updates to an ignored secret will not trigger an update to a kubernetes secret or a rolling restart.", secret.GetName()))
+				log.V(logs.DebugLevel).Info(fmt.Sprintf(
+					"Secret '%v' has been updated in 1Password but is set to be ignored. "+
+						"Updates to an ignored secret will not trigger an update to a kubernetes secret or a rolling restart.",
+					secret.GetName(),
+				))
 				secret.Annotations[VersionAnnotation] = itemVersion
 				secret.Annotations[ItemPathAnnotation] = itemPathString
-				if err := h.client.Update(context.Background(), &secret); err != nil {
-					log.Error(err, "failed to update secret %s annotations to version %d: %s", secret.Name, itemVersion, err)
+				if err := h.client.Update(ctx, &secret); err != nil {
+					log.Error(err, fmt.Sprintf("failed to update secret %s annotations to version %s", secret.Name, itemVersion))
 					continue
 				}
 				continue
@@ -143,10 +211,12 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 			log.Info(fmt.Sprintf("Updating kubernetes secret '%v'", secret.GetName()))
 			secret.Annotations[VersionAnnotation] = itemVersion
 			secret.Annotations[ItemPathAnnotation] = itemPathString
-			secret.Data = kubeSecrets.BuildKubernetesSecretData(item.Fields, item.Files)
-			log.Info(fmt.Sprintf("New secret path: %v and version: %v", secret.Annotations[ItemPathAnnotation], secret.Annotations[VersionAnnotation]))
-			if err := h.client.Update(context.Background(), &secret); err != nil {
-				log.Error(err, "failed to update secret %s to version %d: %s", secret.Name, itemVersion, err)
+			secret.Data = kubeSecrets.BuildKubernetesSecretData(item.Fields, item.URLs, item.Files, h.config.AllowEmptyValues)
+			log.V(logs.DebugLevel).Info(fmt.Sprintf("New secret path: %v and version: %v",
+				secret.Annotations[ItemPathAnnotation], secret.Annotations[VersionAnnotation],
+			))
+			if err := h.client.Update(ctx, &secret); err != nil {
+				log.Error(err, fmt.Sprintf("failed to update secret %s to version %s", secret.Name, itemVersion))
 				continue
 			}
 			if updatedSecrets[secret.Namespace] == nil {
@@ -158,7 +228,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets() (map[string]map[string]*
 	return updatedSecrets, nil
 }
 
-func isItemLockedForForcedRestarts(item *onepassword.Item) bool {
+func isItemLockedForForcedRestarts(item *model.Item) bool {
 	tags := item.Tags
 	for i := 0; i < len(tags); i++ {
 		if tags[i] == lockTag {
@@ -170,21 +240,41 @@ func isItemLockedForForcedRestarts(item *onepassword.Item) bool {
 
 func isUpdatedSecret(secretName string, updatedSecrets map[string]*corev1.Secret) bool {
 	_, ok := updatedSecrets[secretName]
-	if ok {
-		return true
-	}
-	return false
+	return ok
 }
 
-func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap() (map[string]bool, error) {
+func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap(
+	ctx context.Context,
+) (map[string]bool, error) {
+	namespacesMap := map[string]bool{}
+
+	// If watched namespaces are set get the auto-restart setting for each watched namespace
+	if len(h.config.WatchedNamespaces) > 0 {
+		for _, namespaceName := range h.config.WatchedNamespaces {
+			namespace := &corev1.Namespace{}
+
+			// Use the API reader to avoid the cached client: the cache fills namespace data
+			// via a list of namespaces which requires list permission. With RBAC that
+			// only allows get on specific namespaces, that list fails. apiReader does a
+			// direct get and only needs get permission.
+			err := h.apiReader.Get(ctx, client.ObjectKey{Name: namespaceName}, namespace)
+			if err != nil {
+				log.V(logs.WarnLevel).Info("Failed to get kubernetes namespace", "namespace", namespaceName, "error", err)
+				continue
+			}
+
+			namespacesMap[namespaceName] = h.isNamespaceSetToAutoRestart(namespace)
+		}
+		return namespacesMap, nil
+	}
+
+	// If watched namespaces are not set get the auto-restart setting for all namespaces
 	namespaces := &corev1.NamespaceList{}
-	err := h.client.List(context.Background(), namespaces)
+	err := h.client.List(ctx, namespaces)
 	if err != nil {
 		log.Error(err, "Failed to list kubernetes namespaces")
 		return nil, err
 	}
-
-	namespacesMap := map[string]bool{}
 
 	for _, namespace := range namespaces.Items {
 		namespacesMap[namespace.Name] = h.isNamespaceSetToAutoRestart(&namespace)
@@ -193,7 +283,7 @@ func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap() (map[string
 }
 
 func (h *SecretUpdateHandler) getPathFromOnePasswordItem(secret corev1.Secret) string {
-	onePasswordItem := &v1.OnePasswordItem{}
+	onePasswordItem := &onepasswordv1.OnePasswordItem{}
 
 	// Search for our original OnePasswordItem if it exists
 	err := h.client.Get(context.TODO(), client.ObjectKey{
@@ -208,47 +298,95 @@ func (h *SecretUpdateHandler) getPathFromOnePasswordItem(secret corev1.Secret) s
 	return secret.Annotations[ItemPathAnnotation]
 }
 
-func isSecretSetForAutoRestart(secret *corev1.Secret, deployment *appsv1.Deployment, setForAutoRestartByNamespace map[string]bool) bool {
-	restartDeployment := secret.Annotations[RestartDeploymentsAnnotation]
-	//If annotation for auto restarts for deployment is not set. Check for the annotation on its namepsace
-	if restartDeployment == "" {
-		return isDeploymentSetForAutoRestart(deployment, setForAutoRestartByNamespace)
+func isSecretSetForAutoRestart(
+	secret *corev1.Secret,
+	workload client.Object,
+	setForAutoRestartByNamespace map[string]bool,
+) bool {
+	restartAnnotation := secret.Annotations[AutoRestartWorkloadAnnotation]
+	// If annotation for auto restarts for workload is not set. Check for the annotation on its namepsace
+	if restartAnnotation == "" {
+		return isWorkloadSetForAutoRestart(workload, setForAutoRestartByNamespace)
 	}
 
-	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
+	restartBool, err := utils.StringToBool(restartAnnotation)
 	if err != nil {
-		log.Error(err, "Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secret.Name)
+		log.Error(
+			err,
+			fmt.Sprintf(
+				"Error parsing %s annotation on Secret %s. Must be true or false. Defaulting to false.",
+				AutoRestartWorkloadAnnotation,
+				secret.Name,
+			),
+		)
 		return false
 	}
-	return restartDeploymentBool
+
+	return restartBool
 }
 
-func isDeploymentSetForAutoRestart(deployment *appsv1.Deployment, setForAutoRestartByNamespace map[string]bool) bool {
-	restartDeployment := deployment.Annotations[RestartDeploymentsAnnotation]
-	//If annotation for auto restarts for deployment is not set. Check for the annotation on its namepsace
-	if restartDeployment == "" {
-		return setForAutoRestartByNamespace[deployment.Namespace]
+func isWorkloadSetForAutoRestart(workload client.Object, setForAutoRestartByNamespace map[string]bool) bool {
+	annotations := workload.GetAnnotations()
+	namespace := workload.GetNamespace()
+	name := workload.GetName()
+
+	restartAnnotation := annotations[AutoRestartWorkloadAnnotation]
+	if restartAnnotation == "" {
+		return setForAutoRestartByNamespace[namespace]
 	}
 
-	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
+	restartBool, err := utils.StringToBool(restartAnnotation)
 	if err != nil {
-		log.Error(err, "Error parsing %v annotation on Deployment %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, deployment.Name)
+		log.Error(err, fmt.Sprintf(
+			"Error parsing %s annotation on %T %s. Must be true or false. Defaulting to false.",
+			AutoRestartWorkloadAnnotation, workload, name,
+		))
 		return false
 	}
-	return restartDeploymentBool
+
+	return restartBool
 }
 
 func (h *SecretUpdateHandler) isNamespaceSetToAutoRestart(namespace *corev1.Namespace) bool {
-	restartDeployment := namespace.Annotations[RestartDeploymentsAnnotation]
-	//If annotation for auto restarts for deployment is not set. Check environment variable set on the operator
-	if restartDeployment == "" {
-		return h.shouldAutoRestartDeploymentsGlobal
+	restartWorkload := namespace.Annotations[AutoRestartWorkloadAnnotation]
+	// If annotation for auto restarts for workload is not set. Check environment variable set on the operator
+	if restartWorkload == "" {
+		return h.config.ShouldAutoRestartWorkloadsGlobally
 	}
 
-	restartDeploymentBool, err := utils.StringToBool(restartDeployment)
+	restartWorkloadBool, err := utils.StringToBool(restartWorkload)
 	if err != nil {
-		log.Error(err, "Error parsing %v annotation on Namespace %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, namespace.Name)
+		log.Error(err, fmt.Sprintf("Error parsing %s annotation on Namespace %s. Must be true or false. Defaulting to false.",
+			AutoRestartWorkloadAnnotation, namespace.Name,
+		))
 		return false
 	}
-	return restartDeploymentBool
+	return restartWorkloadBool
+}
+
+func getPodTemplate(obj client.Object) (*corev1.PodTemplateSpec, error) {
+	switch o := obj.(type) {
+	case *appsv1.Deployment:
+		return &o.Spec.Template, nil
+	default:
+		return nil, fmt.Errorf("unsupported type %T", obj)
+	}
+}
+
+func getUpdatedSecretsForPodTemplate(
+	annotations map[string]string,
+	podTemplate *corev1.PodTemplateSpec,
+	secrets map[string]*corev1.Secret,
+) map[string]*corev1.Secret {
+	if podTemplate == nil {
+		return nil
+	}
+
+	allContainers := append(podTemplate.Spec.Containers, podTemplate.Spec.InitContainers...)
+	updatedSecrets := map[string]*corev1.Secret{}
+	AppendAnnotationUpdatedSecret(annotations, secrets, updatedSecrets)
+	AppendUpdatedContainerSecrets(allContainers, secrets, updatedSecrets)
+	AppendUpdatedVolumeSecrets(podTemplate.Spec.Volumes, secrets, updatedSecrets)
+
+	return updatedSecrets
 }

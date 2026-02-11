@@ -12,6 +12,133 @@
 
 ---
 
+[//]: # (START/v1.11.0)
+# v1.11.0
+
+## Features
+  * Operator supports `--allow-empty-values=true` flag that controls skipping empty item field values in secrets. Empty values are skipped by default. {#246}
+
+## Fixes
+  * Operator skips fields, URLs, or files with invalid secret key labels instead of erroring. {#243}
+  * Operator avoids cluster-scope namespace list when `WATCH_NAMESPACE` is set so deployments can auto-restart under restricted RBAC. {#245}
+  * Fix expired dev Slack link in README. {#251}
+
+---
+
+[//]: # (START/v1.10.1)
+# v1.10.1
+
+## Fixes
+ * Deployment that uses 1Password annotations shows errors that happened with 1Password managed secrets. {#88}
+ * Operator correctly handles item and vault names that match UUID pattern format. {#226}
+ * Restore case-insensitive vault name lookup. {#239}
+ * Secret now contains values from item websites section. {#187}
+
+---
+
+[//]: # (START/v1.10.0)
+# v1.10.0
+
+## Fixes
+  * Improved stability and compatibility by upgrading the Operator SDK to v1.41.1. {#211}
+  * Update README to cover multiple items usage. {#60}
+  * Fix annotation regexp pattern. {#156}
+
+## Features
+  * Display READY column for onepassword CRD. {#223}
+  * Introduce '--enable-annotations' flag add custom annotations on generated k8s secrets. {#114}
+  * Allow to create secrets with empty value fields. {#145}
+
+---
+
+[//]: # (START/v1.9.1)
+# v1.9.1
+
+## Fixes
+ * Operator no longer panics when handling 1Password items containing files. {#209}
+
+## Security
+ * HTTP Proxy bypass using IPv6 Zone IDs in golang.org/x/net. {#210}
+ * golang.org/x/net vulnerable to Cross-site Scripting. {#210}
+
+---
+
+[//]: # (START/v1.9.0)
+# v1.9.0
+
+## Features
+  * Enable the Operator to authenticate to 1Password using service accounts. {#160}
+
+## Fixes
+ * Update Operator to use SDK v1.34.1. {#185}
+ * Pass Kubernetes context down to SDK/Connect. {#199}
+
+---
+
+[//]: # (START/v1.8.1)
+# v1.8.1
+
+## Fixes
+ * Upgrade operator to use Operator SDK v1.33.0. {#180}
+
+---
+
+[//]: # (START/v1.8.0)
+# v1.8.0
+
+## Features
+  * Added volume projected detection. Credit to @mmorejon. {#168}
+
+---
+
+[//]: # (START/v1.7.1)
+# v1.7.1
+
+## Fixes
+ * Adjusting logging level on various logs to reduce unnecessary logging. {#164}
+
+---
+
+[//]: # (START/v1.7.0)
+# v1.7.0
+
+## Features
+  * Upgraded operator to version 1.29.0. {#162}
+  * Upgraded Golang version to 1.20. {#161}
+  * Upgraded 1Password Connect version to 1.5.1. {#161}
+  * Added runAsNonRoot and allowPrivalegeEscalation to specs. {#151}
+  * Added code quality improvements. {#146}
+
+---
+
+[//]: # (START/v1.6.0)
+# v1.6.0
+
+This version of the operator highlights the migration of the operator
+to use the latest version of the `operator-sdk` (`1.25.0` at the time of this release).
+
+For the users, this shouldn't affect the functionality of the operator.
+
+This migration enables us to use the new project structure, as well as updated packages that enables
+the team (as well as the contributors) to develop the operator more effective.
+
+## Features
+  * Migrate the operator to use the latest `operator-sdk` {#124}
+
+---
+
+[//]: # (START/v1.5.0)
+# v1.5.0
+
+## Features
+ * `OnePasswordItem` now contains a `status` which contains the status of creating the kubernetes secret for a OnePasswordItem. {#52}
+
+## Fixes
+ * The operator no longer logs an error about changing the secret type if the secret type is not actually being changed.
+ * Annotations on a deployment are no longer removed when the operator triggers a restart. {#112}
+
+---
+
 [//]: # "START/v1.4.1"
 
 # v1.4.1

@@ -2,20 +2,16 @@ package kubernetessecrets
 
 import (
 	"context"
+	"errors"
 	"fmt"
-
+	"reflect"
 	"regexp"
 	"strings"
 
-	"reflect"
-
-	errs "errors"
-
-	"github.com/1Password/connect-sdk-go/onepassword"
-
+	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
@@ -27,62 +23,97 @@ import (
 const OnepasswordPrefix = "operator.1password.io"
 const NameAnnotation = OnepasswordPrefix + "/item-name"
 const VersionAnnotation = OnepasswordPrefix + "/item-version"
-const restartAnnotation = OnepasswordPrefix + "/last-restarted"
 const ItemPathAnnotation = OnepasswordPrefix + "/item-path"
 const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
 
-var ErrCannotUpdateSecretType = errs.New("Cannot change secret type. Secret type is immutable")
+var ErrCannotUpdateSecretType = errors.New("cannot change secret type: secret type is immutable")
 
 var log = logf.Log
 
-func CreateKubernetesSecretFromItem(kubeClient kubernetesClient.Client, secretName, namespace string, item *onepassword.Item, autoRestart string, labels map[string]string, secretType string, ownerRef *metav1.OwnerReference) error {
+func CreateKubernetesSecretFromItem(
+	ctx context.Context,
+	kubeClient kubernetesClient.Client,
+	secretName, namespace string,
+	item *model.Item,
+	autoRestart string,
+	labels map[string]string,
+	secretAnnotations map[string]string,
+	secretType string,
+	ownerRef *metav1.OwnerReference,
+	allowEmptyValues bool,
+) error {
 	itemVersion := fmt.Sprint(item.Version)
-	secretAnnotations := map[string]string{
-		VersionAnnotation:  itemVersion,
-		ItemPathAnnotation: fmt.Sprintf("vaults/%v/items/%v", item.Vault.ID, item.ID),
+	if secretAnnotations == nil {
+		secretAnnotations = map[string]string{}
 	}
+	secretAnnotations[VersionAnnotation] = itemVersion
+	secretAnnotations[ItemPathAnnotation] = fmt.Sprintf("vaults/%v/items/%v", item.VaultID, item.ID)
 
 	if autoRestart != "" {
 		_, err := utils.StringToBool(autoRestart)
 		if err != nil {
-			log.Error(err, "Error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false.", RestartDeploymentsAnnotation, secretName)
-			return err
+			return fmt.Errorf("error parsing %v annotation on Secret %v. Must be true or false. Defaulting to false",
+				RestartDeploymentsAnnotation, secretName,
+			)
 		}
 		secretAnnotations[RestartDeploymentsAnnotation] = autoRestart
 	}
 
 	// "Opaque" and "" secret types are treated the same by Kubernetes.
-	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels, secretType, *item, ownerRef)
+	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels,
+		secretType, *item, ownerRef, allowEmptyValues)
 
 	currentSecret := &corev1.Secret{}
-	err := kubeClient.Get(context.Background(), types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
-	if err != nil && errors.IsNotFound(err) {
+	err := kubeClient.Get(ctx, types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
+	if err != nil && apierrors.IsNotFound(err) {
 		log.Info(fmt.Sprintf("Creating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
-		return kubeClient.Create(context.Background(), secret)
+		return kubeClient.Create(ctx, secret)
 	} else if err != nil {
 		return err
 	}
 
-	currentAnnotations := currentSecret.Annotations
-	currentLabels := currentSecret.Labels
+	// Check if the secret types are being changed on the update.
+	// Avoid Opaque and "" are treated as different on check.
+	wantSecretType := secretType
+	if wantSecretType == "" {
+		wantSecretType = string(corev1.SecretTypeOpaque)
+	}
 	currentSecretType := string(currentSecret.Type)
-	if !reflect.DeepEqual(currentSecretType, secretType) {
+	if currentSecretType == "" {
+		currentSecretType = string(corev1.SecretTypeOpaque)
+	}
+	if currentSecretType != wantSecretType {
 		return ErrCannotUpdateSecretType
 	}
 
+	currentAnnotations := currentSecret.Annotations
+	currentLabels := currentSecret.Labels
 	if !reflect.DeepEqual(currentAnnotations, secretAnnotations) || !reflect.DeepEqual(currentLabels, labels) {
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
-		currentSecret.ObjectMeta.Annotations = secretAnnotations
-		currentSecret.ObjectMeta.Labels = labels
+		currentSecret.Annotations = secretAnnotations
+		currentSecret.Labels = labels
 		currentSecret.Data = secret.Data
-		return kubeClient.Update(context.Background(), currentSecret)
+		if err := kubeClient.Update(ctx, currentSecret); err != nil {
+			return fmt.Errorf("kubernetes secret update failed: %w", err)
+		}
+		return nil
 	}
 
-	log.Info(fmt.Sprintf("Secret with name %v and version %v already exists", secret.Name, secret.Annotations[VersionAnnotation]))
+	log.Info(fmt.Sprintf("Secret with name %v and version %v already exists",
+		secret.Name, secret.Annotations[VersionAnnotation],
+	))
 	return nil
 }
 
-func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotations map[string]string, labels map[string]string, secretType string, item onepassword.Item, ownerRef *metav1.OwnerReference) *corev1.Secret {
+func BuildKubernetesSecretFromOnePasswordItem(
+	name, namespace string,
+	annotations map[string]string,
+	labels map[string]string,
+	secretType string,
+	item model.Item,
+	ownerRef *metav1.OwnerReference,
+	allowEmptyValues bool,
+) *corev1.Secret {
 	var ownerRefs []metav1.OwnerReference
 	if ownerRef != nil {
 		ownerRefs = []metav1.OwnerReference{*ownerRef}
@@ -96,29 +127,72 @@ func BuildKubernetesSecretFromOnePasswordItem(name, namespace string, annotation
 			Labels:          labels,
 			OwnerReferences: ownerRefs,
 		},
-		Data: BuildKubernetesSecretData(item.Fields, item.Files),
+		Data: BuildKubernetesSecretData(item.Fields, item.URLs, item.Files, allowEmptyValues),
 		Type: corev1.SecretType(secretType),
 	}
 }
 
-func BuildKubernetesSecretData(fields []*onepassword.ItemField, files []*onepassword.File) map[string][]byte {
+func BuildKubernetesSecretData(
+	fields []model.ItemField, urls []model.ItemURL, files []model.File, allowEmptyValues bool,
+) map[string][]byte {
 	secretData := map[string][]byte{}
-	for i := 0; i < len(fields); i++ {
-		if fields[i].Value != "" {
-			key := formatSecretDataName(fields[i].Label)
-			secretData[key] = []byte(fields[i].Value)
+
+	urlsByLabel := processURLsByLabel(urls)
+	for key, url := range urlsByLabel {
+		formattedKey := formatSecretDataName(key)
+		if formattedKey == "" {
+			log.Info(fmt.Sprintf("Skipping URL with invalid label %q because it must match [-._a-zA-Z0-9]+", url.Label))
+			continue
 		}
+		if emptyValueIsNotAllowed(allowEmptyValues, url.URL) {
+			log.Info(fmt.Sprintf(
+				"Skipping URL with empty value for label %q (use --allow-empty-values flag to include)",
+				url.Label,
+			))
+			continue
+		}
+		secretData[formattedKey] = []byte(url.URL)
+	}
+
+	for i := 0; i < len(fields); i++ {
+		key := formatSecretDataName(fields[i].Label)
+		if key == "" {
+			log.Info(fmt.Sprintf("Skipping field with invalid label %q because it must match [-._a-zA-Z0-9]+", fields[i].Label))
+			continue
+		}
+		if emptyValueIsNotAllowed(allowEmptyValues, fields[i].Value) {
+			log.Info(fmt.Sprintf(
+				"Skipping field with empty value for label %q (use --allow-empty-values flag to include)",
+				fields[i].Label,
+			))
+			continue
+		}
+		secretData[key] = []byte(fields[i].Value)
 	}
 
 	// populate unpopulated fields from files
 	for _, file := range files {
+		key := formatSecretDataName(file.Name)
+		if key == "" {
+			log.Info(fmt.Sprintf("Skipping file with invalid name %q because it must match [-._a-zA-Z0-9]+", file.Name))
+			continue
+		}
+
 		content, err := file.Content()
 		if err != nil {
-			log.Error(err, "Could not load contents of file %s", file.Name)
+			log.Error(err, fmt.Sprintf("Could not load contents of file %s", file.Name))
+			continue
+		}
+		if emptyValueIsNotAllowed(allowEmptyValues, content) {
+			log.Info(
+				fmt.Sprintf(
+					"Skipping file with empty content for name %q (use --allow-empty-values flag to include)",
+					file.Name,
+				),
+			)
 			continue
 		}
 		if content != nil {
-			key := file.Name
 			if secretData[key] == nil {
 				secretData[key] = content
 			} else {
@@ -127,6 +201,11 @@ func BuildKubernetesSecretData(fields []*onepassword.ItemField, files []*onepass
 		}
 	}
 	return secretData
+}
+
+// emptyValueIsNotAllowed checks if the value is empty and empty values are not allowed.
+func emptyValueIsNotAllowed[T string | []byte](allowEmptyValues bool, value T) bool {
+	return !allowEmptyValues && len(value) == 0
 }
 
 // formatSecretName rewrites a value to be a valid Secret name.
@@ -177,4 +256,23 @@ func createValidSecretDataName(value string) string {
 	}
 
 	return result
+}
+
+// processURLsByLabel processes all urls preferring primary when multiple urls share the same label
+func processURLsByLabel(urls []model.ItemURL) map[string]model.ItemURL {
+	urlsByLabel := make(map[string]model.ItemURL)
+	for _, url := range urls {
+		existingURL, exists := urlsByLabel[url.Label]
+		if !exists {
+			// First url with this label
+			urlsByLabel[url.Label] = url
+		} else if url.Primary {
+			// Current url is primary so overwrite the existing one
+			urlsByLabel[url.Label] = url
+		} else if !existingURL.Primary {
+			// Use the current one when neither is primary
+			urlsByLabel[url.Label] = url
+		}
+	}
+	return urlsByLabel
 }
