@@ -3,7 +3,7 @@ package onepassword
 import (
 	"context"
 	"fmt"
-	"strings"
+	"regexp"
 
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -59,9 +59,11 @@ func GetOnePasswordItemByPath(ctx context.Context, opClient opclient.Client, pat
 }
 
 func ParseVaultAndItemFromPath(path string) (string, string, error) {
-	splitPath := strings.Split(path, "/")
-	if len(splitPath) == 4 && splitPath[0] == "vaults" && splitPath[2] == "items" {
-		return splitPath[1], splitPath[3], nil
+	r := regexp.MustCompile("vaults/(.*)/items/(.*)")
+	splitPath := r.FindStringSubmatch(path)
+
+	if len(splitPath) == 3 {
+		return splitPath[1], splitPath[2], nil
 	}
 	return "", "", fmt.Errorf(
 		"%q is not an acceptable path for One Password item. Must be of the format: `vaults/{vault_id}/items/{item_id}`",
