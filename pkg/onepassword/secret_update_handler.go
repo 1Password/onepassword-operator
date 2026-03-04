@@ -221,7 +221,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (
 			secret.Annotations[VersionAnnotation] = itemVersion
 			secret.Annotations[ItemPathAnnotation] = itemPathString
 			secret.Data = kubeSecrets.BuildKubernetesSecretData(
-				*item, h.config.AllowEmptyValues, secretTemplate,
+				*item, h.config.AllowEmptyValues, secretTemplate, nil,
 			)
 			log.V(logs.DebugLevel).Info(fmt.Sprintf("New secret path: %v and version: %v",
 				secret.Annotations[ItemPathAnnotation], secret.Annotations[VersionAnnotation],

@@ -176,8 +176,14 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 		return fmt.Errorf("failed to retrieve item: %w", err)
 	}
 
-	// Extract template config from spec.
+	// Extract template and imagePullSecret config from spec.
 	secretTemplate := resource.Spec.Template
+	imagePullSecret := resource.Spec.ImagePullSecret
+
+	// If imagePullSecret is configured, automatically set secret type to dockerconfigjson.
+	if imagePullSecret != nil && secretType == "" {
+		secretType = string(corev1.SecretTypeDockerConfigJson)
+	}
 
 	// Create owner reference.
 	gvk, err := apiutil.GVKForObject(resource, r.Scheme)
@@ -191,7 +197,7 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 		UID:        resource.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, resource.Namespace, item, autoRestart, labels, annotations, secretType, ownerRef, r.Config.AllowEmptyValues, secretTemplate)
+	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, resource.Namespace, item, autoRestart, labels, annotations, secretType, ownerRef, r.Config.AllowEmptyValues, secretTemplate, imagePullSecret)
 }
 
 func (r *OnePasswordItemReconciler) updateStatus(ctx context.Context, resource *onepasswordv1.OnePasswordItem, err error) error {

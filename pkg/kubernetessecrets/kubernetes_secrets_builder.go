@@ -44,6 +44,7 @@ func CreateKubernetesSecretFromItem(
 	ownerRef *metav1.OwnerReference,
 	allowEmptyValues bool,
 	secretTemplate *onepasswordv1.SecretTemplate,
+	imagePullSecret *onepasswordv1.ImagePullSecretConfig,
 ) error {
 	itemVersion := fmt.Sprint(item.Version)
 	if secretAnnotations == nil {
@@ -64,7 +65,7 @@ func CreateKubernetesSecretFromItem(
 
 	// "Opaque" and "" secret types are treated the same by Kubernetes.
 	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels,
-		secretType, *item, ownerRef, allowEmptyValues, secretTemplate)
+		secretType, *item, ownerRef, allowEmptyValues, secretTemplate, imagePullSecret)
 
 	currentSecret := &corev1.Secret{}
 	err := kubeClient.Get(ctx, types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
@@ -117,6 +118,7 @@ func BuildKubernetesSecretFromOnePasswordItem(
 	ownerRef *metav1.OwnerReference,
 	allowEmptyValues bool,
 	secretTemplate *onepasswordv1.SecretTemplate,
+	imagePullSecret *onepasswordv1.ImagePullSecretConfig,
 ) *corev1.Secret {
 	var ownerRefs []metav1.OwnerReference
 	if ownerRef != nil {
@@ -131,15 +133,44 @@ func BuildKubernetesSecretFromOnePasswordItem(
 			Labels:          labels,
 			OwnerReferences: ownerRefs,
 		},
-		Data: BuildKubernetesSecretData(item, allowEmptyValues, secretTemplate),
+		Data: BuildKubernetesSecretData(item, allowEmptyValues, secretTemplate, imagePullSecret),
 		Type: corev1.SecretType(secretType),
 	}
 }
 
 func BuildKubernetesSecretData(
-	item model.Item, allowEmptyValues bool, secretTemplate *onepasswordv1.SecretTemplate,
+	item model.Item,
+	allowEmptyValues bool,
+	secretTemplate *onepasswordv1.SecretTemplate,
+	imagePullSecret *onepasswordv1.ImagePullSecretConfig,
 ) map[string][]byte {
-	// Template processing: if a template is provided, render it and return.
+	// Priority 1: Image pull secret handling.
+	if imagePullSecret != nil {
+		// Build field lookup map
+		fieldMap := make(map[string]string)
+		for _, field := range item.Fields {
+			fieldMap[field.Label] = field.Value
+		}
+
+		// Extract values from fields using configured labels
+		registry := fieldMap[imagePullSecret.RegistryField]
+		username := fieldMap[imagePullSecret.UsernameField]
+		password := fieldMap[imagePullSecret.PasswordField]
+		email := fieldMap[imagePullSecret.EmailField]
+
+		// Build dockerconfigjson
+		dockerConfigJSON, err := template.BuildDockerConfigJSON(registry, username, password, email)
+		if err != nil {
+			log.Error(err, "Failed to build docker config json, falling back to default behavior")
+			// Fall through to default behavior
+		} else {
+			return map[string][]byte{
+				".dockerconfigjson": dockerConfigJSON,
+			}
+		}
+	}
+
+	// Priority 2: Template processing.
 	if secretTemplate != nil && secretTemplate.Data != nil {
 		secretData := map[string][]byte{}
 		ctx := template.BuildTemplateContext(&item)
@@ -154,7 +185,7 @@ func BuildKubernetesSecretData(
 		return secretData
 	}
 
-	// Default behavior: map fields, URLs, and files to secret data.
+	// Priority 3: Default behavior — map fields, URLs, and files to secret data.
 	secretData := map[string][]byte{}
 
 	urlsByLabel := processURLsByLabel(item.URLs)
