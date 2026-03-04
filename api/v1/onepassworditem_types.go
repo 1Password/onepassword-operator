@@ -42,6 +42,20 @@ type SecretTemplate struct {
 	Data map[string]string `json:"data,omitempty"`
 }
 
+// ImagePullSecretConfig configures automatic dockerconfigjson generation for image pull secrets.
+// When set, the operator constructs a properly formatted .dockerconfigjson from the specified
+// 1Password item fields, and automatically sets the secret type to kubernetes.io/dockerconfigjson.
+type ImagePullSecretConfig struct {
+	// RegistryField is the label of the 1Password field containing the registry URL (e.g. "ghcr.io").
+	RegistryField string `json:"registryField,omitempty"`
+	// UsernameField is the label of the 1Password field containing the registry username.
+	UsernameField string `json:"usernameField,omitempty"`
+	// PasswordField is the label of the 1Password field containing the registry password or token.
+	PasswordField string `json:"passwordField,omitempty"`
+	// EmailField is the label of the 1Password field containing the email (optional).
+	EmailField string `json:"emailField,omitempty"`
+}
+
 // OnePasswordItemSpec defines the desired state of OnePasswordItem
 type OnePasswordItemSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -54,6 +68,12 @@ type OnePasswordItemSpec struct {
 	// instead of using the default 1:1 field-to-key mapping.
 	// +optional
 	Template *SecretTemplate `json:"template,omitempty"`
+
+	// ImagePullSecret configures automatic dockerconfigjson generation.
+	// When set, the operator builds a .dockerconfigjson from the 1Password item fields
+	// mapped by the config, and sets the secret type to kubernetes.io/dockerconfigjson.
+	// +optional
+	ImagePullSecret *ImagePullSecretConfig `json:"imagePullSecret,omitempty"`
 }
 
 type OnePasswordItemConditionType string
