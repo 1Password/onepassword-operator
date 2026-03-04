@@ -14,15 +14,23 @@ type Item struct {
 	Version   int
 	Tags      []string
 	URLs      []ItemURL
+	Sections  []ItemSection
 	Fields    []ItemField
 	Files     []File
 	CreatedAt time.Time
 }
 
+// ItemURL represents a URL associated with a 1Password item.
 type ItemURL struct {
 	URL     string
 	Label   string
 	Primary bool
+}
+
+// ItemSection represents a section within a 1Password item.
+type ItemSection struct {
+	ID    string
+	Title string
 }
 
 // FromConnectItem populates the Item from a Connect item.
@@ -41,10 +49,29 @@ func (i *Item) FromConnectItem(item *connect.Item) {
 		})
 	}
 
+	// Build sections from field references. The Connect SDK stores section
+	// info on each field rather than as a top-level list.
+	sectionSeen := make(map[string]bool)
 	for _, field := range item.Fields {
+		sectionID := ""
+		if field.Section != nil {
+			sectionID = field.Section.ID
+			if !sectionSeen[sectionID] {
+				sectionSeen[sectionID] = true
+				title := field.Section.Label
+				i.Sections = append(i.Sections, ItemSection{
+					ID:    sectionID,
+					Title: title,
+				})
+			}
+		}
+
 		i.Fields = append(i.Fields, ItemField{
-			Label: field.Label,
-			Value: field.Value,
+			ID:        field.ID,
+			Label:     field.Label,
+			Value:     field.Value,
+			SectionID: sectionID,
+			FieldType: string(field.Type),
 		})
 	}
 
@@ -76,10 +103,25 @@ func (i *Item) FromSDKItem(item *sdk.Item) {
 		})
 	}
 
+	// Populate sections from the SDK item.
+	for _, section := range item.Sections {
+		i.Sections = append(i.Sections, ItemSection{
+			ID:    section.ID,
+			Title: section.Title,
+		})
+	}
+
 	for _, field := range item.Fields {
+		sectionID := ""
+		if field.SectionID != nil {
+			sectionID = *field.SectionID
+		}
 		i.Fields = append(i.Fields, ItemField{
-			Label: field.Title,
-			Value: field.Value,
+			ID:        field.ID,
+			Label:     field.Title,
+			Value:     field.Value,
+			SectionID: sectionID,
+			FieldType: string(field.FieldType),
 		})
 	}
 
