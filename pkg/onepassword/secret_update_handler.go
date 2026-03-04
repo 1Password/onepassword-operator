@@ -184,9 +184,11 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (
 
 		var onePasswordItemPath string
 		var secretTemplate *onepasswordv1.SecretTemplate
+		var imagePullSecret *onepasswordv1.ImagePullSecretConfig
 		if onePasswordItemCR != nil {
 			onePasswordItemPath = onePasswordItemCR.Spec.ItemPath
 			secretTemplate = onePasswordItemCR.Spec.Template
+			imagePullSecret = onePasswordItemCR.Spec.ImagePullSecret
 		} else {
 			onePasswordItemPath = secret.Annotations[ItemPathAnnotation]
 		}
@@ -221,7 +223,7 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (
 			secret.Annotations[VersionAnnotation] = itemVersion
 			secret.Annotations[ItemPathAnnotation] = itemPathString
 			secret.Data = kubeSecrets.BuildKubernetesSecretData(
-				*item, h.config.AllowEmptyValues, secretTemplate, nil,
+				*item, h.config.AllowEmptyValues, secretTemplate, imagePullSecret,
 			)
 			log.V(logs.DebugLevel).Info(fmt.Sprintf("New secret path: %v and version: %v",
 				secret.Annotations[ItemPathAnnotation], secret.Annotations[VersionAnnotation],
@@ -397,6 +399,7 @@ func getUpdatedSecretsForPodTemplate(
 	AppendAnnotationUpdatedSecret(annotations, secrets, updatedSecrets)
 	AppendUpdatedContainerSecrets(allContainers, secrets, updatedSecrets)
 	AppendUpdatedVolumeSecrets(podTemplate.Spec.Volumes, secrets, updatedSecrets)
+	AppendUpdatedImagePullSecrets(podTemplate.Spec.ImagePullSecrets, secrets, updatedSecrets)
 
 	return updatedSecrets
 }
