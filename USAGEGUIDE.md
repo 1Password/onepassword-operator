@@ -197,6 +197,89 @@ The following data is available inside templates:
 
 ---
 
+## Image Pull Secrets
+
+The operator can automatically generate `kubernetes.io/dockerconfigjson` secrets
+for use as Kubernetes
+[image pull secrets](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/).
+Store your registry credentials in a 1Password item and let the operator
+construct the properly formatted `.dockerconfigjson` for you.
+
+### Quick example
+
+Given a 1Password item with the following fields:
+
+| Field label | Value |
+|---|---|
+| `registry` | `ghcr.io` |
+| `username` | `my-user` |
+| `password` | `ghp_xxxxxxxxxxxx` |
+| `email` | `me@example.com` |
+
+Create a `OnePasswordItem` with `spec.imagePullSecret`:
+
+```yaml
+apiVersion: onepassword.com/v1
+kind: OnePasswordItem
+metadata:
+  name: ghcr-pull-secret
+spec:
+  itemPath: "vaults/my-vault/items/ghcr-credentials"
+  imagePullSecret:
+    registryField: "registry"
+    usernameField: "username"
+    passwordField: "password"
+    emailField: "email"          # optional
+```
+
+The operator will:
+1. Look up each field by its label in the 1Password item.
+2. Build a `.dockerconfigjson` with the base64-encoded `auth` string.
+3. Automatically set the secret type to `kubernetes.io/dockerconfigjson`.
+
+The resulting Kubernetes Secret is equivalent to running:
+
+```sh
+kubectl create secret docker-registry ghcr-pull-secret \
+  --docker-server=ghcr.io \
+  --docker-username=my-user \
+  --docker-password=ghp_xxxxxxxxxxxx \
+  --docker-email=me@example.com
+```
+
+You can then reference it in your Pods / Deployments:
+
+```yaml
+spec:
+  imagePullSecrets:
+    - name: ghcr-pull-secret
+```
+
+### Configuration reference
+
+| Field | Required | Description |
+|---|---|---|
+| `registryField` | **Yes** | Label of the 1Password field containing the registry URL (e.g. `ghcr.io`, `docker.io`). |
+| `usernameField` | **Yes** | Label of the 1Password field containing the username. |
+| `passwordField` | **Yes** | Label of the 1Password field containing the password or access token. |
+| `emailField` | No | Label of the 1Password field containing the email address. Omit if your registry does not require it. |
+
+### Behaviour notes
+
+- When `imagePullSecret` is set, the operator **only** produces the
+  `.dockerconfigjson` key. Individual fields are **not** added as separate
+  keys.
+- If the required fields (registry, username, or password) cannot be resolved
+  from the 1Password item, the operator logs an error and falls back to the
+  default field-mapping behaviour.
+- You can explicitly set `type: kubernetes.io/dockerconfigjson` on the
+  `OnePasswordItem`, but it is not required — the operator sets it
+  automatically when `imagePullSecret` is configured.
+- `imagePullSecret` takes priority over `template`. If both are set,
+  `imagePullSecret` wins.
+
+---
+
 ## Configuring Automatic Rolling Restarts of Deployments
 
 If a 1Password Item that is linked to a Kubernetes Secret is updated, any deployments configured to `auto-restart` AND are using that secret will be given a rolling restart the next time 1Password Connect is polled for updates.
