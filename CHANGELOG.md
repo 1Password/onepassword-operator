@@ -12,8 +12,8 @@
 
 ---
 
-[//]: # (START/v1.11.1)
-# v1.11.1
+[//]: # (START/v1.12.0)
+# v1.12.0
 
 ## Features
   * Operator allows for the shortname `opi` for the CRD to save time when running commands to view existing resources. {131}
