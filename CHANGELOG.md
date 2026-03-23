@@ -15,6 +15,9 @@
 [//]: # (START/v1.11.1)
 # v1.11.1
 
+## Features
+  * Operator allows for the shortname `opi` for the CRD to save time when running commands to view existing resources. {131}
+
 ## Security
  * Update google.golang.org/grpc to v1.79.3 to address an authorization bypass reported by Dependabot. {#20}
  * Update go.opentelemetry.io/otel/sdk to 1.40.0 to address a PATH hijacking vulnerability. {19}
