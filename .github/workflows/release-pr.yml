@@ -71,7 +71,7 @@ jobs:
 
       - name: Create Pull Request via API
         id: post_pr
-        uses: octokit/request-action@v3.0.0
+        uses: octokit/request-action@v3
         with:
           route: POST /repos/${{ github.repository }}/pulls
           title: ${{ format('Prepare Release - v{0}', steps.get_version.outputs.version) }}
