@@ -42,7 +42,7 @@ jobs:
 
       # install cli to interact with item in 1Password to update/read using `testhelper/op` package
       - name: Install 1Password CLI
-        uses: 1password/install-cli-action@v2
+        uses: 1password/install-cli-action@v3
         with:
           version: 2.32.0
 
