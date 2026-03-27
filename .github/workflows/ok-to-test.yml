@@ -15,7 +15,7 @@ jobs:
     if: ${{ github.event.issue.pull_request }}
     steps:
       - name: Slash Command Dispatch
-        uses: volodymyrZotov/slash-command-dispatch@7c1b623a2b0eba93f684c34f689a441f0be84cf1 # TODO: use peter-evans/slash-command-dispatch when fix for team permissions is released https://github.com/peter-evans/slash-command-dispatch/pull/424
+        uses: peter-evans/slash-command-dispatch@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           reaction-token: ${{ secrets.GITHUB_TOKEN }}
