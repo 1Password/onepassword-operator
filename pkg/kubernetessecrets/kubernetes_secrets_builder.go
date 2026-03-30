@@ -8,7 +8,9 @@ import (
 	"regexp"
 	"strings"
 
+	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
 	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
+	"github.com/1Password/onepassword-operator/pkg/template"
 	"github.com/1Password/onepassword-operator/pkg/utils"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -41,6 +43,8 @@ func CreateKubernetesSecretFromItem(
 	secretType string,
 	ownerRef *metav1.OwnerReference,
 	allowEmptyValues bool,
+	secretTemplate *onepasswordv1.SecretTemplate,
+	imagePullSecret *onepasswordv1.ImagePullSecretConfig,
 ) error {
 	itemVersion := fmt.Sprint(item.Version)
 	if secretAnnotations == nil {
@@ -61,7 +65,7 @@ func CreateKubernetesSecretFromItem(
 
 	// "Opaque" and "" secret types are treated the same by Kubernetes.
 	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels,
-		secretType, *item, ownerRef, allowEmptyValues)
+		secretType, *item, ownerRef, allowEmptyValues, secretTemplate, imagePullSecret)
 
 	currentSecret := &corev1.Secret{}
 	err := kubeClient.Get(ctx, types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
@@ -113,6 +117,8 @@ func BuildKubernetesSecretFromOnePasswordItem(
 	item model.Item,
 	ownerRef *metav1.OwnerReference,
 	allowEmptyValues bool,
+	secretTemplate *onepasswordv1.SecretTemplate,
+	imagePullSecret *onepasswordv1.ImagePullSecretConfig,
 ) *corev1.Secret {
 	var ownerRefs []metav1.OwnerReference
 	if ownerRef != nil {
@@ -127,17 +133,62 @@ func BuildKubernetesSecretFromOnePasswordItem(
 			Labels:          labels,
 			OwnerReferences: ownerRefs,
 		},
-		Data: BuildKubernetesSecretData(item.Fields, item.URLs, item.Files, allowEmptyValues),
+		Data: BuildKubernetesSecretData(item, allowEmptyValues, secretTemplate, imagePullSecret),
 		Type: corev1.SecretType(secretType),
 	}
 }
 
 func BuildKubernetesSecretData(
-	fields []model.ItemField, urls []model.ItemURL, files []model.File, allowEmptyValues bool,
+	item model.Item,
+	allowEmptyValues bool,
+	secretTemplate *onepasswordv1.SecretTemplate,
+	imagePullSecret *onepasswordv1.ImagePullSecretConfig,
 ) map[string][]byte {
+	// Priority 1: Image pull secret handling.
+	if imagePullSecret != nil {
+		// Build field lookup map
+		fieldMap := make(map[string]string)
+		for _, field := range item.Fields {
+			fieldMap[field.Label] = field.Value
+		}
+
+		// Extract values from fields using configured labels
+		registry := fieldMap[imagePullSecret.RegistryField]
+		username := fieldMap[imagePullSecret.UsernameField]
+		password := fieldMap[imagePullSecret.PasswordField]
+		email := fieldMap[imagePullSecret.EmailField]
+
+		// Build dockerconfigjson
+		dockerConfigJSON, err := template.BuildDockerConfigJSON(registry, username, password, email)
+		if err != nil {
+			log.Error(err, "Failed to build docker config json, falling back to default behavior")
+			// Fall through to default behavior
+		} else {
+			return map[string][]byte{
+				".dockerconfigjson": dockerConfigJSON,
+			}
+		}
+	}
+
+	// Priority 2: Template processing.
+	if secretTemplate != nil && secretTemplate.Data != nil {
+		secretData := map[string][]byte{}
+		ctx := template.BuildTemplateContext(&item)
+		for key, tmplStr := range secretTemplate.Data {
+			processed, err := template.ProcessTemplate(tmplStr, ctx)
+			if err != nil {
+				log.Error(err, fmt.Sprintf("Failed to process template for key %q, skipping", key))
+				continue
+			}
+			secretData[formatSecretDataName(key)] = processed
+		}
+		return secretData
+	}
+
+	// Priority 3: Default behavior — map fields, URLs, and files to secret data.
 	secretData := map[string][]byte{}
 
-	urlsByLabel := processURLsByLabel(urls)
+	urlsByLabel := processURLsByLabel(item.URLs)
 	for key, url := range urlsByLabel {
 		formattedKey := formatSecretDataName(key)
 		if formattedKey == "" {
@@ -154,24 +205,27 @@ func BuildKubernetesSecretData(
 		secretData[formattedKey] = []byte(url.URL)
 	}
 
-	for i := 0; i < len(fields); i++ {
-		key := formatSecretDataName(fields[i].Label)
+	for i := 0; i < len(item.Fields); i++ {
+		key := formatSecretDataName(item.Fields[i].Label)
 		if key == "" {
-			log.Info(fmt.Sprintf("Skipping field with invalid label %q because it must match [-._a-zA-Z0-9]+", fields[i].Label))
-			continue
-		}
-		if emptyValueIsNotAllowed(allowEmptyValues, fields[i].Value) {
 			log.Info(fmt.Sprintf(
-				"Skipping field with empty value for label %q (use --allow-empty-values flag to include)",
-				fields[i].Label,
+				"Skipping field with invalid label %q because it must match [-._a-zA-Z0-9]+",
+				item.Fields[i].Label,
 			))
 			continue
 		}
-		secretData[key] = []byte(fields[i].Value)
+		if emptyValueIsNotAllowed(allowEmptyValues, item.Fields[i].Value) {
+			log.Info(fmt.Sprintf(
+				"Skipping field with empty value for label %q (use --allow-empty-values flag to include)",
+				item.Fields[i].Label,
+			))
+			continue
+		}
+		secretData[key] = []byte(item.Fields[i].Value)
 	}
 
 	// populate unpopulated fields from files
-	for _, file := range files {
+	for _, file := range item.Files {
 		key := formatSecretDataName(file.Name)
 		if key == "" {
 			log.Info(fmt.Sprintf("Skipping file with invalid name %q because it must match [-._a-zA-Z0-9]+", file.Name))
