@@ -16,8 +16,9 @@
 4. [Logging level](#logging-level)
 5. [Usage examples](#usage-examples)
 6. [How 1Password Items Map to Kubernetes Secrets](#how-1password-items-map-to-kubernetes-secrets)
-7. [Configuring Automatic Rolling Restarts of Deployments](#configuring-automatic-rolling-restarts-of-deployments)
-8. [Development](#development)
+7. [Secret Templates](#secret-templates)
+8. [Configuring Automatic Rolling Restarts of Deployments](#configuring-automatic-rolling-restarts-of-deployments)
+9. [Development](#development)
 
 
 ---
@@ -123,6 +124,159 @@ Titles and field names that include white space and other characters that are no
 - Invalid characters before the first alphanumeric character and after the last alphanumeric character will be removed
 - All whitespaces between words will be replaced by `-`
 - All the letters will be lower-cased.
+
+---
+
+## Secret Templates
+
+By default, each field in a 1Password item maps directly to a key in the
+Kubernetes Secret. **Secret templates** let you transform item data into custom
+formats using [Go templates](https://pkg.go.dev/text/template) so that a
+single `OnePasswordItem` can produce exactly the secret layout your application
+expects.
+
+### Basic example
+
+```yaml
+apiVersion: onepassword.com/v1
+kind: OnePasswordItem
+metadata:
+  name: my-database-config
+spec:
+  itemPath: "vaults/my-vault/items/my-db-item"
+  template:
+    data:
+      DSN: "postgresql://{{ .Fields.username }}:{{ .Fields.password }}@{{ .Fields.host }}:{{ .Fields.port }}/{{ .Fields.database }}"
+```
+
+Instead of creating a secret with individual keys for `username`, `password`,
+`host`, `port`, and `database`, the operator creates a single `DSN` key whose
+value is the rendered connection string.
+
+### Multiple keys
+
+You can define as many output keys as you need:
+
+```yaml
+spec:
+  itemPath: "vaults/my-vault/items/my-item"
+  template:
+    data:
+      config.yaml: |
+        server:
+          username: {{ .Fields.username }}
+          password: {{ .Fields.password }}
+      DB_HOST: "{{ .Fields.host }}"
+```
+
+### Template context
+
+The following data is available inside templates:
+
+| Expression | Description |
+|---|---|
+| `{{ .Fields.<label> }}` | Value of a field by its label (works when the label is a valid Go identifier). |
+| `{{ index .Fields "<label>" }}` | Value of a field by its label. Required for labels that contain hyphens or other special characters, e.g. `{{ index .Fields "api-key" }}`. |
+| `{{ .Sections.<title>.<label> }}` | Value of a field within a named section, e.g. `{{ .Sections.Database.username }}`. |
+| `{{ index .Sections "<title>" "<label>" }}` | Same, using `index` for special-character titles/labels. |
+| `{{ .FieldsByID.<id> }}` | Value of a field by its unique 1Password field ID. Use this when labels are duplicated across sections. |
+
+### Behaviour notes
+
+- When a `template` is specified, **only** the keys defined in `template.data`
+  appear in the Kubernetes Secret. Individual item fields are **not** added as
+  separate keys.
+- If a template fails to render (e.g. syntax error or missing field), that key
+  is skipped and an error is logged. Other keys in the same template are still
+  rendered.
+- If `template` is omitted (or its `data` map is empty), the operator falls
+  back to the default behaviour of mapping fields, URLs and files directly.
+- All standard [Go template functions](https://pkg.go.dev/text/template#hdr-Functions)
+  are available (`index`, `printf`, `len`, `eq`, conditional blocks, ranges,
+  etc.).
+
+---
+
+## Image Pull Secrets
+
+The operator can automatically generate `kubernetes.io/dockerconfigjson` secrets
+for use as Kubernetes
+[image pull secrets](https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/).
+Store your registry credentials in a 1Password item and let the operator
+construct the properly formatted `.dockerconfigjson` for you.
+
+### Quick example
+
+Given a 1Password item with the following fields:
+
+| Field label | Value |
+|---|---|
+| `registry` | `ghcr.io` |
+| `username` | `my-user` |
+| `password` | `ghp_xxxxxxxxxxxx` |
+| `email` | `me@example.com` |
+
+Create a `OnePasswordItem` with `spec.imagePullSecret`:
+
+```yaml
+apiVersion: onepassword.com/v1
+kind: OnePasswordItem
+metadata:
+  name: ghcr-pull-secret
+spec:
+  itemPath: "vaults/my-vault/items/ghcr-credentials"
+  imagePullSecret:
+    registryField: "registry"
+    usernameField: "username"
+    passwordField: "password"
+    emailField: "email"          # optional
+```
+
+The operator will:
+1. Look up each field by its label in the 1Password item.
+2. Build a `.dockerconfigjson` with the base64-encoded `auth` string.
+3. Automatically set the secret type to `kubernetes.io/dockerconfigjson`.
+
+The resulting Kubernetes Secret is equivalent to running:
+
+```sh
+kubectl create secret docker-registry ghcr-pull-secret \
+  --docker-server=ghcr.io \
+  --docker-username=my-user \
+  --docker-password=ghp_xxxxxxxxxxxx \
+  --docker-email=me@example.com
+```
+
+You can then reference it in your Pods / Deployments:
+
+```yaml
+spec:
+  imagePullSecrets:
+    - name: ghcr-pull-secret
+```
+
+### Configuration reference
+
+| Field | Required | Description |
+|---|---|---|
+| `registryField` | **Yes** | Label of the 1Password field containing the registry URL (e.g. `ghcr.io`, `docker.io`). |
+| `usernameField` | **Yes** | Label of the 1Password field containing the username. |
+| `passwordField` | **Yes** | Label of the 1Password field containing the password or access token. |
+| `emailField` | No | Label of the 1Password field containing the email address. Omit if your registry does not require it. |
+
+### Behaviour notes
+
+- When `imagePullSecret` is set, the operator **only** produces the
+  `.dockerconfigjson` key. Individual fields are **not** added as separate
+  keys.
+- If the required fields (registry, username, or password) cannot be resolved
+  from the 1Password item, the operator logs an error and falls back to the
+  default field-mapping behaviour.
+- You can explicitly set `type: kubernetes.io/dockerconfigjson` on the
+  `OnePasswordItem`, but it is not required — the operator sets it
+  automatically when `imagePullSecret` is configured.
+- `imagePullSecret` takes priority over `template`. If both are set,
+  `imagePullSecret` wins.
 
 ---
 

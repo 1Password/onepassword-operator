@@ -57,6 +57,20 @@ func TestIsDeploymentUsingSecretsUsingContainers(t *testing.T) {
 	}
 }
 
+func TestIsDeploymentUsingSecretsUsingImagePullSecrets(t *testing.T) {
+	secretNamesToSearch := map[string]*corev1.Secret{
+		"my-registry-secret": {},
+	}
+
+	deployment := &appsv1.Deployment{}
+	deployment.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
+		{Name: "my-registry-secret"},
+	}
+	if !IsDeploymentUsingSecrets(deployment, secretNamesToSearch) {
+		t.Errorf("Expected that deployment was using secrets via imagePullSecrets but they were not detected.")
+	}
+}
+
 func TestIsDeploymentNotUSingSecrets(t *testing.T) {
 	secretNamesToSearch := map[string]*corev1.Secret{
 		"onepassword-database-secret": {},
@@ -66,5 +80,19 @@ func TestIsDeploymentNotUSingSecrets(t *testing.T) {
 	deployment := &appsv1.Deployment{}
 	if IsDeploymentUsingSecrets(deployment, secretNamesToSearch) {
 		t.Errorf("Expected that deployment was using not secrets but they were detected.")
+	}
+}
+
+func TestIsDeploymentNotUsingSecretsImagePullSecretsNoMatch(t *testing.T) {
+	secretNamesToSearch := map[string]*corev1.Secret{
+		"onepassword-database-secret": {},
+	}
+
+	deployment := &appsv1.Deployment{}
+	deployment.Spec.Template.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
+		{Name: "some-other-secret"},
+	}
+	if IsDeploymentUsingSecrets(deployment, secretNamesToSearch) {
+		t.Errorf("Expected that deployment was not using secrets but they were detected.")
 	}
 }
