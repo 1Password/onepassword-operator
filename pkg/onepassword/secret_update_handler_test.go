@@ -24,17 +24,21 @@ import (
 )
 
 const (
-	deploymentKind       = "Deployment"
-	deploymentAPIVersion = "v1"
-	name                 = "test-deployment"
-	namespace            = "default"
-	vaultId              = "hfnjvi6aymbsnfc2xeeoheizda"
-	itemId               = "nwrhuano7bcwddcviubpp4mhfq"
-	username             = "test-user"
-	password             = "QmHumKc$mUeEem7caHtbaBaJ"
-	userKey              = "username"
-	passKey              = "password"
-	itemVersion          = 123
+	deploymentKind        = "Deployment"
+	deploymentAPIVersion  = "v1"
+	statefulSetKind       = "StatefulSet"
+	statefulSetAPIVersion = "v1"
+	daemonSetKind         = "DaemonSet"
+	daemonSetAPIVersion   = "v1"
+	name                  = "test-deployment"
+	namespace             = "default"
+	vaultId               = "hfnjvi6aymbsnfc2xeeoheizda"
+	itemId                = "nwrhuano7bcwddcviubpp4mhfq"
+	username              = "test-user"
+	password              = "QmHumKc$mUeEem7caHtbaBaJ"
+	userKey               = "username"
+	passKey               = "password"
+	itemVersion           = 123
 )
 
 type testUpdateSecretTask struct {
@@ -858,6 +862,400 @@ var tests = []testUpdateSecretTask{
 		expectedRestart:          true,
 		globalAutoRestartEnabled: false,
 	},
+	{
+		testName:          "OP item has new version. Secret needs update. StatefulSet is restarted based on containers",
+		existingNamespace: defaultNamespace,
+		existingWorkload: &appsv1.StatefulSet{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       statefulSetKind,
+				APIVersion: statefulSetAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{"external-annotation": "some-value"},
+					},
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Env: []corev1.EnvVar{
+									{
+										Name: name,
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: name,
+												},
+												Key: passKey,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          true,
+		globalAutoRestartEnabled: true,
+	},
+	{
+		testName:          "OP item has new version. Secret needs update. StatefulSet is restarted based on volume",
+		existingNamespace: defaultNamespace,
+		existingWorkload: &appsv1.StatefulSet{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       statefulSetKind,
+				APIVersion: statefulSetAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Volumes: []corev1.Volume{
+							{
+								Name: name,
+								VolumeSource: corev1.VolumeSource{
+									Secret: &corev1.SecretVolumeSource{
+										SecretName: name,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          true,
+		globalAutoRestartEnabled: true,
+	},
+	{
+		testName:          "OP item has new version. Secret needs update. DaemonSet is restarted based on containers",
+		existingNamespace: defaultNamespace,
+		existingWorkload: &appsv1.DaemonSet{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       daemonSetKind,
+				APIVersion: daemonSetAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Spec: appsv1.DaemonSetSpec{
+				Template: corev1.PodTemplateSpec{
+					ObjectMeta: metav1.ObjectMeta{
+						Annotations: map[string]string{"external-annotation": "some-value"},
+					},
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Env: []corev1.EnvVar{
+									{
+										Name: name,
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: name,
+												},
+												Key: passKey,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          true,
+		globalAutoRestartEnabled: true,
+	},
+	{
+		testName:          "OP item has new version. Secret needs update. DaemonSet is restarted based on volume",
+		existingNamespace: defaultNamespace,
+		existingWorkload: &appsv1.DaemonSet{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       daemonSetKind,
+				APIVersion: daemonSetAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+			},
+			Spec: appsv1.DaemonSetSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Volumes: []corev1.Volume{
+							{
+								Name: name,
+								VolumeSource: corev1.VolumeSource{
+									Secret: &corev1.SecretVolumeSource{
+										SecretName: name,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          true,
+		globalAutoRestartEnabled: true,
+	},
+	{
+		testName:          "DaemonSet auto-restart false annotation overrides true global value",
+		existingNamespace: defaultNamespace,
+		existingWorkload: &appsv1.DaemonSet{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       daemonSetKind,
+				APIVersion: daemonSetAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					AutoRestartWorkloadAnnotation: "false",
+				},
+			},
+			Spec: appsv1.DaemonSetSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Env: []corev1.EnvVar{
+									{
+										Name: name,
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: name,
+												},
+												Key: passKey,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          false,
+		globalAutoRestartEnabled: true,
+	},
+	{
+		testName:          "StatefulSet auto-restart false annotation overrides true global value",
+		existingNamespace: defaultNamespace,
+		existingWorkload: &appsv1.StatefulSet{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       statefulSetKind,
+				APIVersion: statefulSetAPIVersion,
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					AutoRestartWorkloadAnnotation: "false",
+				},
+			},
+			Spec: appsv1.StatefulSetSpec{
+				Template: corev1.PodTemplateSpec{
+					Spec: corev1.PodSpec{
+						Containers: []corev1.Container{
+							{
+								Env: []corev1.EnvVar{
+									{
+										Name: name,
+										ValueFrom: &corev1.EnvVarSource{
+											SecretKeyRef: &corev1.SecretKeySelector{
+												LocalObjectReference: corev1.LocalObjectReference{
+													Name: name,
+												},
+												Key: passKey,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		existingSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  "old version",
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		expectedError: nil,
+		expectedResultSecret: &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      name,
+				Namespace: namespace,
+				Annotations: map[string]string{
+					VersionAnnotation:  fmt.Sprint(itemVersion),
+					ItemPathAnnotation: itemPath,
+				},
+			},
+			Data: expectedSecretData,
+		},
+		opItem: map[string]string{
+			userKey: username,
+			passKey: password,
+		},
+		expectedRestart:          false,
+		globalAutoRestartEnabled: true,
+	},
 }
 
 func TestUpdateSecretHandler(t *testing.T) {
@@ -919,23 +1317,23 @@ func TestUpdateSecretHandler(t *testing.T) {
 				assert.Equal(t, testData.expectedResultSecret.Annotations[VersionAnnotation], secret.Annotations[VersionAnnotation])
 			}
 
-			// check if deployment has been restarted
-			deployment := &appsv1.Deployment{}
+			// check if the workload has been restarted
+			refreshed := newEmptyWorkload(testData.existingWorkload)
 			err = cl.Get(ctx, types.NamespacedName{
 				Name:      testData.existingWorkload.(client.Object).GetName(),
 				Namespace: namespace,
-			}, deployment)
+			}, refreshed)
 			assert.NoError(t, err)
 
-			_, ok := deployment.Spec.Template.Annotations[RestartAnnotation]
+			newPodTemplateAnnotations := getPodTemplateAnnotations(refreshed)
+			_, ok := newPodTemplateAnnotations[RestartAnnotation]
 			if ok {
-				assert.True(t, testData.expectedRestart, "Expected deployment to restart but it did not")
+				assert.True(t, testData.expectedRestart, "Expected workload to restart but it did not")
 			} else {
-				assert.False(t, testData.expectedRestart, "Deployment was restarted but should not have been.")
+				assert.False(t, testData.expectedRestart, "Workload was restarted but should not have been.")
 			}
 
 			oldPodTemplateAnnotations := getPodTemplateAnnotations(testData.existingWorkload)
-			newPodTemplateAnnotations := deployment.Spec.Template.Annotations
 			for name, expected := range oldPodTemplateAnnotations {
 				actual, ok := newPodTemplateAnnotations[name]
 				if assert.Truef(t, ok, "Annotation %s was present in original pod template but was dropped after update", name) {
@@ -1106,8 +1504,25 @@ func getPodTemplateAnnotations(obj runtime.Object) map[string]string {
 	switch o := obj.(type) {
 	case *appsv1.Deployment:
 		return o.Spec.Template.Annotations
+	case *appsv1.StatefulSet:
+		return o.Spec.Template.Annotations
+	case *appsv1.DaemonSet:
+		return o.Spec.Template.Annotations
 	default:
 		return map[string]string{}
+	}
+}
+
+func newEmptyWorkload(obj runtime.Object) client.Object {
+	switch obj.(type) {
+	case *appsv1.Deployment:
+		return &appsv1.Deployment{}
+	case *appsv1.StatefulSet:
+		return &appsv1.StatefulSet{}
+	case *appsv1.DaemonSet:
+		return &appsv1.DaemonSet{}
+	default:
+		return nil
 	}
 }
 
