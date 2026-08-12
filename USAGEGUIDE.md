@@ -16,8 +16,9 @@
 4. [Logging level](#logging-level)
 5. [Usage examples](#usage-examples)
 6. [How 1Password Items Map to Kubernetes Secrets](#how-1password-items-map-to-kubernetes-secrets)
-7. [Configuring Automatic Rolling Restarts of Deployments](#configuring-automatic-rolling-restarts-of-deployments)
-8. [Development](#development)
+7. [Secret Templates](#secret-templates)
+8. [Configuring Automatic Rolling Restarts of Deployments](#configuring-automatic-rolling-restarts-of-deployments)
+9. [Development](#development)
 
 
 ---
@@ -123,6 +124,76 @@ Titles and field names that include white space and other characters that are no
 - Invalid characters before the first alphanumeric character and after the last alphanumeric character will be removed
 - All whitespaces between words will be replaced by `-`
 - All the letters will be lower-cased.
+
+---
+
+## Secret Templates
+
+By default, each field in a 1Password item maps directly to a key in the
+Kubernetes Secret. **Secret templates** let you transform item data into custom
+formats using [Go templates](https://pkg.go.dev/text/template) so that a
+single `OnePasswordItem` can produce exactly the secret layout your application
+expects.
+
+### Basic example
+
+```yaml
+apiVersion: onepassword.com/v1
+kind: OnePasswordItem
+metadata:
+  name: my-database-config
+spec:
+  itemPath: "vaults/my-vault/items/my-db-item"
+  template:
+    data:
+      DSN: "postgresql://{{ .Fields.username }}:{{ .Fields.password }}@{{ .Fields.host }}:{{ .Fields.port }}/{{ .Fields.database }}"
+```
+
+Instead of creating a secret with individual keys for `username`, `password`,
+`host`, `port`, and `database`, the operator creates a single `DSN` key whose
+value is the rendered connection string.
+
+### Multiple keys
+
+You can define as many output keys as you need:
+
+```yaml
+spec:
+  itemPath: "vaults/my-vault/items/my-item"
+  template:
+    data:
+      config.yaml: |
+        server:
+          username: {{ .Fields.username }}
+          password: {{ .Fields.password }}
+      DB_HOST: "{{ .Fields.host }}"
+```
+
+### Template context
+
+The following data is available inside templates:
+
+| Expression | Description |
+|---|---|
+| `{{ .Fields.<label> }}` | Value of a field by its label (works when the label is a valid Go identifier). |
+| `{{ index .Fields "<label>" }}` | Value of a field by its label. Required for labels that contain hyphens or other special characters, e.g. `{{ index .Fields "api-key" }}`. |
+| `{{ .Sections.<title>.<label> }}` | Value of a field within a named section, e.g. `{{ .Sections.Database.username }}`. |
+| `{{ index .Sections "<title>" "<label>" }}` | Same, using `index` for special-character titles/labels. |
+| `{{ .FieldsByID.<id> }}` | Value of a field by its unique 1Password field ID. Use this when labels are duplicated across sections. |
+
+### Behaviour notes
+
+- When a `template` is specified, **only** the keys defined in `template.data`
+  appear in the Kubernetes Secret. Individual item fields are **not** added as
+  separate keys.
+- If a template fails to render (e.g. syntax error or missing field), that key
+  is skipped and an error is logged. Other keys in the same template are still
+  rendered.
+- If `template` is omitted (or its `data` map is empty), the operator falls
+  back to the default behaviour of mapping fields, URLs and files directly.
+- All standard [Go template functions](https://pkg.go.dev/text/template#hdr-Functions)
+  are available (`index`, `printf`, `len`, `eq`, conditional blocks, ranges,
+  etc.).
 
 ---
 

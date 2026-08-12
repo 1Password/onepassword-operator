@@ -12,6 +12,7 @@ import (
 	kubeValidate "k8s.io/apimachinery/pkg/util/validation"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
 	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 )
 
@@ -40,7 +41,7 @@ func TestCreateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 		"testAnnotation": "exists",
 	}
 	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
-		secretLabels, secretAnnotations, secretType, nil, false)
+		secretLabels, secretAnnotations, secretType, nil, false, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -79,7 +80,7 @@ func TestKubernetesSecretFromOnePasswordItemOwnerReferences(t *testing.T) {
 		UID:        types.UID("test-uid"),
 	}
 	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
-		secretLabels, secretAnnotations, secretType, ownerRef, false)
+		secretLabels, secretAnnotations, secretType, ownerRef, false, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -126,7 +127,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	}
 
 	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
-		secretLabels, secretAnnotations, secretType, nil, false)
+		secretLabels, secretAnnotations, secretType, nil, false, nil)
 
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
@@ -139,7 +140,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	newItem.VaultID = testVaultUUID
 	newItem.ID = testItemUUID
 	err = CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &newItem, restartDeploymentAnnotation,
-		secretLabels, secretAnnotations, secretType, nil, false)
+		secretLabels, secretAnnotations, secretType, nil, false, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -155,7 +156,7 @@ func TestUpdateKubernetesSecretFromOnePasswordItem(t *testing.T) {
 func TestBuildKubernetesSecretData(t *testing.T) {
 	fields := generateFields(5)
 
-	secretData := BuildKubernetesSecretData(fields, nil, nil, false)
+	secretData := BuildKubernetesSecretData(model.Item{Fields: fields}, false, nil)
 	if len(secretData) != len(fields) {
 		t.Errorf("Unexpected number of secret fields returned. Expected 5, got %v", len(secretData))
 	}
@@ -170,7 +171,7 @@ func TestBuildKubernetesSecretDataWithEmptyValues_Allowed(t *testing.T) {
 		{Label: "empty-field-2", Value: ""},
 	}
 
-	secretData := BuildKubernetesSecretData(fields, nil, nil, true)
+	secretData := BuildKubernetesSecretData(model.Item{Fields: fields}, true, nil)
 
 	// Verify all fields are present, including empty ones
 	if len(secretData) != len(fields) {
@@ -203,7 +204,7 @@ func TestBuildKubernetesSecretDataWithEmptyValues_Skipped(t *testing.T) {
 	}
 
 	// Test with allowEmptyValues = false (should skip empty fields)
-	secretData := BuildKubernetesSecretData(fields, nil, nil, false)
+	secretData := BuildKubernetesSecretData(model.Item{Fields: fields}, false, nil)
 
 	// Verify only non-empty fields are present
 	expectedNonEmptyFields := 2
@@ -226,7 +227,7 @@ func TestBuildKubernetesSecretFromOnePasswordItem(t *testing.T) {
 	secretType := ""
 
 	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(
-		name, namespace, annotations, labels, secretType, item, nil, false,
+		name, namespace, annotations, labels, secretType, item, nil, false, nil,
 	)
 	if kubeSecret.Name != strings.ToLower(name) {
 		t.Errorf("Expected name value: %v but got: %v", name, kubeSecret.Name)
@@ -248,7 +249,7 @@ func TestBuildKubernetesSecretDataWithURLs(t *testing.T) {
 		{URL: "https://another.example.com", Label: "website", Primary: false},
 	}
 
-	secretData := BuildKubernetesSecretData(fields, urls, nil, false)
+	secretData := BuildKubernetesSecretData(model.Item{Fields: fields, URLs: urls}, false, nil)
 
 	// Should have fields + all URLs (both have different labels)
 	if len(secretData) != 4 {
@@ -278,7 +279,7 @@ func TestBuildKubernetesSecretDataWithFieldURLConflict(t *testing.T) {
 		{URL: "https://support.example.com", Label: "support", Primary: false},
 	}
 
-	secretData := BuildKubernetesSecretData(fields, urls, nil, false)
+	secretData := BuildKubernetesSecretData(model.Item{Fields: fields, URLs: urls}, false, nil)
 
 	// Should have 2 fields + 1 url
 	if len(secretData) != 3 {
@@ -323,7 +324,7 @@ func TestBuildKubernetesSecretData_InvalidLabels(t *testing.T) {
 	files[1].SetContent([]byte("content2"))
 	files[2].SetContent([]byte("content3"))
 
-	secretData := BuildKubernetesSecretData(fields, urls, files, false)
+	secretData := BuildKubernetesSecretData(model.Item{Fields: fields, URLs: urls, Files: files}, false, nil)
 
 	if len(secretData) != 0 {
 		t.Errorf("Expected 0 keys, got %d: %v", len(secretData), secretData)
@@ -353,7 +354,7 @@ func TestBuildKubernetesSecretFixesInvalidLabels(t *testing.T) {
 	}
 
 	kubeSecret := BuildKubernetesSecretFromOnePasswordItem(
-		name, namespace, annotations, labels, secretType, item, nil, false,
+		name, namespace, annotations, labels, secretType, item, nil, false, nil,
 	)
 
 	// Assert Secret's meta.name was fixed
@@ -391,7 +392,7 @@ func TestCreateKubernetesTLSSecretFromOnePasswordItem(t *testing.T) {
 	}
 
 	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item, restartDeploymentAnnotation,
-		secretLabels, secretAnnotations, secretType, nil, false)
+		secretLabels, secretAnnotations, secretType, nil, false, nil)
 	if err != nil {
 		t.Errorf("Unexpected error: %v", err)
 	}
@@ -404,6 +405,204 @@ func TestCreateKubernetesTLSSecretFromOnePasswordItem(t *testing.T) {
 
 	if createdSecret.Type != corev1.SecretTypeTLS {
 		t.Errorf("Expected secretType to be of tyype corev1.SecretTypeTLS, got %s", string(createdSecret.Type))
+	}
+}
+
+func TestBuildKubernetesSecretDataWithTemplate(t *testing.T) {
+	item := model.Item{
+		Fields: []model.ItemField{
+			{Label: "username", Value: "admin"},
+			{Label: "password", Value: "s3cret"},
+		},
+	}
+	tmpl := &onepasswordv1.SecretTemplate{
+		Data: map[string]string{
+			"config.yaml": "user: {{ .Fields.username }}\npass: {{ .Fields.password }}",
+		},
+	}
+
+	secretData := BuildKubernetesSecretData(item, false, tmpl)
+
+	if len(secretData) != 1 {
+		t.Fatalf("Expected 1 key, got %d", len(secretData))
+	}
+	expected := "user: admin\npass: s3cret"
+	if string(secretData["config.yaml"]) != expected {
+		t.Errorf("Expected %q, got %q", expected, string(secretData["config.yaml"]))
+	}
+}
+
+func TestBuildKubernetesSecretDataWithTemplateMultipleKeys(t *testing.T) {
+	item := model.Item{
+		Fields: []model.ItemField{
+			{Label: "host", Value: "db.example.com"},
+			{Label: "port", Value: "5432"},
+			{Label: "username", Value: "dbuser"},
+			{Label: "password", Value: "dbpass"},
+		},
+	}
+	tmpl := &onepasswordv1.SecretTemplate{
+		Data: map[string]string{
+			"DSN":     "postgresql://{{ .Fields.username }}:{{ .Fields.password }}@{{ .Fields.host }}:{{ .Fields.port }}/mydb",
+			"DB_HOST": "{{ .Fields.host }}",
+		},
+	}
+
+	secretData := BuildKubernetesSecretData(item, false, tmpl)
+
+	if len(secretData) != 2 {
+		t.Fatalf("Expected 2 keys, got %d", len(secretData))
+	}
+	expectedDSN := "postgresql://dbuser:dbpass@db.example.com:5432/mydb"
+	if string(secretData["DSN"]) != expectedDSN {
+		t.Errorf("Expected DSN %q, got %q", expectedDSN, string(secretData["DSN"]))
+	}
+	if string(secretData["DB_HOST"]) != "db.example.com" {
+		t.Errorf("Expected DB_HOST %q, got %q", "db.example.com", string(secretData["DB_HOST"]))
+	}
+}
+
+func TestBuildKubernetesSecretDataWithTemplateInvalidTemplate(t *testing.T) {
+	item := model.Item{
+		Fields: []model.ItemField{
+			{Label: "username", Value: "admin"},
+		},
+	}
+	tmpl := &onepasswordv1.SecretTemplate{
+		Data: map[string]string{
+			"good-key": "{{ .Fields.username }}",
+			"bad-key":  "{{ .InvalidSyntax",
+		},
+	}
+
+	secretData := BuildKubernetesSecretData(item, false, tmpl)
+
+	// The valid key should still be rendered; the invalid key should be skipped
+	if string(secretData["good-key"]) != "admin" {
+		t.Errorf("Expected good-key to be 'admin', got %q", string(secretData["good-key"]))
+	}
+	if _, exists := secretData["bad-key"]; exists {
+		t.Errorf("Expected bad-key to be skipped due to template error")
+	}
+}
+
+func TestBuildKubernetesSecretDataWithTemplateNilData(t *testing.T) {
+	item := model.Item{
+		Fields: []model.ItemField{
+			{Label: "key0", Value: "value0"},
+		},
+	}
+	// Template with nil Data should fall through to default behavior
+	tmpl := &onepasswordv1.SecretTemplate{}
+
+	secretData := BuildKubernetesSecretData(item, false, tmpl)
+
+	if len(secretData) != 1 {
+		t.Fatalf("Expected 1 key (default behavior), got %d", len(secretData))
+	}
+	if string(secretData["key0"]) != "value0" {
+		t.Errorf("Expected 'value0', got %q", string(secretData["key0"]))
+	}
+}
+
+func TestBuildKubernetesSecretDataWithTemplateSections(t *testing.T) {
+	item := model.Item{
+		Fields: []model.ItemField{
+			{Label: "username", Value: "admin", SectionID: "sec1"},
+			{Label: "password", Value: "s3cret", SectionID: "sec1"},
+			{Label: "apikey", Value: "abc123"},
+		},
+		Sections: []model.ItemSection{
+			{ID: "sec1", Title: "Database"},
+		},
+	}
+	tmpl := &onepasswordv1.SecretTemplate{
+		Data: map[string]string{
+			"db-creds": "{{ .Sections.Database.username }}:{{ .Sections.Database.password }}",
+			"api":      "{{ .Fields.apikey }}",
+		},
+	}
+
+	secretData := BuildKubernetesSecretData(item, false, tmpl)
+
+	if len(secretData) != 2 {
+		t.Fatalf("Expected 2 keys, got %d", len(secretData))
+	}
+	if string(secretData["db-creds"]) != "admin:s3cret" {
+		t.Errorf("Expected 'admin:s3cret', got %q", string(secretData["db-creds"]))
+	}
+	if string(secretData["api"]) != "abc123" {
+		t.Errorf("Expected 'abc123', got %q", string(secretData["api"]))
+	}
+}
+
+func TestBuildKubernetesSecretDataWithTemplateHyphenatedKeys(t *testing.T) {
+	item := model.Item{
+		Fields: []model.ItemField{
+			{Label: "api-key", Value: "abc123"},
+			{Label: "db-host", Value: "localhost"},
+		},
+	}
+	// Hyphenated keys require the `index` function in Go templates
+	tmpl := &onepasswordv1.SecretTemplate{
+		Data: map[string]string{
+			"config": `key={{ index .Fields "api-key" }},host={{ index .Fields "db-host" }}`,
+		},
+	}
+
+	secretData := BuildKubernetesSecretData(item, false, tmpl)
+
+	expected := "key=abc123,host=localhost"
+	if string(secretData["config"]) != expected {
+		t.Errorf("Expected %q, got %q", expected, string(secretData["config"]))
+	}
+}
+
+func TestCreateKubernetesSecretFromItemWithTemplate(t *testing.T) {
+	ctx := context.Background()
+	secretName := "template-secret"
+	namespace := testNamespace
+
+	item := model.Item{
+		Fields: []model.ItemField{
+			{Label: "username", Value: "admin"},
+			{Label: "password", Value: "s3cret"},
+		},
+		Version: 1,
+		VaultID: testVaultUUID,
+		ID:      testItemUUID,
+	}
+
+	kubeClient := fake.NewClientBuilder().Build()
+	tmpl := &onepasswordv1.SecretTemplate{
+		Data: map[string]string{
+			"config": "user={{ .Fields.username }},pass={{ .Fields.password }}",
+		},
+	}
+
+	err := CreateKubernetesSecretFromItem(ctx, kubeClient, secretName, namespace, &item,
+		restartDeploymentAnnotation, map[string]string{}, map[string]string{}, "", nil, false, tmpl)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	createdSecret := &corev1.Secret{}
+	err = kubeClient.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, createdSecret)
+	if err != nil {
+		t.Fatalf("Secret was not created: %v", err)
+	}
+
+	expected := "user=admin,pass=s3cret"
+	if string(createdSecret.Data["config"]) != expected {
+		t.Errorf("Expected %q, got %q", expected, string(createdSecret.Data["config"]))
+	}
+
+	// When template is used, fields should NOT be in the secret data individually
+	if _, exists := createdSecret.Data["username"]; exists {
+		t.Errorf("Individual field 'username' should not exist when template is used")
+	}
+	if _, exists := createdSecret.Data["password"]; exists {
+		t.Errorf("Individual field 'password' should not exist when template is used")
 	}
 }
 

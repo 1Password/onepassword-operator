@@ -176,6 +176,9 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 		return fmt.Errorf("failed to retrieve item: %w", err)
 	}
 
+	// Extract template config from spec.
+	secretTemplate := resource.Spec.Template
+
 	// Create owner reference.
 	gvk, err := apiutil.GVKForObject(resource, r.Scheme)
 	if err != nil {
@@ -188,7 +191,7 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 		UID:        resource.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, resource.Namespace, item, autoRestart, labels, annotations, secretType, ownerRef, r.Config.AllowEmptyValues)
+	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, resource.Namespace, item, autoRestart, labels, annotations, secretType, ownerRef, r.Config.AllowEmptyValues, secretTemplate)
 }
 
 func (r *OnePasswordItemReconciler) updateStatus(ctx context.Context, resource *onepasswordv1.OnePasswordItem, err error) error {
