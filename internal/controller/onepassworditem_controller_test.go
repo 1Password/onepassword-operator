@@ -23,6 +23,15 @@ const (
 	iceCream  = "freezing blue 20%"
 )
 
+func findReadyCondition(conditions []onepasswordv1.OnePasswordItemCondition) *onepasswordv1.OnePasswordItemCondition {
+	for i := range conditions {
+		if conditions[i].Type == onepasswordv1.OnePasswordItemReady {
+			return &conditions[i]
+		}
+	}
+	return nil
+}
+
 var _ = Describe("OnePasswordItem controller", func() {
 	BeforeEach(func() {
 		// failed test runs that don't clean up leave resources behind.
@@ -255,6 +264,97 @@ var _ = Describe("OnePasswordItem controller", func() {
 			Expect(secret.Data).Should(Equal(item1.SecretData))
 		})
 
+		It("Should rename mapped fields in the generated secret", func() {
+			ctx := context.Background()
+			spec := onepasswordv1.OnePasswordItemSpec{
+				ItemPath: item1.Path,
+				FieldMapping: map[string]string{
+					"password": "myCustomField",
+				},
+			}
+
+			key := types.NamespacedName{
+				Name:      "item-field-mapping",
+				Namespace: namespace,
+			}
+
+			toCreate := &onepasswordv1.OnePasswordItem{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      key.Name,
+					Namespace: key.Namespace,
+				},
+				Spec: spec,
+			}
+
+			expectedData := map[string][]byte{
+				"myCustomField": item1.SecretData["password"],
+				"username":      item1.SecretData["username"],
+			}
+
+			By("Creating a OnePasswordItem with fieldMapping")
+			Expect(k8sClient.Create(ctx, toCreate)).Should(Succeed())
+
+			createdSecret := &v1.Secret{}
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, key, createdSecret)).To(Succeed())
+				g.Expect(createdSecret.Data).To(HaveKey("myCustomField"))
+				g.Expect(createdSecret.Data).NotTo(HaveKey("password"))
+				g.Expect(createdSecret.Data).To(Equal(expectedData))
+			}, timeout, interval).Should(Succeed())
+		})
+
+		It("Should update the generated secret when fieldMapping changes", func() {
+			ctx := context.Background()
+			key := types.NamespacedName{
+				Name:      "item-field-mapping-update",
+				Namespace: namespace,
+			}
+
+			toCreate := &onepasswordv1.OnePasswordItem{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      key.Name,
+					Namespace: key.Namespace,
+				},
+				Spec: onepasswordv1.OnePasswordItemSpec{
+					ItemPath: item1.Path,
+				},
+			}
+
+			By("Creating a OnePasswordItem without fieldMapping")
+			Expect(k8sClient.Create(ctx, toCreate)).Should(Succeed())
+
+			secret := &v1.Secret{}
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, key, secret)).To(Succeed())
+				g.Expect(secret.Data).To(HaveKey("password"))
+				g.Expect(secret.Data).NotTo(HaveKey("myCustomField"))
+			}, timeout, interval).Should(Succeed())
+
+			By("Adding fieldMapping to the OnePasswordItem")
+			Eventually(func() bool {
+				item := &onepasswordv1.OnePasswordItem{}
+				if err := k8sClient.Get(ctx, key, item); err != nil {
+					return false
+				}
+				item.Spec.FieldMapping = map[string]string{
+					"password": "myCustomField",
+				}
+				return k8sClient.Update(ctx, item) == nil
+			}, timeout, interval).Should(BeTrue())
+
+			expectedData := map[string][]byte{
+				"myCustomField": item1.SecretData["password"],
+				"username":      item1.SecretData["username"],
+			}
+
+			By("Updating the K8s Secret data keys")
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, key, secret)).To(Succeed())
+				g.Expect(secret.Data).NotTo(HaveKey("password"))
+				g.Expect(secret.Data).To(Equal(expectedData))
+			}, timeout, interval).Should(Succeed())
+		})
+
 		It("Should create custom K8s Secret type using OnePasswordItem", func() {
 			const customType = "CustomType"
 			ctx := context.Background()
@@ -335,6 +435,47 @@ var _ = Describe("OnePasswordItem controller", func() {
 	})
 
 	Context("Unhappy path", func() {
+		It("Should set Ready=False when fieldMapping has duplicate targets", func() {
+			ctx := context.Background()
+			spec := onepasswordv1.OnePasswordItemSpec{
+				ItemPath: item1.Path,
+				FieldMapping: map[string]string{
+					"password": "sameKey",
+					"username": "sameKey",
+				},
+			}
+
+			key := types.NamespacedName{
+				Name:      "item-invalid-field-mapping",
+				Namespace: namespace,
+			}
+
+			toCreate := &onepasswordv1.OnePasswordItem{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      key.Name,
+					Namespace: key.Namespace,
+				},
+				Spec: spec,
+			}
+
+			By("Creating a OnePasswordItem with invalid fieldMapping")
+			Expect(k8sClient.Create(ctx, toCreate)).Should(Succeed())
+
+			created := &onepasswordv1.OnePasswordItem{}
+			Eventually(func(g Gomega) {
+				g.Expect(k8sClient.Get(ctx, key, created)).To(Succeed())
+				condition := findReadyCondition(created.Status.Conditions)
+				g.Expect(condition).NotTo(BeNil())
+				g.Expect(condition.Status).To(Equal(metav1.ConditionFalse))
+				g.Expect(condition.Message).To(ContainSubstring("invalid fieldMapping"))
+			}, timeout, interval).Should(Succeed())
+
+			secret := &v1.Secret{}
+			Consistently(func() bool {
+				return k8sClient.Get(ctx, key, secret) != nil
+			}, timeout, interval).Should(BeTrue())
+		})
+
 		It("Should throw an error if K8s Secret type is changed", func() {
 			ctx := context.Background()
 			spec := onepasswordv1.OnePasswordItemSpec{
