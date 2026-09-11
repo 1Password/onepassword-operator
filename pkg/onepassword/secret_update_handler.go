@@ -180,9 +180,18 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (
 			continue
 		}
 
-		OnePasswordItemPath := h.getPathFromOnePasswordItem(secret)
+		onePasswordItemCR := h.getOnePasswordItem(secret)
 
-		item, err := GetOnePasswordItemByPath(ctx, h.opClient, OnePasswordItemPath)
+		var onePasswordItemPath string
+		var secretTemplate *onepasswordv1.SecretTemplate
+		if onePasswordItemCR != nil {
+			onePasswordItemPath = onePasswordItemCR.Spec.ItemPath
+			secretTemplate = onePasswordItemCR.Spec.Template
+		} else {
+			onePasswordItemPath = secret.Annotations[ItemPathAnnotation]
+		}
+
+		item, err := GetOnePasswordItemByPath(ctx, h.opClient, onePasswordItemPath)
 		if err != nil {
 			log.Error(err, fmt.Sprintf("failed to retrieve 1Password item at path %s for secret %s",
 				secret.Annotations[ItemPathAnnotation], secret.Name,
@@ -211,7 +220,9 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (
 			log.Info(fmt.Sprintf("Updating kubernetes secret '%v'", secret.GetName()))
 			secret.Annotations[VersionAnnotation] = itemVersion
 			secret.Annotations[ItemPathAnnotation] = itemPathString
-			secret.Data = kubeSecrets.BuildKubernetesSecretData(item.Fields, item.URLs, item.Files, h.config.AllowEmptyValues)
+			secret.Data = kubeSecrets.BuildKubernetesSecretData(
+				*item, h.config.AllowEmptyValues, secretTemplate,
+			)
 			log.V(logs.DebugLevel).Info(fmt.Sprintf("New secret path: %v and version: %v",
 				secret.Annotations[ItemPathAnnotation], secret.Annotations[VersionAnnotation],
 			))
@@ -282,7 +293,7 @@ func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap(
 	return namespacesMap, nil
 }
 
-func (h *SecretUpdateHandler) getPathFromOnePasswordItem(secret corev1.Secret) string {
+func (h *SecretUpdateHandler) getOnePasswordItem(secret corev1.Secret) *onepasswordv1.OnePasswordItem {
 	onePasswordItem := &onepasswordv1.OnePasswordItem{}
 
 	// Search for our original OnePasswordItem if it exists
@@ -291,11 +302,10 @@ func (h *SecretUpdateHandler) getPathFromOnePasswordItem(secret corev1.Secret) s
 		Name:      secret.Name}, onePasswordItem)
 
 	if err == nil {
-		return onePasswordItem.Spec.ItemPath
+		return onePasswordItem
 	}
 
-	// If we can't find the OnePassword Item we'll just return the annotation from the secret item.
-	return secret.Annotations[ItemPathAnnotation]
+	return nil
 }
 
 func isSecretSetForAutoRestart(
