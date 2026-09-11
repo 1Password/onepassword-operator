@@ -88,6 +88,11 @@ spec:
             value: "10"
           - name: AUTO_RESTART
             value: "false"
+          # LABEL_SELECTOR (optional): when set, the operator only reconciles
+          # OnePasswordItem resources whose labels match this selector, for
+          # example "operator-owner=team-a". Empty means reconcile all items.
+          - name: LABEL_SELECTOR
+            value: ""
           - name: OP_CONNECT_HOST
             value: "http://onepassword-connect:8080"
           - name: OP_CONNECT_TOKEN
