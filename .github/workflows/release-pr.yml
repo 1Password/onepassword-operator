@@ -17,7 +17,7 @@ jobs:
       -
         id: is_release_branch_without_pr
         name: Find matching PR
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
