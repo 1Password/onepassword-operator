@@ -334,6 +334,115 @@ var _ = Describe("OnePasswordItem controller", func() {
 		})
 	})
 
+	Context("Template support", func() {
+		It("Should create a K8s secret with templated data from a OnePasswordItem", func() {
+			ctx := context.Background()
+			spec := onepasswordv1.OnePasswordItemSpec{
+				ItemPath: item1.Path,
+				Template: &onepasswordv1.SecretTemplate{
+					Data: map[string]string{
+						"config.yaml": "user: {{ .Fields.username }}\npass: {{ .Fields.password }}",
+					},
+				},
+			}
+
+			key := types.NamespacedName{
+				Name:      "templated-secret",
+				Namespace: namespace,
+			}
+
+			toCreate := &onepasswordv1.OnePasswordItem{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      key.Name,
+					Namespace: key.Namespace,
+				},
+				Spec: spec,
+			}
+
+			By("Creating a new OnePasswordItem with template")
+			Expect(k8sClient.Create(ctx, toCreate)).Should(Succeed())
+
+			created := &onepasswordv1.OnePasswordItem{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, created)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			By("Creating the K8s secret with templated data")
+			createdSecret := &v1.Secret{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, createdSecret)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			expectedConfig := fmt.Sprintf("user: %s\npass: %s", username, password)
+			Expect(createdSecret.Data).Should(HaveKeyWithValue("config.yaml", []byte(expectedConfig)))
+
+			By("Ensuring individual fields are NOT present as separate keys")
+			Expect(createdSecret.Data).ShouldNot(HaveKey("username"))
+			Expect(createdSecret.Data).ShouldNot(HaveKey("password"))
+
+			By("Deleting the OnePasswordItem successfully")
+			Eventually(func() error {
+				f := &onepasswordv1.OnePasswordItem{}
+				err := k8sClient.Get(ctx, key, f)
+				if err != nil {
+					return err
+				}
+				return k8sClient.Delete(ctx, f)
+			}, timeout, interval).Should(Succeed())
+		})
+
+		It("Should create a K8s secret with multiple templated keys", func() {
+			ctx := context.Background()
+			spec := onepasswordv1.OnePasswordItemSpec{
+				ItemPath: item1.Path,
+				Template: &onepasswordv1.SecretTemplate{
+					Data: map[string]string{
+						"DSN":  "postgresql://{{ .Fields.username }}:{{ .Fields.password }}@localhost:5432/mydb",
+						"USER": "{{ .Fields.username }}",
+					},
+				},
+			}
+
+			key := types.NamespacedName{
+				Name:      "multi-template-secret",
+				Namespace: namespace,
+			}
+
+			toCreate := &onepasswordv1.OnePasswordItem{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      key.Name,
+					Namespace: key.Namespace,
+				},
+				Spec: spec,
+			}
+
+			By("Creating a new OnePasswordItem with multiple template keys")
+			Expect(k8sClient.Create(ctx, toCreate)).Should(Succeed())
+
+			createdSecret := &v1.Secret{}
+			Eventually(func() bool {
+				err := k8sClient.Get(ctx, key, createdSecret)
+				return err == nil
+			}, timeout, interval).Should(BeTrue())
+
+			expectedDSN := fmt.Sprintf("postgresql://%s:%s@localhost:5432/mydb", username, password)
+			Expect(createdSecret.Data).Should(HaveKeyWithValue("DSN", []byte(expectedDSN)))
+			Expect(createdSecret.Data).Should(HaveKeyWithValue("USER", []byte(username)))
+
+			By("Deleting the OnePasswordItem successfully")
+			Eventually(func() error {
+				f := &onepasswordv1.OnePasswordItem{}
+				err := k8sClient.Get(ctx, key, f)
+				if err != nil {
+					return err
+				}
+				return k8sClient.Delete(ctx, f)
+			}, timeout, interval).Should(Succeed())
+		})
+	})
+
 	Context("Unhappy path", func() {
 		It("Should throw an error if K8s Secret type is changed", func() {
 			ctx := context.Background()

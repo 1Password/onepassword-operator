@@ -19,8 +19,32 @@ func TestItem_FromConnectItem(t *testing.T) {
 		Version: 1,
 		Tags:    []string{"tag1", "tag2"},
 		Fields: []*connect.ItemField{
-			{Label: "field1", Value: "value1"},
-			{Label: "field2", Value: "value2"},
+			{
+				ID:    "f1",
+				Label: "field1",
+				Value: "value1",
+				Type:  "STRING",
+				Section: &connect.ItemSection{
+					ID:    "sec1",
+					Label: "Section One",
+				},
+			},
+			{
+				ID:    "f2",
+				Label: "field2",
+				Value: "value2",
+				Type:  "CONCEALED",
+				Section: &connect.ItemSection{
+					ID:    "sec1",
+					Label: "Section One",
+				},
+			},
+			{
+				ID:    "f3",
+				Label: "field3",
+				Value: "value3",
+				Type:  "STRING",
+			},
 		},
 		Files: []*connect.File{
 			{ID: "file1", Name: "file1.txt", Size: 1234},
@@ -40,7 +64,19 @@ func TestItem_FromConnectItem(t *testing.T) {
 	for i, field := range connectItem.Fields {
 		require.Equal(t, field.Label, item.Fields[i].Label)
 		require.Equal(t, field.Value, item.Fields[i].Value)
+		require.Equal(t, field.ID, item.Fields[i].ID)
+		require.Equal(t, string(field.Type), item.Fields[i].FieldType)
 	}
+
+	// Verify sections are built from field references.
+	require.Len(t, item.Sections, 1)
+	require.Equal(t, "sec1", item.Sections[0].ID)
+	require.Equal(t, "Section One", item.Sections[0].Title)
+
+	// Verify section IDs on fields.
+	require.Equal(t, "sec1", item.Fields[0].SectionID)
+	require.Equal(t, "sec1", item.Fields[1].SectionID)
+	require.Equal(t, "", item.Fields[2].SectionID)
 
 	for i, file := range connectItem.Files {
 		require.Equal(t, file.ID, item.Files[i].ID)
@@ -52,14 +88,18 @@ func TestItem_FromConnectItem(t *testing.T) {
 }
 
 func TestItem_FromSDKItem(t *testing.T) {
+	sec1ID := "sec1"
 	sdkItem := &sdk.Item{
 		ID:      "test-item-id",
 		VaultID: "test-vault-id",
 		Version: 1,
 		Tags:    []string{"tag1", "tag2"},
+		Sections: []sdk.ItemSection{
+			{ID: "sec1", Title: "Section One"},
+		},
 		Fields: []sdk.ItemField{
-			{ID: "1", Title: "field1", Value: "value1"},
-			{ID: "2", Title: "field2", Value: "value2"},
+			{ID: "1", Title: "field1", Value: "value1", SectionID: &sec1ID, FieldType: sdk.ItemFieldTypeText},
+			{ID: "2", Title: "field2", Value: "value2", FieldType: sdk.ItemFieldTypeConcealed},
 		},
 		Files: []sdk.ItemFile{
 			{Attributes: sdk.FileAttributes{Name: "file1.txt", Size: 1234}, FieldID: "file1"},
@@ -79,7 +119,18 @@ func TestItem_FromSDKItem(t *testing.T) {
 	for i, field := range sdkItem.Fields {
 		require.Equal(t, field.Title, item.Fields[i].Label)
 		require.Equal(t, field.Value, item.Fields[i].Value)
+		require.Equal(t, field.ID, item.Fields[i].ID)
+		require.Equal(t, string(field.FieldType), item.Fields[i].FieldType)
 	}
+
+	// Verify sections are populated from SDK item.
+	require.Len(t, item.Sections, 1)
+	require.Equal(t, "sec1", item.Sections[0].ID)
+	require.Equal(t, "Section One", item.Sections[0].Title)
+
+	// Verify section ID on fields.
+	require.Equal(t, "sec1", item.Fields[0].SectionID)
+	require.Equal(t, "", item.Fields[1].SectionID)
 
 	for i, file := range sdkItem.Files {
 		require.Equal(t, file.Attributes.ID, item.Files[i].ID)
