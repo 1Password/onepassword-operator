@@ -15,9 +15,10 @@
     - [Deploy manually](#2-deploy-manually)
 4. [Logging level](#logging-level)
 5. [Usage examples](#usage-examples)
-6. [How 1Password Items Map to Kubernetes Secrets](#how-1password-items-map-to-kubernetes-secrets)
-7. [Configuring Automatic Rolling Restarts of Deployments](#configuring-automatic-rolling-restarts-of-deployments)
-8. [Development](#development)
+6. [Filtering which OnePasswordItems an operator reconciles](#filtering-which-onepassworditems-an-operator-reconciles)
+7. [How 1Password Items Map to Kubernetes Secrets](#how-1password-items-map-to-kubernetes-secrets)
+8. [Configuring Automatic Rolling Restarts of Deployments](#configuring-automatic-rolling-restarts-of-deployments)
+9. [Development](#development)
 
 
 ---
@@ -51,6 +52,7 @@ To further configure the 1Password Kubernetes Operator the following Environment
 - **WATCH_NAMESPACE:** *(default: watch all namespaces)*: Comma separated list of what Namespaces to watch for changes.
 - **POLLING_INTERVAL** *(default: 600)*: The number of seconds the 1Password Kubernetes Operator will wait before checking for updates from 1Password.
 - **AUTO_RESTART** (default: false): If set to true, the operator will restart any deployment using a secret from 1Password. This can be overwritten by namespace, deployment, or individual secret. More details on AUTO_RESTART can be found in the ["Configuring Automatic Rolling Restarts of Deployments"](#configuring-automatic-rolling-restarts-of-deployments) section.
+- **LABEL_SELECTOR** *(default: empty — reconcile all items)*: A [Kubernetes label selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) (for example `env=prod` or `app in (a,b)`). When set, the operator only reconciles `OnePasswordItem` resources whose labels match the selector. Use distinct selectors when running multiple operators that watch the same namespaces so each manages only its own items.
 
 To deploy the operator, simply run the following command:
 
@@ -78,6 +80,7 @@ To further configure the 1Password Kubernetes Operator the following Environment
 - **POLLING_INTERVAL** *(default: 600)*: The number of seconds the 1Password Kubernetes Operator will wait before checking for updates from 1Password Connect.
 - **MANAGE_CONNECT** *(default: false)*: If set to true, on deployment of the operator, a default configuration of the OnePassword Connect Service will be deployed to the current namespace.
 - **AUTO_RESTART** (default: false): If set to true, the operator will restart any deployment using a secret from 1Password Connect. This can be overwritten by namespace, deployment, or individual secret. More details on AUTO_RESTART can be found in the ["Configuring Automatic Rolling Restarts of Deployments"](#configuring-automatic-rolling-restarts-of-deployments) section.
+- **LABEL_SELECTOR** *(default: empty — reconcile all items)*: A [Kubernetes label selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) (for example `env=prod` or `app in (a,b)`). When set, the operator only reconciles `OnePasswordItem` resources whose labels match the selector. Use distinct selectors when running multiple operators that watch the same namespaces so each manages only its own items.
 
 ---
 
@@ -101,6 +104,37 @@ containers:
 
 ## Usage examples
 Find usage [examples](https://developer.1password.com/docs/k8s/operator/?deployment-type=manual#usage-examples) on 1Password developer documentation.
+
+---
+
+## Filtering which OnePasswordItems an operator reconciles
+
+By default the operator reconciles every `OnePasswordItem` in the namespaces it watches. Set the `LABEL_SELECTOR` environment variable to a [Kubernetes label selector](https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/#label-selectors) to restrict it to items whose labels match.
+
+This is useful when multiple operators watch the same namespaces but each 1Password Connect token / service account only has access to its own vaults: give each operator a distinct selector so every `OnePasswordItem` is reconciled by exactly one operator, avoiding cross-operator "token does not have access to vault" errors.
+
+Configure the operator (Deployment `env`):
+
+```yaml
+        env:
+          - name: LABEL_SELECTOR
+            value: "operator-owner=team-a"
+```
+
+Label the items that operator should manage:
+
+```yaml
+apiVersion: onepassword.com/v1
+kind: OnePasswordItem
+metadata:
+  name: example-secret
+  labels:
+    operator-owner: team-a
+spec:
+  itemPath: "vaults/<vault-id>/items/<item-id>"
+```
+
+With the selector above, this operator reconciles `example-secret` and ignores any `OnePasswordItem` that does not carry the `operator-owner=team-a` label. Set-based selectors are also supported, for example `operator-owner in (team-a,team-b)`. Leaving `LABEL_SELECTOR` empty (the default) reconciles all items.
 
 ---
 
