@@ -37,6 +37,11 @@ type OnePasswordItemSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	ItemPath string `json:"itemPath,omitempty"`
+
+	// FieldMapping maps 1Password field labels to desired Secret data keys.
+	// Unmapped fields keep their default label-based keys.
+	// +optional
+	FieldMapping map[string]string `json:"fieldMapping,omitempty"`
 }
 
 type OnePasswordItemConditionType string

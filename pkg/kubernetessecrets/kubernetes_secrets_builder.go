@@ -41,6 +41,7 @@ func CreateKubernetesSecretFromItem(
 	secretType string,
 	ownerRef *metav1.OwnerReference,
 	allowEmptyValues bool,
+	fieldMapping map[string]string,
 ) error {
 	itemVersion := fmt.Sprint(item.Version)
 	if secretAnnotations == nil {
@@ -61,7 +62,7 @@ func CreateKubernetesSecretFromItem(
 
 	// "Opaque" and "" secret types are treated the same by Kubernetes.
 	secret := BuildKubernetesSecretFromOnePasswordItem(secretName, namespace, secretAnnotations, labels,
-		secretType, *item, ownerRef, allowEmptyValues)
+		secretType, *item, ownerRef, allowEmptyValues, fieldMapping)
 
 	currentSecret := &corev1.Secret{}
 	err := kubeClient.Get(ctx, types.NamespacedName{Name: secret.Name, Namespace: secret.Namespace}, currentSecret)
@@ -88,7 +89,9 @@ func CreateKubernetesSecretFromItem(
 
 	currentAnnotations := currentSecret.Annotations
 	currentLabels := currentSecret.Labels
-	if !reflect.DeepEqual(currentAnnotations, secretAnnotations) || !reflect.DeepEqual(currentLabels, labels) {
+	if !reflect.DeepEqual(currentAnnotations, secretAnnotations) ||
+		!reflect.DeepEqual(currentLabels, labels) ||
+		!reflect.DeepEqual(currentSecret.Data, secret.Data) {
 		log.Info(fmt.Sprintf("Updating Secret %v at namespace '%v'", secret.Name, secret.Namespace))
 		currentSecret.Annotations = secretAnnotations
 		currentSecret.Labels = labels
@@ -113,6 +116,7 @@ func BuildKubernetesSecretFromOnePasswordItem(
 	item model.Item,
 	ownerRef *metav1.OwnerReference,
 	allowEmptyValues bool,
+	fieldMapping map[string]string,
 ) *corev1.Secret {
 	var ownerRefs []metav1.OwnerReference
 	if ownerRef != nil {
@@ -127,19 +131,20 @@ func BuildKubernetesSecretFromOnePasswordItem(
 			Labels:          labels,
 			OwnerReferences: ownerRefs,
 		},
-		Data: BuildKubernetesSecretData(item.Fields, item.URLs, item.Files, allowEmptyValues),
+		Data: BuildKubernetesSecretData(item.Fields, item.URLs, item.Files, allowEmptyValues, fieldMapping),
 		Type: corev1.SecretType(secretType),
 	}
 }
 
 func BuildKubernetesSecretData(
 	fields []model.ItemField, urls []model.ItemURL, files []model.File, allowEmptyValues bool,
+	fieldMapping map[string]string,
 ) map[string][]byte {
 	secretData := map[string][]byte{}
 
 	urlsByLabel := processURLsByLabel(urls)
 	for key, url := range urlsByLabel {
-		formattedKey := formatSecretDataName(key)
+		formattedKey := resolveSecretDataKey(key, fieldMapping)
 		if formattedKey == "" {
 			log.Info(fmt.Sprintf("Skipping URL with invalid label %q because it must match [-._a-zA-Z0-9]+", url.Label))
 			continue
@@ -155,7 +160,7 @@ func BuildKubernetesSecretData(
 	}
 
 	for i := 0; i < len(fields); i++ {
-		key := formatSecretDataName(fields[i].Label)
+		key := resolveSecretDataKey(fields[i].Label, fieldMapping)
 		if key == "" {
 			log.Info(fmt.Sprintf("Skipping field with invalid label %q because it must match [-._a-zA-Z0-9]+", fields[i].Label))
 			continue
@@ -172,7 +177,7 @@ func BuildKubernetesSecretData(
 
 	// populate unpopulated fields from files
 	for _, file := range files {
-		key := formatSecretDataName(file.Name)
+		key := resolveSecretDataKey(file.Name, fieldMapping)
 		if key == "" {
 			log.Info(fmt.Sprintf("Skipping file with invalid name %q because it must match [-._a-zA-Z0-9]+", file.Name))
 			continue
@@ -201,6 +206,41 @@ func BuildKubernetesSecretData(
 		}
 	}
 	return secretData
+}
+
+func resolveSecretDataKey(sourceLabel string, fieldMapping map[string]string) string {
+	label := sourceLabel
+	if fieldMapping != nil {
+		if mapped, ok := fieldMapping[sourceLabel]; ok && mapped != "" {
+			label = mapped
+		}
+	}
+	return formatSecretDataName(label)
+}
+
+// ValidateFieldMapping returns an error if two source labels map to the same Secret data key.
+func ValidateFieldMapping(fieldMapping map[string]string) error {
+	if len(fieldMapping) == 0 {
+		return nil
+	}
+	seen := make(map[string]string, len(fieldMapping))
+	for source, target := range fieldMapping {
+		if target == "" {
+			continue
+		}
+		key := resolveSecretDataKey(source, map[string]string{source: target})
+		if key == "" {
+			return fmt.Errorf("fieldMapping target for %q is not a valid secret data key", source)
+		}
+		if otherSource, exists := seen[key]; exists {
+			return fmt.Errorf(
+				"fieldMapping entries %q and %q both map to secret key %q",
+				otherSource, source, key,
+			)
+		}
+		seen[key] = source
+	}
+	return nil
 }
 
 // emptyValueIsNotAllowed checks if the value is empty and empty values are not allowed.

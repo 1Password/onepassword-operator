@@ -171,6 +171,10 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 		annotations = nil
 	}
 
+	if err := kubeSecrets.ValidateFieldMapping(resource.Spec.FieldMapping); err != nil {
+		return fmt.Errorf("invalid fieldMapping: %w", err)
+	}
+
 	item, err := op.GetOnePasswordItemByPath(ctx, r.OpClient, resource.Spec.ItemPath)
 	if err != nil {
 		return fmt.Errorf("failed to retrieve item: %w", err)
@@ -188,7 +192,7 @@ func (r *OnePasswordItemReconciler) handleOnePasswordItem(ctx context.Context, r
 		UID:        resource.GetUID(),
 	}
 
-	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, resource.Namespace, item, autoRestart, labels, annotations, secretType, ownerRef, r.Config.AllowEmptyValues)
+	return kubeSecrets.CreateKubernetesSecretFromItem(ctx, r.Client, secretName, resource.Namespace, item, autoRestart, labels, annotations, secretType, ownerRef, r.Config.AllowEmptyValues, resource.Spec.FieldMapping)
 }
 
 func (r *OnePasswordItemReconciler) updateStatus(ctx context.Context, resource *onepasswordv1.OnePasswordItem, err error) error {
