@@ -2,7 +2,7 @@ module github.com/1Password/onepassword-operator/pkg/testhelper
 
 go 1.24.0
 
-toolchain go1.24.5
+toolchain go1.26.10
 
 require (
 	github.com/onsi/ginkgo/v2 v2.22.0
