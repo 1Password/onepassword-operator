@@ -12,6 +12,14 @@
 
 ---
 
+[//]: # (START/v1.12.1)
+# v1.12.1
+
+## Security
+ * Update Go to 1.26.10 and the distroless base image so the operator no longer trusts the compromised eMudhra intermediate CAs (CVE-2026-111943). {#302}
+
+---
+
 [//]: # (START/v1.12.0)
 # v1.12.0
 
