@@ -2,7 +2,7 @@ module github.com/1Password/onepassword-operator
 
 go 1.24.0
 
-toolchain go1.24.5
+toolchain go1.26.10
 
 // In main go.mod, add this replace directive:
 replace github.com/1Password/onepassword-operator/pkg/testhelper => ./pkg/testhelper
