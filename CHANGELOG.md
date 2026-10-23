@@ -2,7 +2,7 @@
 # Latest
 
 ## Features
-  * A user-friendly description of a new feature. {issue-number}
+  * Operator supports the `LABEL_SELECTOR` environment variable to restrict which `OnePasswordItem` resources it reconciles by label, so multiple operators can safely watch the same namespaces. {#276}
 
 ## Fixes
  * A user-friendly description of a fix. {issue-number}

@@ -42,6 +42,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8sruntime "k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -73,6 +74,7 @@ const (
 	envPollingIntervalVariable  = "POLLING_INTERVAL"
 	manageConnect               = "MANAGE_CONNECT"
 	restartWorkloadsEnvVariable = "AUTO_RESTART"
+	labelSelectorEnvVariable    = "LABEL_SELECTOR"
 	defaultPollingInterval      = 600
 
 	annotationRegExpString = "^operator\\.1password\\.io\\/[a-zA-Z\\.]+"
@@ -158,6 +160,12 @@ func main() {
 	if err != nil {
 		setupLog.Error(err, "unable to get WatchNamespace, "+
 			"the manager will watch and manage resources in all namespaces")
+	}
+
+	labelSelector, err := getLabelSelector()
+	if err != nil {
+		setupLog.Error(err, "unable to parse "+labelSelectorEnvVariable)
+		os.Exit(1)
 	}
 
 	deploymentNamespace, err := utils.GetOperatorNamespace()
@@ -305,6 +313,7 @@ func main() {
 		Config: controller.ReconcilerConfig{
 			EnableAnnotations: enableAnnotations,
 			AllowEmptyValues:  allowEmptyValues,
+			LabelSelector:     labelSelector,
 		},
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "OnePasswordItem")
@@ -412,6 +421,23 @@ func getWatchNamespace() (string, error) {
 		return "", fmt.Errorf("%s must be set", watchNamespaceEnvVar)
 	}
 	return ns, nil
+}
+
+// getLabelSelector returns the label selector the operator should use to filter
+// which OnePasswordItem resources it reconciles, parsed from the LABEL_SELECTOR
+// environment variable. An unset or empty value returns a nil selector, meaning
+// all OnePasswordItem resources are reconciled (the default).
+func getLabelSelector() (*metav1.LabelSelector, error) {
+	value, found := os.LookupEnv(labelSelectorEnvVariable)
+	if !found || strings.TrimSpace(value) == "" {
+		return nil, nil
+	}
+
+	selector, err := metav1.ParseToLabelSelector(value)
+	if err != nil {
+		return nil, fmt.Errorf("invalid %s %q: %w", labelSelectorEnvVariable, value, err)
+	}
+	return selector, nil
 }
 
 func shouldManageConnect() bool {
