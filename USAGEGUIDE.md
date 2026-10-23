@@ -109,6 +109,19 @@ Find usage [examples](https://developer.1password.com/docs/k8s/operator/?deploym
 The contents of the Kubernetes secret will be key-value pairs in which the keys are the fields of the 1Password item and the values are the corresponding values stored in 1Password.
 In case of fields that store files, the file's contents will be used as the value.
 
+You can rename selected fields when using a `OnePasswordItem` by setting `spec.fieldMapping`. Keys are 1Password field labels; values are the desired Secret data keys. Unmapped fields keep their default label-based keys. For example, to expose the 1Password `password` field as `myCustomField` in the Secret while leaving `username` unchanged:
+
+```yaml
+apiVersion: onepassword.com/v1
+kind: OnePasswordItem
+metadata:
+  name: my-secret
+spec:
+  itemPath: "vaults/<vault_id_or_title>/items/<item_id_or_title>"
+  fieldMapping:
+    password: myCustomField
+```
+
 Within an item, if both a field storing a file and a field of another type have the same name, the file field will be ignored and the other field will take precedence.
 
 Deleting the Deployment that you've created will automatically delete the created Kubernetes Secret only if the deployment is still annotated with `operator.1password.io/item-path` and `operator.1password.io/item-name` and no other deployment is using the secret.

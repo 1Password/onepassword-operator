@@ -211,7 +211,10 @@ func (h *SecretUpdateHandler) updateKubernetesSecrets(ctx context.Context) (
 			log.Info(fmt.Sprintf("Updating kubernetes secret '%v'", secret.GetName()))
 			secret.Annotations[VersionAnnotation] = itemVersion
 			secret.Annotations[ItemPathAnnotation] = itemPathString
-			secret.Data = kubeSecrets.BuildKubernetesSecretData(item.Fields, item.URLs, item.Files, h.config.AllowEmptyValues)
+			fieldMapping := h.getFieldMappingFromOnePasswordItem(secret)
+			secret.Data = kubeSecrets.BuildKubernetesSecretData(
+				item.Fields, item.URLs, item.Files, h.config.AllowEmptyValues, fieldMapping,
+			)
 			log.V(logs.DebugLevel).Info(fmt.Sprintf("New secret path: %v and version: %v",
 				secret.Annotations[ItemPathAnnotation], secret.Annotations[VersionAnnotation],
 			))
@@ -282,20 +285,32 @@ func (h *SecretUpdateHandler) getIsSetForAutoRestartByNamespaceMap(
 	return namespacesMap, nil
 }
 
-func (h *SecretUpdateHandler) getPathFromOnePasswordItem(secret corev1.Secret) string {
+func (h *SecretUpdateHandler) getOnePasswordItemForSecret(secret corev1.Secret) (*onepasswordv1.OnePasswordItem, bool) {
 	onePasswordItem := &onepasswordv1.OnePasswordItem{}
-
-	// Search for our original OnePasswordItem if it exists
 	err := h.client.Get(context.TODO(), client.ObjectKey{
 		Namespace: secret.Namespace,
-		Name:      secret.Name}, onePasswordItem)
+		Name:      secret.Name,
+	}, onePasswordItem)
+	if err != nil {
+		return nil, false
+	}
+	return onePasswordItem, true
+}
 
-	if err == nil {
+func (h *SecretUpdateHandler) getPathFromOnePasswordItem(secret corev1.Secret) string {
+	if onePasswordItem, ok := h.getOnePasswordItemForSecret(secret); ok {
 		return onePasswordItem.Spec.ItemPath
 	}
 
 	// If we can't find the OnePassword Item we'll just return the annotation from the secret item.
 	return secret.Annotations[ItemPathAnnotation]
+}
+
+func (h *SecretUpdateHandler) getFieldMappingFromOnePasswordItem(secret corev1.Secret) map[string]string {
+	if onePasswordItem, ok := h.getOnePasswordItemForSecret(secret); ok {
+		return onePasswordItem.Spec.FieldMapping
+	}
+	return nil
 }
 
 func isSecretSetForAutoRestart(

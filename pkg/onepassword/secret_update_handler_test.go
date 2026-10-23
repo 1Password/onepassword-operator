@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 
+	onepasswordv1 "github.com/1Password/onepassword-operator/api/v1"
 	"github.com/1Password/onepassword-operator/pkg/mocks"
 	"github.com/1Password/onepassword-operator/pkg/onepassword/model"
 
@@ -858,6 +859,65 @@ var tests = []testUpdateSecretTask{
 		expectedRestart:          true,
 		globalAutoRestartEnabled: false,
 	},
+}
+
+func TestUpdateSecretHandlerPreservesFieldMapping(t *testing.T) {
+	ctx := context.Background()
+	secretName := "mapped-secret"
+	mappedSecretData := map[string][]byte{
+		"myCustomField": []byte(password),
+		"username":      []byte(username),
+	}
+
+	s := scheme.Scheme
+	err := onepasswordv1.AddToScheme(s)
+	assert.NoError(t, err)
+
+	existingSecret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: namespace,
+			Annotations: map[string]string{
+				VersionAnnotation:  "old version",
+				ItemPathAnnotation: itemPath,
+			},
+		},
+		Data: expectedSecretData,
+	}
+	onePasswordItem := &onepasswordv1.OnePasswordItem{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: namespace,
+		},
+		Spec: onepasswordv1.OnePasswordItemSpec{
+			ItemPath: itemPath,
+			FieldMapping: map[string]string{
+				"password": "myCustomField",
+			},
+		},
+	}
+
+	cl := fake.NewClientBuilder().WithScheme(s).WithRuntimeObjects(existingSecret, onePasswordItem).Build()
+
+	mockOpClient := &mocks.TestClient{}
+	mockOpClient.On("GetItemByID", mock.Anything, mock.Anything).Return(createItem(), nil)
+	mockOpClient.On("GetVaultsByTitle", mock.Anything).Return([]model.Vault{}, nil)
+
+	h := &SecretUpdateHandler{
+		client:    cl,
+		apiReader: cl,
+		opClient:  mockOpClient,
+		config:    SecretUpdateHandlerConfig{},
+	}
+
+	err = h.UpdateKubernetesSecretsTask(ctx)
+	assert.NoError(t, err)
+
+	secret := &corev1.Secret{}
+	err = cl.Get(ctx, types.NamespacedName{Name: secretName, Namespace: namespace}, secret)
+	assert.NoError(t, err)
+	assert.Equal(t, mappedSecretData, secret.Data)
+	assert.Equal(t, fmt.Sprint(itemVersion), secret.Annotations[VersionAnnotation])
 }
 
 func TestUpdateSecretHandler(t *testing.T) {
