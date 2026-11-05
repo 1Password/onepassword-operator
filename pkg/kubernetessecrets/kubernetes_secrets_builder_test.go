@@ -407,6 +407,43 @@ func TestCreateKubernetesTLSSecretFromOnePasswordItem(t *testing.T) {
 	}
 }
 
+func TestBuildKubernetesSecretMetaData(t *testing.T) {
+	annotationSection := AnnotationSectionID
+	otherSection := "someothersection"
+	fields := []model.ItemField{
+		{Label: "team", Value: "platform", SectionID: &annotationSection},
+		{Label: "password", Value: "s3cret", SectionID: &otherSection},
+		{Label: "username", Value: "admin"}, // nil SectionID
+	}
+	callerAnnotations := map[string]string{"existing": "keep"}
+
+	got := BuildKubernetesSecretMetaData(fields, callerAnnotations)
+
+	if got["team"] != "platform" {
+		t.Errorf("annotation-section field missing from annotations: %v", got)
+	}
+	if got["existing"] != "keep" {
+		t.Errorf("caller's annotation was lost: %v", got)
+	}
+	if _, ok := got["password"]; ok {
+		t.Error("field in another section must not become an annotation")
+	}
+	if _, ok := got["username"]; ok {
+		t.Error("field with nil SectionID must not become an annotation")
+	}
+	if _, ok := callerAnnotations["team"]; ok {
+		t.Error("caller's map was mutated")
+	}
+
+	data := BuildKubernetesSecretData(fields, nil, nil, true)
+	if _, ok := data["team"]; ok {
+		t.Error("annotation-section field must not appear in Secret data")
+	}
+	if string(data["password"]) != "s3cret" || string(data["username"]) != "admin" {
+		t.Errorf("normal fields missing from Secret data: %v", data)
+	}
+}
+
 func compareAnnotationsToItem(annotations map[string]string, item model.Item, t *testing.T) {
 	actualVaultId, actualItemId, err := ParseVaultIdAndItemIdFromPath(annotations[ItemPathAnnotation])
 	if err != nil {

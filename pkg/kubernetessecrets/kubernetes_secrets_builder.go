@@ -25,6 +25,9 @@ const NameAnnotation = OnepasswordPrefix + "/item-name"
 const VersionAnnotation = OnepasswordPrefix + "/item-version"
 const ItemPathAnnotation = OnepasswordPrefix + "/item-path"
 const RestartDeploymentsAnnotation = OnepasswordPrefix + "/auto-restart"
+// AnnotationSectionID is the 1Password section whose fields become Secret
+// annotations instead of Secret data.
+const AnnotationSectionID = "k8simportannotations"
 
 var ErrCannotUpdateSecretType = errors.New("cannot change secret type: secret type is immutable")
 
@@ -123,13 +126,36 @@ func BuildKubernetesSecretFromOnePasswordItem(
 		ObjectMeta: metav1.ObjectMeta{
 			Name:            formatSecretName(name),
 			Namespace:       namespace,
-			Annotations:     annotations,
+			Annotations:     BuildKubernetesSecretMetaData(item.Fields, annotations),
 			Labels:          labels,
 			OwnerReferences: ownerRefs,
 		},
 		Data: BuildKubernetesSecretData(item.Fields, item.URLs, item.Files, allowEmptyValues),
 		Type: corev1.SecretType(secretType),
 	}
+}
+
+// isAnnotationField reports whether a field belongs to the annotation section
+// and so becomes a Secret annotation rather than Secret data.
+func isAnnotationField(f model.ItemField) bool {
+	return f.SectionID != nil && *f.SectionID == AnnotationSectionID
+}
+
+// BuildKubernetesSecretMetaData returns the Secret annotations: a copy of the
+// given annotations plus one entry per field in the annotation section.
+func BuildKubernetesSecretMetaData(
+	fields []model.ItemField, annotations map[string]string,
+) map[string]string {
+	result := make(map[string]string, len(annotations))
+	for k, v := range annotations {
+		result[k] = v
+	}
+	for _, f := range fields {
+		if isAnnotationField(f) {
+			result[f.Label] = f.Value
+		}
+	}
+	return result
 }
 
 func BuildKubernetesSecretData(
@@ -155,6 +181,10 @@ func BuildKubernetesSecretData(
 	}
 
 	for i := 0; i < len(fields); i++ {
+		if isAnnotationField(fields[i]) {
+			continue
+		}
+
 		key := formatSecretDataName(fields[i].Label)
 		if key == "" {
 			log.Info(fmt.Sprintf("Skipping field with invalid label %q because it must match [-._a-zA-Z0-9]+", fields[i].Label))
